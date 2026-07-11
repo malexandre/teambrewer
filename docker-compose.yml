@@ -1,0 +1,50 @@
+# Self-hosted stack: PostgreSQL + NestJS API + Nginx (serving the web build and
+# reverse-proxying /api). Only Nginx is published; Postgres and the API stay on
+# the private network. See docs/architecture/overview.md.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: teambrewer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-teambrewer}
+      POSTGRES_DB: teambrewer
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U teambrewer -d teambrewer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      API_PORT: 3000
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      DATABASE_URL: postgresql://teambrewer:${POSTGRES_PASSWORD:-teambrewer}@postgres:5432/teambrewer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  postgres-data:

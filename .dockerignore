@@ -1,0 +1,13 @@
+# Keep build contexts small and reproducible: never copy host installs, build
+# output, secrets, or the generated Prisma client into an image.
+**/node_modules
+**/dist
+**/dev-dist
+**/coverage
+**/playwright-report
+**/test-results
+apps/api/src/generated
+.git
+**/.env
+**/.env.*
+!**/.env.example
