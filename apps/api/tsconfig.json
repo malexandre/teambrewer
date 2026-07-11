@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "sourceMap": true,
+    "noEmit": true,
+    // Typecheck against the shared package's source, so editing shared is
+    // reflected immediately without a rebuild. No rootDir here: this config only
+    // type-checks. The build config (tsconfig.build.json) resolves the built
+    // package instead and owns emit layout.
+    "paths": {
+      "@teambrewer/shared": ["../../packages/shared/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

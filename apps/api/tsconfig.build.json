@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": "src",
+    // Resolve @teambrewer/shared as the built workspace package (dist) at build
+    // time rather than pulling its source under this rootDir. `pnpm -r build`
+    // builds shared first (topological order), so its dist is present.
+    "paths": {}
+  },
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts", "node_modules", "dist", "test"]
+}

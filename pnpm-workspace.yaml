@@ -2,6 +2,11 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# Dependencies explicitly allowed to run install scripts (pnpm blocks them by
+# default as a supply-chain safeguard). @swc/core compiles its native binding.
+allowBuilds:
+  "@swc/core": true
+
 # Single source of truth for versions shared across packages. Packages reference
 # these with "catalog:" so a bump happens in exactly one place. Package-specific
 # deps (NestJS, React, Vite, Prisma, …) are pinned directly in their package.json.
