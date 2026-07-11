@@ -138,7 +138,7 @@ phase finds the header insufficient, change it here and update `api-conventions.
   is shown. Also: log in with password + TOTP; log in once with a backup code; and (with a mocked/stubbed
   Discord provider) provision a Discord account, complete the claim flow, and log in with Discord.
 - **Manual proof:** as instance-admin, create a team and a user, copy the setup link, complete onboarding in
-  a fresh browser, log in with TOTP; confirm `pnpm test` (incl. isolation tests) and `pnpm test:e2e` pass and CI is green.
+  a fresh browser, log in with TOTP; confirm `pnpm test` (incl. isolation tests) and `pnpm test:e2e` pass locally (CI runs on push once a remote is configured).
 
 **Out of scope**
 - Any team-owned domain feature (decks, cards, events, etc.) — those consume this backbone starting phase-02/03.

@@ -82,7 +82,7 @@ the first real exercise of the phase-01 tenancy backbone and the phase-02 card/r
 - **E2E (Playwright):** create a deck (link + hero + format) → set status → add an iteration entry → confirm
   it appears in detail; switch teams and confirm the deck is not visible in the other team.
 - **Manual proof:** create/edit/archive decks in the running app on a FaB team; paste a Fabrary URL and see
-  it recognized (metadata only); confirm `pnpm test` (incl. isolation) and `pnpm test:e2e` pass and CI is green.
+  it recognized (metadata only); confirm `pnpm test` (incl. isolation) and `pnpm test:e2e` pass locally (CI runs on push once a remote is configured).
 
 **Out of scope**
 - Any stored card list, deck import/parse, legality validation, or version diffs — permanently out by

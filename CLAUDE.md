@@ -53,6 +53,10 @@ yet.** Build it one phase at a time following [`docs/plans/`](docs/plans/README.
 - **Decks are links, not card lists.** The app is not a deck builder. See [ADR-0002](docs/decisions/0002-decks-as-links.md).
 - **Prefer current documentation.** For any library/framework/API choice, check current (2026) official
   docs rather than relying on memory — the ecosystem moves fast.
+- **Local-first; the remote is deferred.** Everything must build, run, test, and be verified with no git
+  remote. Integrate by merging branches into `main` locally; **do not create or push to a remote unless the
+  user explicitly asks.** CI (GitHub Actions) activates only once a remote exists; until then the bar is the
+  local `pnpm` checks. See [`.claude/rules/git-and-commits.md`](.claude/rules/git-and-commits.md).
 
 ## Planned layout (created in phase-00; do not pre-create)
 

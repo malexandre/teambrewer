@@ -47,6 +47,8 @@ The app must be **well tested**. Testing is not an afterthought bolted on at the
   correctly — including helpers to set up **two teams** for isolation tests.
 - **Coverage:** track coverage; treat critical logic (confidence, aggregation, tenancy, auth) as
   must-cover. Aim high on business logic; don't chase 100% on glue.
-- **CI (GitHub Actions):** lint + typecheck + unit/integration on every push; e2e on the main flows.
-- **A phase is not done** until its verification section passes (see each phase plan) — evidence before
-  claiming completion (superpowers `verification-before-completion`).
+- **Local-first CI:** the verification bar is running lint + typecheck + unit/integration (and e2e on main
+  flows) **locally** via the `pnpm` scripts. The GitHub Actions workflow runs the same steps on push **once
+  a remote is configured** (deferred — see [git-and-commits](../../.claude/rules/git-and-commits.md)).
+- **A phase is not done** until its verification section passes **locally** (see each phase plan) — evidence
+  before claiming completion (superpowers `verification-before-completion`).

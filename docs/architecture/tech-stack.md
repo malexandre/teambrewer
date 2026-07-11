@@ -22,7 +22,7 @@ formal decision is [ADR-0001](../decisions/0001-tech-stack.md); this doc is the 
 | Validation | **Zod** (in `packages/shared`) | One schema validates the API and types the client. |
 | Auth | **Better Auth** | Self-hosted, native TOTP 2FA + backup codes + admin/invite tooling + **Discord social provider**. Lucia is deprecated. |
 | Testing | **Vitest** + **Playwright** | Fast unit/integration (Vitest) and e2e (Playwright). |
-| Lint/format | **ESLint + Prettier** | Consistency; enforced in CI. |
+| Lint/format | **ESLint + Prettier** | Consistency; enforced locally (and in CI once a remote is configured). |
 | CI | **GitHub Actions** | Lint + typecheck + test; ready for when the repo lands on GitHub. |
 | Deploy | **Docker Compose** (Postgres + API + Nginx) | Simple self-hosting on one VPS. |
 

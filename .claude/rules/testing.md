@@ -30,6 +30,8 @@ The app must be **well tested**. Full strategy: [testing-strategy](../../docs/ar
 - **Factories/fixtures** — helpers to create users/teams/memberships/decks with correct `teamId`,
   including a two-team helper for isolation tests.
 
-## CI
+## CI (local-first)
 
-Lint + typecheck + unit/integration on every push; e2e on main flows. See phase-00.
+The bar is running **`pnpm lint`, `pnpm typecheck`, `pnpm test`** (and `pnpm test:e2e` on main flows)
+**locally** — a phase is "done" on local green. The GitHub Actions workflow runs the same steps on push
+**once a remote is configured** (deferred; see [git-and-commits](git-and-commits.md)). See phase-00.

@@ -39,8 +39,9 @@ Five workstreams, all cross-cutting:
 3. **Security hardening** — **rate limiting** on auth and on setup/reset **link generation + consumption**
    (per [ADR-0003](../decisions/0003-no-email-auth.md)) and other expensive endpoints; **security headers**
    via Nginx and/or `helmet` (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy);
-   **CSRF** protection for cookie auth and **CORS** locked to the app origin; **dependency audit** wired
-   into CI; confirm no secrets/PII in logs and that tenant-violation attempts are logged.
+   **CSRF** protection for cookie auth and **CORS** locked to the app origin; **dependency audit** runnable
+   locally (`pnpm audit`) and wired into CI once a remote exists; confirm no secrets/PII in logs and that
+   tenant-violation attempts are logged.
 4. **Self-hosting ops** — documented **backup/restore** for PostgreSQL (dump + restore procedure; note that
    backups contain all tenants and must be protected); a documented, complete **`.env.example`** for every
    required secret/config; **TLS via Nginx** (Let's Encrypt) with HTTPS assumed; least-privilege DB user;
@@ -85,7 +86,7 @@ Five workstreams, all cross-cutting:
       review query keys; add a regression test for aggregation correctness after any change.
 - [ ] Write the Playwright e2e smoke suite for critical journeys (below).
 - [ ] Write the backup/restore runbook; complete `.env.example`; document TLS setup.
-- [ ] Wire the dependency audit into CI.
+- [ ] Add a dependency-audit script (`pnpm audit`) runnable locally; wire it into CI once a remote exists.
 - [ ] Sync `CLAUDE.md` commands and the roadmap Status table; reconcile drifted docs.
 - [ ] Run the full verification below.
 
@@ -108,7 +109,7 @@ configured threshold; limits are configurable via env.
 
 **Security checks.** Security headers present (assert CSP/HSTS/X-Frame-Options/X-Content-Type-Options);
 CORS rejects a foreign origin; CSRF protection blocks a forged cross-site state-changing request; `pnpm
-audit` (or equivalent) passes in CI; no secrets/PII in logs.
+audit` (or equivalent) passes locally (and in CI once a remote is configured); no secrets/PII in logs.
 
 **Performance.** Hot list/matchup queries stay within a documented budget on a realistic dataset; new
 indexes present; aggregation results unchanged after optimization (regression test).

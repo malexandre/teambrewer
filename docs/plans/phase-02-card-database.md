@@ -85,7 +85,7 @@ card reads are filtered by the active team's game).
   renders on hover/press; `CardDetail` shows mapped fields.
 - **Manual proof (run and observe):** run `pnpm --filter api card:sync` against the dataset (or a local
   fixture) → cards populate; open the web app on a FaB team → the card picker autocompletes real FaB cards,
-  preview/detail render, and the UI shows the card-data version/source. Confirm `pnpm test` and CI are green.
+  preview/detail render, and the UI shows the card-data version/source. Confirm `pnpm test` passes locally (CI runs on push once a remote is configured).
 
 **Out of scope**
 - Deck entities and deck-URL storage (phase-03; the FaB adapter's `recognizeDeckUrl` is provided here but

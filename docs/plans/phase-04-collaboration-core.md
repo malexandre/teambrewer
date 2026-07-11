@@ -88,7 +88,7 @@ consumer.
 - **E2E (Playwright):** on a deck, post a comment mentioning a teammate → that teammate sees a notification →
   clicking it opens the deck's comment thread; the deck's activity feed shows the create/comment events.
 - **Manual proof:** exercise comment → mention → notification on a deck in the running app across two
-  teammates; confirm `pnpm test` (incl. isolation) and `pnpm test:e2e` pass and CI is green.
+  teammates; confirm `pnpm test` (incl. isolation) and `pnpm test:e2e` pass locally (CI runs on push once a remote is configured).
 
 **Out of scope**
 - Email/push delivery of notifications — in-app only ([ADR-0003](../decisions/0003-no-email-auth.md)); external delivery is a possible future opt-in.

@@ -63,7 +63,7 @@ phase exists so that from phase-01 onward, adding a feature is only writing that
 - [ ] Write the root `docker-compose.yml`: `postgres`, `api`, `nginx` services on a private network; Postgres not exposed publicly; Nginx serves the web build and proxies `/api`.
 - [ ] Add `Dockerfile`s for `api` and the web build; add the Nginx config under `infra/nginx/`.
 - [ ] Author `.env.example` for every variable (`DATABASE_URL`, API port, web origin/CORS, etc.); ensure `.env` is git-ignored.
-- [ ] Add `.github/workflows/ci.yml`: install, lint, typecheck, unit/integration tests against a Postgres service. Keep it green.
+- [ ] Add `.github/workflows/ci.yml` (install, lint, typecheck, unit/integration tests against a Postgres service). It activates on push **once a remote exists**; for now ensure the same steps pass **locally** via the `pnpm` scripts.
 - [ ] Add a minimal Playwright e2e smoke test (app loads, health check succeeds) and wire `pnpm test:e2e`.
 - [ ] Update the "Commands" section of [CLAUDE.md](../../CLAUDE.md) to reflect what actually exists; mark phase-00 done in [README.md](README.md).
 

@@ -75,7 +75,7 @@ sequenceDiagram
 - **Security headers** via Nginx/helmet (CSP, HSTS, X-Frame-Options, etc.).
 - **Secrets** via environment variables / Docker secrets; never committed. `.env.example` documents them.
 - **No secrets or PII in logs.** Log tenant-violation attempts (without sensitive data) for audit.
-- **Dependencies:** keep updated; CI runs audits.
+- **Dependencies:** keep updated; run dependency audits locally (`pnpm audit`), and in CI once a remote is configured.
 - **Prohibited data:** TeamBrewer never collects payment/financial data, government IDs, or similar.
 
 ## Tenant isolation (security-critical)
