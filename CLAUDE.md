@@ -14,8 +14,11 @@ The authoritative description of the product, domain, architecture, and decision
 
 ## Current state
 
-The knowledge base and the phased implementation plan are complete. **No application code exists
-yet.** Build it one phase at a time following [`docs/plans/`](docs/plans/README.md).
+The knowledge base and the phased implementation plan are complete. **Phase-00 (foundation) is done:**
+the pnpm monorepo, strict TypeScript, lint/format, the Vitest + Testcontainers + Playwright test harness,
+Prisma 7 with an empty base migration, the NestJS API (`GET /api/health`), the React + Vite PWA shell, and
+the Docker Compose stack (Postgres + API + Nginx) all exist and pass locally. **Phase-01 (auth & tenancy)
+is next.** Continue one phase at a time following [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 
@@ -58,27 +61,40 @@ yet.** Build it one phase at a time following [`docs/plans/`](docs/plans/README.
   user explicitly asks.** CI (GitHub Actions) activates only once a remote exists; until then the bar is the
   local `pnpm` checks. See [`.claude/rules/git-and-commits.md`](.claude/rules/git-and-commits.md).
 
-## Planned layout (created in phase-00; do not pre-create)
+## Layout (created in phase-00)
 
 ```
 apps/
   web/        # React + Vite SPA (PWA)
-  api/        # NestJS backend
+  api/        # NestJS backend (Prisma under apps/api/prisma)
 packages/
   shared/     # Zod schemas + TypeScript types shared by web and api
+infra/nginx/  # Nginx config (serves the web build, proxies /api)
 docs/         # This knowledge base (source of truth)
 .claude/      # Rules, skills, settings for agents
+.github/      # CI workflow (activates once a remote exists)
+mise.toml     # Pins the toolchain (see below)
 docker-compose.yml
 ```
 
-## Commands (will exist after phase-00; documented here as the intended contract)
+## Toolchain
+
+Node and pnpm are pinned via **mise** (`mise.toml`): **Node 26.5.0** and **pnpm 11.11.0**, mirrored in
+`package.json` (`engines` + `packageManager`) for corepack/CI. TypeScript is pinned to **6.0.3** (not 7.x):
+typescript-eslint 8 supports `typescript <6.1.0`, so the native TS 7 compiler would break typed linting.
+Run commands under the pinned toolchain with `mise exec -- <cmd>` (or activate mise in your shell).
+
+## Commands
 
 - `pnpm install` — install workspace dependencies
 - `pnpm dev` — run web + api in watch mode
-- `pnpm test` — run unit/integration tests (Vitest)
+- `pnpm build` — build all packages (shared → api/web, topological)
+- `pnpm test` — run unit/integration tests (Vitest; api integration uses Testcontainers Postgres)
 - `pnpm test:e2e` — run end-to-end tests (Playwright)
-- `pnpm lint` / `pnpm typecheck` — static checks
-- `pnpm --filter api prisma migrate dev` — apply database migrations
-- `docker compose up` — run the full self-hosted stack
+- `pnpm lint` / `pnpm typecheck` — static checks (ESLint / tsc)
+- `pnpm format` / `pnpm format:write` — Prettier check / write
+- `pnpm --filter @teambrewer/api db:migrate` — apply database migrations (`prisma migrate dev`)
+- `pnpm --filter @teambrewer/api db:generate` — regenerate the Prisma client
+- `docker compose up --build` — run the full self-hosted stack (web on `WEB_PORT`, default 8080)
 
 Keep this section in sync with reality as phases land.

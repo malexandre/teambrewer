@@ -68,7 +68,7 @@ Update as phases complete.
 
 | # | Phase | Status |
 |---|---|---|
-| 00 | Foundation | ⛔ not started |
+| 00 | Foundation | ✅ done |
 | 01 | Auth & Tenancy | ⛔ not started |
 | 02 | Card Database | ⛔ not started |
 | 03 | Decks | ⛔ not started |

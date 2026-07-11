@@ -49,23 +49,23 @@ phase exists so that from phase-01 onward, adding a feature is only writing that
   (matching the contract in [CLAUDE.md](../../CLAUDE.md) "Commands").
 
 **Task checklist**
-- [ ] Confirm the git repo is initialized (it already is — created in the knowledge-base session with `main`, `.gitignore`, and the docs commits). Extend `.gitignore` for the new toolchain (dist/build, coverage, Playwright artifacts) if anything is missing.
-- [ ] Configure Conventional Commits tooling (commitlint + a commit-msg hook via Husky or lefthook).
-- [ ] Create the pnpm workspace: `pnpm-workspace.yaml` listing `apps/*` and `packages/*`; root `package.json` with workspace scripts.
-- [ ] Add `tsconfig.base.json` (strict: `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, etc.); per-package `tsconfig.json` extending it.
-- [ ] Add shared ESLint + Prettier config; wire `pnpm lint` and `pnpm typecheck` to run across all packages.
-- [ ] Scaffold `packages/shared` with Zod; export a `healthResponseSchema` and its `z.infer` type; write a unit test for it (test-first).
-- [ ] Bootstrap `apps/api` (NestJS): global `/api` prefix, a `HealthModule`. Write an integration test for `GET /api/health` **before** the handler; then implement it to return `{ status: 'ok' }` validated against the shared schema.
-- [ ] `prisma init` in `apps/api`; set the datasource to Postgres via `DATABASE_URL`; generate the first empty base migration.
-- [ ] Set up the Vitest integration harness: spin up an ephemeral Postgres (Docker service or Testcontainers), apply migrations, reset between tests (see [testing-strategy](../architecture/testing-strategy.md)).
-- [ ] Bootstrap `apps/web` (Vite + React + TS): install TanStack Router + Query, Tailwind, shadcn/ui (`components.json` + a couple of base primitives), `vite-plugin-pwa` (+ manifest + icons).
-- [ ] Wire the web app shell: router, `QueryClientProvider`, theme provider; a placeholder route that calls `/api/health` through the shared schema to prove the contract end to end. Add a component/hook test.
-- [ ] Write the root `docker-compose.yml`: `postgres`, `api`, `nginx` services on a private network; Postgres not exposed publicly; Nginx serves the web build and proxies `/api`.
-- [ ] Add `Dockerfile`s for `api` and the web build; add the Nginx config under `infra/nginx/`.
-- [ ] Author `.env.example` for every variable (`DATABASE_URL`, API port, web origin/CORS, etc.); ensure `.env` is git-ignored.
-- [ ] Add `.github/workflows/ci.yml` (install, lint, typecheck, unit/integration tests against a Postgres service). It activates on push **once a remote exists**; for now ensure the same steps pass **locally** via the `pnpm` scripts.
-- [ ] Add a minimal Playwright e2e smoke test (app loads, health check succeeds) and wire `pnpm test:e2e`.
-- [ ] Update the "Commands" section of [CLAUDE.md](../../CLAUDE.md) to reflect what actually exists; mark phase-00 done in [README.md](README.md).
+- [x] Confirm the git repo is initialized (it already is — created in the knowledge-base session with `main`, `.gitignore`, and the docs commits). Extend `.gitignore` for the new toolchain (dist/build, coverage, Playwright artifacts) if anything is missing.
+- [x] Configure Conventional Commits tooling (commitlint + a commit-msg hook via Husky or lefthook).
+- [x] Create the pnpm workspace: `pnpm-workspace.yaml` listing `apps/*` and `packages/*`; root `package.json` with workspace scripts.
+- [x] Add `tsconfig.base.json` (strict: `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, etc.); per-package `tsconfig.json` extending it.
+- [x] Add shared ESLint + Prettier config; wire `pnpm lint` and `pnpm typecheck` to run across all packages.
+- [x] Scaffold `packages/shared` with Zod; export a `healthResponseSchema` and its `z.infer` type; write a unit test for it (test-first).
+- [x] Bootstrap `apps/api` (NestJS): global `/api` prefix, a `HealthModule`. Write an integration test for `GET /api/health` **before** the handler; then implement it to return `{ status: 'ok' }` validated against the shared schema.
+- [x] `prisma init` in `apps/api`; set the datasource to Postgres via `DATABASE_URL`; generate the first empty base migration.
+- [x] Set up the Vitest integration harness: spin up an ephemeral Postgres (Docker service or Testcontainers), apply migrations, reset between tests (see [testing-strategy](../architecture/testing-strategy.md)).
+- [x] Bootstrap `apps/web` (Vite + React + TS): install TanStack Router + Query, Tailwind, shadcn/ui (`components.json` + a couple of base primitives), `vite-plugin-pwa` (+ manifest + icons).
+- [x] Wire the web app shell: router, `QueryClientProvider`, theme provider; a placeholder route that calls `/api/health` through the shared schema to prove the contract end to end. Add a component/hook test.
+- [x] Write the root `docker-compose.yml`: `postgres`, `api`, `nginx` services on a private network; Postgres not exposed publicly; Nginx serves the web build and proxies `/api`.
+- [x] Add `Dockerfile`s for `api` and the web build; add the Nginx config under `infra/nginx/`.
+- [x] Author `.env.example` for every variable (`DATABASE_URL`, API port, web origin/CORS, etc.); ensure `.env` is git-ignored.
+- [x] Add `.github/workflows/ci.yml` (install, lint, typecheck, unit/integration tests against a Postgres service). It activates on push **once a remote exists**; for now ensure the same steps pass **locally** via the `pnpm` scripts.
+- [x] Add a minimal Playwright e2e smoke test (app loads, health check succeeds) and wire `pnpm test:e2e`.
+- [x] Update the "Commands" section of [CLAUDE.md](../../CLAUDE.md) to reflect what actually exists; mark phase-00 done in [README.md](README.md).
 
 **Tests & verification**
 - **Unit (Vitest):** `healthResponseSchema` parses a valid payload and rejects an invalid one.
