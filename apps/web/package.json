@@ -16,6 +16,7 @@
     "@tanstack/react-query": "5.101.2",
     "@tanstack/react-router": "1.170.17",
     "@teambrewer/shared": "workspace:*",
+    "better-auth": "1.6.23",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "react": "19.2.7",
