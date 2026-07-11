@@ -30,8 +30,12 @@ yet.** Build it one phase at a time following [`docs/plans/`](docs/plans/README.
    - [`git-and-commits.md`](.claude/rules/git-and-commits.md)
    - [`security-and-tenancy.md`](.claude/rules/security-and-tenancy.md)
    - [`data-sources.md`](.claude/rules/data-sources.md)
-3. **Use the project skills** in [`.claude/skills/`](.claude/skills/) — especially `implementing-a-phase`
-   and `adding-a-feature-module`.
+3. **Use the project skills** in [`.claude/skills/`](.claude/skills/):
+   - `start-next-phase` — say **"start the next phase"** to run the next phase end-to-end (autonomously
+     where safe) and update the progress trackers. Wraps `implementing-a-phase`.
+   - `implementing-a-phase` — the read-first, test-first, commit-atomically workflow for one phase.
+   - `adding-a-feature-module` — the standard NestJS module + web feature structure.
+   - `working-with-card-data` — card-data sync, search, and preview.
 4. **When something is unclear, ask.** Do not guess at requirements. Keep `docs/` correct: if you change
    a decision, update the doc and the ADR in the same commit.
 
