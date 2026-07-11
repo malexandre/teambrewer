@@ -98,8 +98,8 @@ phase finds the header insufficient, change it here and update `api-conventions.
 - [x] Confirm current Better Auth APIs (TOTP, backup codes, admin/session revocation) against official 2026 docs; decide organization-plugin vs custom team model and record the choice. **Decided: custom team model** (recorded in this plan + [multi-tenancy](../architecture/multi-tenancy.md)). Better Auth 2026 APIs confirmed via Context7 (see the handoff note).
 - [x] Write Zod schemas in `packages/shared` (login, setup, reset, TOTP verify, admin create-user, team, membership, error envelope) — test-first.
 - [x] Add Prisma models + migration for `User`, `Team`, `TeamMembership`, `SetupToken`/backup codes; add unique `(teamId, userId)` and tenancy indexes. Add two-team fixture factories to the test harness (a user in team A, a user in team B, an instance-admin). *(Backup codes are stored in Better Auth's `two_factor` table, not a separate table.)*
-- [ ] Integrate Better Auth in `AuthModule`; enable mandatory TOTP + backup codes + secure session cookies + revocation. Enforce that app data is unreachable while a password account has `totpEnabled = false`.
-- [ ] Configure the Better Auth **Discord social provider** (`identify` scope, OAuth `state`); add `DISCORD_CLIENT_ID/SECRET/REDIRECT_URI` to `.env.example`. Confirm current Better Auth Discord APIs against 2026 docs.
+- [x] Integrate Better Auth in `AuthModule`; enable mandatory TOTP + backup codes + secure session cookies. Enforce that app data is unreachable while a password account has `totpEnabled = false` (the `AuthenticationGuard` gate). *(Admin-driven session **revocation** endpoint still to wire in slice 7.)*
+- [x] Configure the Better Auth **Discord social provider** (`identify` scope only, `disableImplicitSignUp`); add `DISCORD_CLIENT_ID/SECRET/REDIRECT_URI` to `.env.example`. Discord APIs confirmed against 2026 docs; authorization-URL generation tested.
 - [ ] Implement Discord provisioning: `authMethod` on account creation; `discord_link` claim-token generation + consumption binding a **unique** `discordUserId`; **reject Discord login with no matching provisioned account** (invite-only). Write these tests **first**.
 - [ ] Enforce **login-method exclusivity** (a password account cannot Discord-login and vice-versa); implement identity-only Discord link/unlink for password accounts (does not grant login). Test-first.
 - [x] Implement setup/reset token generation (crypto-random token, store only the **hash**, short expiry, single-use, invalidate older links of the same purpose) — `InviteTokenService`, integration-tested (single-use, expiry, hashed-at-rest, no enumeration). *(HTTP consumption endpoints still to wire — need Better Auth to set the password/session.)*
@@ -122,34 +122,36 @@ Done and committed on branch `phase-01-auth-and-tenancy` (all local-green: `pnpm
 4. `feat(api)` — `TeamContextGuard` + `@CurrentTeam()` + `createTeamScopedClient`/`TeamScopedPrisma`
    (the tenant-isolation backbone; 15 isolation tests).
 5. `feat(api)` — `RoleGuard` + `@RequireInstanceAdmin`/`@RequireTeamRole` + `DomainExceptionFilter`.
+6. `feat(api)` — **Better Auth integrated**: `createAuth()` (Prisma adapter, `disableSignUp`,
+   `username` + `twoFactor` plugins, additionalFields, synthetic emails); `AuthService` (server-side
+   provisioning via Prisma, password set with Better Auth's hasher, session/user resolution);
+   `AuthenticationGuard` (global) enforcing the mandatory-TOTP gate; `main.ts` mounts `toNodeHandler`
+   with `bodyParser:false` + re-added `express.json()`. **No admin plugin used** (provisioning via the
+   internal/Prisma path) — so **no second migration** was needed. Verified by a boot smoke test.
+7. `build(api)` / `feat(api)` — Discord env vars documented; **Discord provider configured**
+   (`identify`-only, `disableImplicitSignUp`), authorization-URL generation tested.
 
 Remaining (in rough dependency order):
-- **Better Auth mounting (`AuthModule`)** — the linchpin. Confirmed 2026 facts: mount
-  `toNodeHandler(auth)` on the Express instance with `NestFactory.create(AppModule, { bodyParser: false })`
-  then re-add `express.json()` for non-auth routes; use the **admin plugin** (`createUser`,
-  `setUserPassword`, `listUserSessions`, `revokeUserSessions`) — it needs extra columns
-  (`role`,`banned`,`banReason`,`banExpires` on user; `impersonatedBy` on session) → **a second migration**;
-  `emailAndPassword` with `disableSignUp: true` + `minPasswordLength: 12`; plugins `twoFactor()`,
-  `username()`; `user.additionalFields` for displayName/isInstanceAdmin/authMethod/discord*; email is a
-  synthetic `<username>@users.teambrewer.local`. Add `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL` +
-  `DISCORD_CLIENT_ID/SECRET/REDIRECT_URI` to `apps/api/.env.example`. Then add an **authentication guard**
-  that calls `auth.api.getSession({ headers })` and sets `request.userId`/`isInstanceAdmin` — this is the
-  seam the already-built guards/`TeamScopedPrisma` consume. Provisioning flow: admin `createUser` (random
-  password) → setup link → consume → `setUserPassword` → sign in → `enableTwoFactor` → return
-  totpURI+backupCodes → verify TOTP.
-- **Discord provider** (slice 4): `socialProviders.discord` with `disableImplicitSignUp: true`
-  (invite-only), `identify` scope, `state`; claim-token binding of unique `discordUserId`; method
-  exclusivity; identity link/unlink. Stub the OAuth provider in tests.
+- **Discord provisioning (slice 4 remainder)**: on account creation set `authMethod`; `discord_link`
+  claim-token consumption binding a unique `discordUserId`; reject Discord login with no matching
+  provisioned account; login-method exclusivity; identity-only link/unlink for password accounts. The
+  provider is already wired — this is the account-binding logic + stubbed OAuth-callback tests. Note the
+  provisioning primitives already exist: `AuthService.provisionAccount` and the `InviteTokenService`
+  (`discord_link` purpose).
 - **Endpoints (slice 7 remainder)**: wire the accounts/teams/self controllers using the built guards +
-  `TeamScopedPrisma` + `InviteTokenService`, with authZ + last-admin (422) tests. Note: instance-admins
-  are not necessarily team members, so team-scoped admin actions on an arbitrary team need either a bypass
-  in `TeamContextGuard` for instance-admins or path-based `teamId` for `/api/admin/*` — decide when wiring.
+  `AuthService` + `TeamScopedPrisma` + `InviteTokenService`, with authZ + last-admin (422) tests.
+  Setup/reset consumption: `InviteTokenService.consume` → `AuthService.setPassword` → create a session via
+  the internal adapter. Session revocation: delete the user's `session` rows (internal adapter / Prisma) —
+  no admin plugin. Note: instance-admins are not necessarily team members, so team-scoped admin actions on
+  an arbitrary team need either a bypass in `TeamContextGuard` for instance-admins or path-based `teamId`
+  for `/api/admin/*` — decide when wiring.
 - **Rate limiting** (slice 8): `@nestjs/throttler` on auth/link endpoints.
 - **Frontend** (slice 9) and **Playwright e2e** (slice 10).
 
 Known follow-ups recorded in commits: the team-scoped client is typed as the full `PrismaService` (a
-typed scoped client would drop the `create` `teamId` requirement); real Discord credentials needed for
-live login (stub-tested only).
+typed scoped client would drop the `create` `teamId` requirement); the Discord provider is configured but
+its login/claim binding logic and stubbed-OAuth tests are still to build; real Discord credentials are
+already in `apps/api/.env` for live login once that lands.
 
 **Tests & verification**
 - **Unit (Vitest):** setup/reset Zod schemas; token hashing (stored value ≠ raw token); backup-code

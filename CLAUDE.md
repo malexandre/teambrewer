@@ -23,10 +23,12 @@ the Docker Compose stack (Postgres + API + Nginx) all exist and pass locally.
 `main`). Landed and tested so far: the shared auth/team/error Zod schemas; the Prisma identity/tenancy
 models + first real migration + `PrismaService` (pg driver adapter); the `InviteTokenService` (hashed,
 single-use links); the **`TeamContextGuard` + team-scoped Prisma helper** (the tenant-isolation backbone);
-and the role guard + error-envelope exception filter. **Remaining:** Better Auth mounting (`AuthModule`),
-Discord SSO, the admin/team/self endpoints, rate limiting, the frontend, and the Playwright e2e — see the
-handoff note in [`docs/plans/phase-01-auth-and-tenancy.md`](docs/plans/phase-01-auth-and-tenancy.md).
-Continue one phase at a time following [`docs/plans/`](docs/plans/README.md).
+the role guard + error-envelope exception filter; **Better Auth integrated** (password + mandatory-TOTP
+gate + sessions, invite-only, no-email, mounted in `main.ts`); and the **Discord provider configured**
+(`identify`-only). **Remaining:** Discord provisioning/claim binding, the admin/team/self endpoints, rate
+limiting, the frontend, and the Playwright e2e — see the handoff note in
+[`docs/plans/phase-01-auth-and-tenancy.md`](docs/plans/phase-01-auth-and-tenancy.md). Continue one phase at
+a time following [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 
