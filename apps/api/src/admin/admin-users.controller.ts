@@ -7,6 +7,7 @@ import {
 } from "@teambrewer/shared";
 
 import { TeamAdminGuard } from "../common/team-admin.guard.js";
+import { StrictRateLimit } from "../common/throttling.js";
 import { AdminUsersService } from "./admin-users.service.js";
 
 /**
@@ -15,6 +16,7 @@ import { AdminUsersService } from "./admin-users.service.js";
  */
 @Controller("admin/teams/:teamId/users")
 @UseGuards(TeamAdminGuard)
+@StrictRateLimit()
 export class AdminUsersController {
   constructor(private readonly adminUsers: AdminUsersService) {}
 

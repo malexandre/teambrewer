@@ -37,6 +37,7 @@ export const errorCode = {
   lastTeamAdmin: "LAST_TEAM_ADMIN",
   loginMethodMismatch: "LOGIN_METHOD_MISMATCH",
   totpRequired: "TOTP_REQUIRED",
+  rateLimited: "RATE_LIMITED",
   internal: "INTERNAL",
 } as const;
 

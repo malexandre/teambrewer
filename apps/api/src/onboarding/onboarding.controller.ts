@@ -2,6 +2,7 @@ import { Body, Controller, Param, Post } from "@nestjs/common";
 
 import { type OnboardingResult, resetPasswordSchema, setupPasswordSchema } from "@teambrewer/shared";
 
+import { StrictRateLimit } from "../common/throttling.js";
 import { OnboardingService } from "./onboarding.service.js";
 
 /**
@@ -11,6 +12,7 @@ import { OnboardingService } from "./onboarding.service.js";
  * possession of the single-use, hashed, expiring token itself.
  */
 @Controller("onboarding")
+@StrictRateLimit()
 export class OnboardingController {
   constructor(private readonly onboarding: OnboardingService) {}
 

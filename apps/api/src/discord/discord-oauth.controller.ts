@@ -13,6 +13,7 @@ import type { Request, Response } from "express";
 
 import { CurrentUser, type CurrentUserContext } from "../common/current-user.decorator.js";
 import { RoleGuard } from "../common/role.guard.js";
+import { StrictRateLimit } from "../common/throttling.js";
 import { DISCORD_STATE_COOKIE, DiscordOAuthService } from "./discord-oauth.service.js";
 
 const STATE_COOKIE_MAX_AGE_MS = 10 * 60 * 1000;
@@ -57,6 +58,7 @@ export class DiscordOAuthController {
 
   /** Public: begin the claim flow for a `discord_link` token. */
   @Get("discord/claim/:token/start")
+  @StrictRateLimit()
   claimStart(@Param("token") token: string, @Res() response: Response): void {
     const { authorizeUrl, nonce } = this.discordOAuth.start("claim", token);
     setStateCookie(response, nonce);
@@ -66,6 +68,7 @@ export class DiscordOAuthController {
   /** Authenticated: begin an identity-only link for a password account. */
   @Post("me/discord/link")
   @UseGuards(RoleGuard)
+  @StrictRateLimit()
   linkStart(
     @CurrentUser() caller: CurrentUserContext,
     @Res({ passthrough: true }) response: Response,

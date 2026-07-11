@@ -33,6 +33,8 @@ function codeForStatus(status: number): ErrorCode {
       return errorCode.conflict;
     case HttpStatus.UNPROCESSABLE_ENTITY:
       return errorCode.domainRuleViolation;
+    case HttpStatus.TOO_MANY_REQUESTS:
+      return errorCode.rateLimited;
     default:
       return errorCode.internal;
   }
