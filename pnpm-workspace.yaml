@@ -1,5 +1,15 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Single source of truth for versions shared across packages. Packages reference
+# these with "catalog:" so a bump happens in exactly one place. Package-specific
+# deps (NestJS, React, Vite, Prisma, …) are pinned directly in their package.json.
+catalog:
+  "@types/node": 26.1.1
+  typescript: 6.0.3
+  vitest: 4.1.10
+  zod: 4.4.3
+
 minimumReleaseAgeExclude:
   - eslint@10.7.0
