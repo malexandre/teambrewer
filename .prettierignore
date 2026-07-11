@@ -4,6 +4,7 @@
 **/playwright-report/**
 **/test-results/**
 **/*.gen.ts
+**/generated/**
 pnpm-lock.yaml
 
 # The docs knowledge base and .claude agent config are hand-maintained prose/config;

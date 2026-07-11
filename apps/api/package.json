@@ -8,13 +8,17 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@nestjs/common": "11.1.28",
     "@nestjs/config": "4.0.4",
     "@nestjs/core": "11.1.28",
     "@nestjs/platform-express": "11.1.28",
+    "@prisma/client": "7.8.0",
     "@teambrewer/shared": "workspace:*",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2"
@@ -24,6 +28,8 @@
     "@nestjs/schematics": "11.1.0",
     "@nestjs/testing": "11.1.28",
     "@swc/core": "1.15.43",
+    "dotenv": "17.4.2",
+    "prisma": "7.8.0",
     "@types/express": "5.0.6",
     "@types/node": "catalog:",
     "@types/supertest": "7.2.0",

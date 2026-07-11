@@ -1,0 +1,3 @@
+-- This is an empty base migration. It establishes the migrations pipeline and
+-- the _prisma_migrations bookkeeping table without creating any domain tables.
+-- The first real schema (users, teams, memberships) lands in phase-01.
