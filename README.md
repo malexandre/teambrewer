@@ -4,8 +4,10 @@ A private, invite-only web app that helps a competitive **Trading Card Game team
 crack the meta and choose the best decks for each important tournament. Primary game: **Flesh and Blood**
 (Riftbound designed-for, built later). One instance hosts **multiple isolated teams (workspaces)**.
 
-> **Status:** design & planning complete — **no application code yet**. The repository currently contains
-> the knowledge base and a phased implementation roadmap. Build proceeds phase by phase.
+> **Status:** building phase by phase. **Phase-00 (foundation)** and **phase-01 (auth & tenancy)** are
+> done: the monorepo, the NestJS API + React PWA, invite-only password+TOTP / Discord authentication, and
+> server-enforced multi-team isolation, all locally green (unit, integration, and e2e). See
+> [`docs/plans/`](docs/plans/README.md) for the roadmap and current status.
 
 ## Start here
 

@@ -69,7 +69,7 @@ Update as phases complete.
 | # | Phase | Status |
 |---|---|---|
 | 00 | Foundation | ✅ done |
-| 01 | Auth & Tenancy | 🚧 in progress |
+| 01 | Auth & Tenancy | ✅ done |
 | 02 | Card Database | ⛔ not started |
 | 03 | Decks | ⛔ not started |
 | 04 | Collaboration Core | ⛔ not started |

@@ -19,16 +19,16 @@ the pnpm monorepo, strict TypeScript, lint/format, the Vitest + Testcontainers +
 Prisma 7 with an empty base migration, the NestJS API (`GET /api/health`), the React + Vite PWA shell, and
 the Docker Compose stack (Postgres + API + Nginx) all exist and pass locally.
 
-**Phase-01 (auth & tenancy) is 🚧 in progress** on branch `phase-01-auth-and-tenancy` (not yet merged to
-`main`). Landed and tested so far: the shared auth/team/error Zod schemas; the Prisma identity/tenancy
-models + first real migration + `PrismaService` (pg driver adapter); the `InviteTokenService` (hashed,
-single-use links); the **`TeamContextGuard` + team-scoped Prisma helper** (the tenant-isolation backbone);
-the role guard + error-envelope exception filter; **Better Auth integrated** (password + mandatory-TOTP
-gate + sessions, invite-only, no-email, mounted in `main.ts`); and the **Discord provider configured**
-(`identify`-only). **Remaining:** Discord provisioning/claim binding, the admin/team/self endpoints, rate
-limiting, the frontend, and the Playwright e2e — see the handoff note in
-[`docs/plans/phase-01-auth-and-tenancy.md`](docs/plans/phase-01-auth-and-tenancy.md). Continue one phase at
-a time following [`docs/plans/`](docs/plans/README.md).
+**Phase-01 (auth & tenancy) is ✅ done** on branch `phase-01-auth-and-tenancy` (not yet merged to `main`).
+Delivered and tested (140 unit/integration tests + the canonical Playwright e2e, all local-green): the
+identity/tenancy models + migration; **Better Auth** (password + mandatory TOTP + backup codes, invite-only,
+no-email) and the **Discord** login method (custom OAuth claim/link transport, invite-only + method
+exclusivity); the **tenant-isolation backbone** (`TeamContextGuard` + `TeamScopedPrisma`) and the
+management-side **`TeamAdminGuard`** ("Option C" path-scoped admin routes — the isolation guard keeps no
+bypass); the admin (teams/accounts/membership, last-admin 422), onboarding-link, and self endpoints; rate
+limiting on sensitive routes; and the **frontend** (auth pages, active-team context + selector, admin
+console, account settings). Next: **phase-02 (card database)** — pick it up per
+[`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 
@@ -100,7 +100,7 @@ With mise activated in your shell, `pnpm`/`node` resolve to these pinned version
 - `pnpm dev` — run web + api in watch mode
 - `pnpm build` — build all packages (shared → api/web, topological)
 - `pnpm test` — run unit/integration tests (Vitest; api integration uses Testcontainers Postgres)
-- `pnpm test:e2e` — run end-to-end tests (Playwright)
+- `pnpm test:e2e` — run end-to-end tests (Playwright; needs Docker — spins up a Testcontainers Postgres and the API)
 - `pnpm lint` / `pnpm typecheck` — static checks (ESLint / tsc)
 - `pnpm format` / `pnpm format:write` — Prettier check / write
 - `pnpm --filter @teambrewer/api db:migrate` — apply database migrations (`prisma migrate dev`)
