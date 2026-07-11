@@ -27,6 +27,10 @@ export function createAuth(prisma: PrismaClient) {
     throw new Error("BETTER_AUTH_SECRET is not set; cannot start authentication.");
   }
 
+  const discordClientId = process.env["DISCORD_CLIENT_ID"];
+  const discordClientSecret = process.env["DISCORD_CLIENT_SECRET"];
+  const discordRedirectUri = process.env["DISCORD_REDIRECT_URI"];
+
   return betterAuth({
     secret,
     baseURL: process.env["BETTER_AUTH_URL"] ?? "http://localhost:3000",
@@ -60,10 +64,32 @@ export function createAuth(prisma: PrismaClient) {
         discordUsername: { type: "string", required: false, input: false },
       },
     },
+    // Discord SSO (ADR-0009). Only configured when credentials are present.
+    // `disableImplicitSignUp` preserves invite-only (no auto-provisioning); we
+    // request ONLY the `identify` scope (no email), overriding the defaults.
+    ...(discordClientId && discordClientSecret
+      ? {
+          socialProviders: {
+            discord: {
+              clientId: discordClientId,
+              clientSecret: discordClientSecret,
+              scope: ["identify"],
+              disableDefaultScope: true,
+              disableImplicitSignUp: true,
+              ...(discordRedirectUri ? { redirectURI: discordRedirectUri } : {}),
+            },
+          },
+        }
+      : {}),
     // TOTP is mandatory for password accounts; backup codes live in the
     // two_factor table. `username` gives username-based login (no email UX).
     plugins: [twoFactor(), username()],
   });
+}
+
+/** True when Discord SSO credentials are configured (see .env.example). */
+export function isDiscordConfigured(): boolean {
+  return Boolean(process.env["DISCORD_CLIENT_ID"] && process.env["DISCORD_CLIENT_SECRET"]);
 }
 
 export type Auth = ReturnType<typeof createAuth>;
