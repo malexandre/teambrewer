@@ -1,6 +1,6 @@
 ---
 name: start-next-phase
-description: Use when the user asks to "start the next phase", "implement the next phase", or begin/continue building a specific TeamBrewer phase. Runs the phase end-to-end as autonomously as is safe, then updates all progress trackers. Composes the implementing-a-phase skill and adds phase selection, a bounded-autonomy policy, and a definition of done.
+description: Use when the user asks to "start the next phase", "implement the next phase", "continue"/"resume" an unfinished phase, or begin/continue a specific TeamBrewer phase. Runs the phase end-to-end as autonomously as is safe, resumes an in-progress (🚧) phase where a prior session left off, then updates all progress trackers. Composes the implementing-a-phase skill and adds phase selection, a bounded-autonomy policy, and a definition of done.
 ---
 
 # Start the Next Phase
@@ -13,12 +13,34 @@ questions that genuinely need a human.** This skill wraps [`implementing-a-phase
 ## 1. Orient (do this first, before touching code)
 
 1. Read [`CLAUDE.md`](../../../CLAUDE.md) and [`docs/plans/README.md`](../../../docs/plans/README.md).
-2. **Select the phase:** if the user named one, use it. Otherwise pick the **lowest-numbered phase whose
-   status is not ✅ and whose dependencies are all ✅** in the status table.
-3. **State the chosen phase in your first message** and confirm its dependencies are done. If they aren't,
-   stop and say so (see "Always stop and ask").
+2. **Select the phase** from the status table:
+   - If the user named one, use it.
+   - Else if any phase is **🚧 in progress**, **resume that one** — finish in-progress work before starting
+     anything new (see "Resuming an in-progress phase" below).
+   - Else pick the **lowest-numbered ⛔ phase whose dependencies are all ✅**.
+3. **State the chosen phase in your first message**, say whether you are **starting fresh or resuming**, and
+   confirm its dependencies are done. If they aren't, stop and say so (see "Always stop and ask").
 4. Invoke [`implementing-a-phase`](../implementing-a-phase/SKILL.md) and read the phase plan + every feature
-   spec, ADR, and architecture doc it references. Create a todo per checklist item.
+   spec, ADR, and architecture doc it references. Create a todo per checklist item (marking already-done
+   items complete when resuming — see below).
+
+## Resuming an in-progress (🚧) phase
+
+When the selected phase is already 🚧, **continue where the last session stopped — do not restart it.**
+Reconstruct the current state before writing anything:
+
+1. Read the phase plan's **handoff note** (if present) and its `- [ ]` checklist — checked boxes are the
+   claimed-done work.
+2. Find and check out the phase's **branch** (e.g. `phase-03-decks`); review `git log` to see what actually
+   landed.
+3. **Verify reality, don't trust the markers blindly:** run the test suite / the phase's verification steps
+   to confirm what genuinely works. Reconcile any mismatch — if a box is checked but the tests disagree,
+   the tests win; fix the box and the work.
+4. Build your todo list from the **remaining** (unchecked / unverified) items and continue from there.
+5. If the trackers are missing or unreliable (a prior session stopped abruptly), reconstruct state from
+   `git log` + a full test run, and note what you inferred.
+
+Then proceed with the same rules below. Naming a phase explicitly ("continue phase-03") forces resuming it.
 
 ## 2. Work autonomously — but within bounds
 
