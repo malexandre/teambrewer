@@ -1,0 +1,35 @@
+# TeamBrewer
+
+A private, invite-only web app that helps a competitive **Trading Card Game team** work together to
+crack the meta and choose the best decks for each important tournament. Primary game: **Flesh and Blood**
+(Riftbound designed-for, built later). One instance hosts **multiple isolated teams (workspaces)**.
+
+> **Status:** design & planning complete — **no application code yet**. The repository currently contains
+> the knowledge base and a phased implementation roadmap. Build proceeds phase by phase.
+
+## Start here
+
+- **[`docs/`](docs/README.md)** — the knowledge base and single source of truth (vision, domain,
+  features, architecture, decisions).
+- **[`docs/plans/`](docs/plans/README.md)** — the modular, multi-session implementation roadmap.
+- **[`CLAUDE.md`](CLAUDE.md)** — how to work in this repository (for humans and AI agents).
+- **[`.claude/`](.claude/)** — coding rules, project skills, and settings.
+
+## What it does (planned)
+
+Structured, trustworthy, shared testing knowledge organized around tournaments: link-only decks over a
+rich card database, **confidence-weighted** game logging and matchup matrices (sample size always shown),
+event gauntlets with expected-metagame weighting and coverage tracking, per-deck tech suggestions,
+matchup game-plans, primers, and team collaboration — all inside isolated per-team workspaces.
+
+## Planned stack
+
+TypeScript · React + Vite (PWA) · NestJS · PostgreSQL + Prisma · Better Auth (invite-only, TOTP 2FA) ·
+Zod · pnpm monorepo · Docker Compose · self-hosted. See [`docs/architecture/tech-stack.md`](docs/architecture/tech-stack.md).
+
+## License / attribution
+
+Card data is sourced from sanctioned open datasets (e.g.
+[the-fab-cube/flesh-and-blood-cards](https://github.com/the-fab-cube/flesh-and-blood-cards)) and must be
+attributed per their terms. TeamBrewer is an unofficial fan tool, not affiliated with Legend Story Studios
+or Riot Games.
