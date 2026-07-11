@@ -1,0 +1,9 @@
+# Pins the local toolchain for this repo so every contributor (and CI) uses the
+# same Node and pnpm. Node/pnpm are also declared in package.json ("engines" +
+# "packageManager") so corepack and CI enforce the same versions without mise.
+[tools]
+node = "26.5.0"
+# Installed via the npm backend: mise's default (aqua) backend looks for a
+# "pnpm-macos-arm64" asset that pnpm's releases don't publish (they ship
+# "pnpm-darwin-arm64"), so aqua fails on macOS. The npm backend is cross-platform.
+"npm:pnpm" = "11.11.0"

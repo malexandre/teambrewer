@@ -43,3 +43,7 @@ Thumbs.db
 # Docker local volumes
 .docker-data/
 postgres-data/
+
+# mise local overrides (the shared mise.toml is committed)
+mise.local.toml
+.mise.local.toml

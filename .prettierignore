@@ -1,0 +1,13 @@
+**/dist/**
+**/build/**
+**/coverage/**
+**/playwright-report/**
+**/test-results/**
+**/*.gen.ts
+pnpm-lock.yaml
+
+# The docs knowledge base and .claude agent config are hand-maintained prose/config;
+# Prettier must not reformat them. Markdown in general is authored by hand.
+docs/
+.claude/
+**/*.md
