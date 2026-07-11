@@ -17,8 +17,16 @@ The authoritative description of the product, domain, architecture, and decision
 The knowledge base and the phased implementation plan are complete. **Phase-00 (foundation) is done:**
 the pnpm monorepo, strict TypeScript, lint/format, the Vitest + Testcontainers + Playwright test harness,
 Prisma 7 with an empty base migration, the NestJS API (`GET /api/health`), the React + Vite PWA shell, and
-the Docker Compose stack (Postgres + API + Nginx) all exist and pass locally. **Phase-01 (auth & tenancy)
-is next.** Continue one phase at a time following [`docs/plans/`](docs/plans/README.md).
+the Docker Compose stack (Postgres + API + Nginx) all exist and pass locally.
+
+**Phase-01 (auth & tenancy) is 🚧 in progress** on branch `phase-01-auth-and-tenancy` (not yet merged to
+`main`). Landed and tested so far: the shared auth/team/error Zod schemas; the Prisma identity/tenancy
+models + first real migration + `PrismaService` (pg driver adapter); the `InviteTokenService` (hashed,
+single-use links); the **`TeamContextGuard` + team-scoped Prisma helper** (the tenant-isolation backbone);
+and the role guard + error-envelope exception filter. **Remaining:** Better Auth mounting (`AuthModule`),
+Discord SSO, the admin/team/self endpoints, rate limiting, the frontend, and the Playwright e2e — see the
+handoff note in [`docs/plans/phase-01-auth-and-tenancy.md`](docs/plans/phase-01-auth-and-tenancy.md).
+Continue one phase at a time following [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 

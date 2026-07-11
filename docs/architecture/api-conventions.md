@@ -47,6 +47,9 @@ Uniform error envelope:
 ## Conventions
 
 - **snake_case** in the database, **camelCase** in API JSON and TypeScript (Prisma maps between them).
+  TeamBrewer domain tables snake_case their columns via Prisma `@map`. The Better Auth-owned tables
+  (`user`, `session`, `account`, `verification`, `two_factor`) keep Better Auth's native camelCase Prisma
+  field names (required by the library) but are still snake_cased in the database via `@map` (phase-01).
 - **Timestamps** are ISO-8601 UTC strings in JSON.
 - **IDs** are opaque strings; never expose sequential integers.
 - **Idempotency** for imports/sync jobs (upsert by stable key).

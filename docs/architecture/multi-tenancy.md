@@ -34,7 +34,9 @@ rules live in each feature spec.
 memberships** on every request — a client-supplied `teamId` is only ever accepted if the authenticated
 user is a member of it.
 
-Recommended mechanism (finalize in phase-01):
+Mechanism (finalized in phase-01 — **custom team model**, not Better Auth's organization plugin: our own
+`Team`/`TeamMembership` tables give strict, explicit control over the 404/403 isolation rules. Better Auth
+provides only sessions, password, TOTP, backup codes, and the Discord provider):
 
 1. **Authenticated session** (Better Auth) resolves `userId`.
 2. **Active team resolution:** the client indicates the intended team via the **`X-Team-Id` request

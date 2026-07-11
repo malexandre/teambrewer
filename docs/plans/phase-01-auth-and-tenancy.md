@@ -94,22 +94,62 @@ phase finds the header insufficient, change it here and update `api-conventions.
     manage membership/roles) and account settings (change password, regenerate backup codes, view/sign-out sessions).
 
 **Task checklist**
-- [ ] Read [accounts-and-auth](../features/accounts-and-auth.md), [teams-and-membership](../features/teams-and-membership.md), [ADR-0003](../decisions/0003-no-email-auth.md), [ADR-0008](../decisions/0008-multi-tenant-teams.md), [security](../architecture/security.md), [multi-tenancy](../architecture/multi-tenancy.md).
-- [ ] Confirm current Better Auth APIs (TOTP, backup codes, admin/session revocation) against official 2026 docs; decide organization-plugin vs custom team model and record the choice in this plan + [multi-tenancy](../architecture/multi-tenancy.md) if it differs.
-- [ ] Write Zod schemas in `packages/shared` (login, setup, reset, TOTP verify, admin create-user, team, membership, error envelope) — test-first.
-- [ ] Add Prisma models + migration for `User`, `Team`, `TeamMembership`, `SetupToken`/backup codes; add unique `(teamId, userId)` and tenancy indexes. Add two-team fixture factories to the test harness (a user in team A, a user in team B, an instance-admin).
+- [x] Read [accounts-and-auth](../features/accounts-and-auth.md), [teams-and-membership](../features/teams-and-membership.md), [ADR-0003](../decisions/0003-no-email-auth.md), [ADR-0008](../decisions/0008-multi-tenant-teams.md), [security](../architecture/security.md), [multi-tenancy](../architecture/multi-tenancy.md).
+- [x] Confirm current Better Auth APIs (TOTP, backup codes, admin/session revocation) against official 2026 docs; decide organization-plugin vs custom team model and record the choice. **Decided: custom team model** (recorded in this plan + [multi-tenancy](../architecture/multi-tenancy.md)). Better Auth 2026 APIs confirmed via Context7 (see the handoff note).
+- [x] Write Zod schemas in `packages/shared` (login, setup, reset, TOTP verify, admin create-user, team, membership, error envelope) — test-first.
+- [x] Add Prisma models + migration for `User`, `Team`, `TeamMembership`, `SetupToken`/backup codes; add unique `(teamId, userId)` and tenancy indexes. Add two-team fixture factories to the test harness (a user in team A, a user in team B, an instance-admin). *(Backup codes are stored in Better Auth's `two_factor` table, not a separate table.)*
 - [ ] Integrate Better Auth in `AuthModule`; enable mandatory TOTP + backup codes + secure session cookies + revocation. Enforce that app data is unreachable while a password account has `totpEnabled = false`.
 - [ ] Configure the Better Auth **Discord social provider** (`identify` scope, OAuth `state`); add `DISCORD_CLIENT_ID/SECRET/REDIRECT_URI` to `.env.example`. Confirm current Better Auth Discord APIs against 2026 docs.
 - [ ] Implement Discord provisioning: `authMethod` on account creation; `discord_link` claim-token generation + consumption binding a **unique** `discordUserId`; **reject Discord login with no matching provisioned account** (invite-only). Write these tests **first**.
 - [ ] Enforce **login-method exclusivity** (a password account cannot Discord-login and vice-versa); implement identity-only Discord link/unlink for password accounts (does not grant login). Test-first.
-- [ ] Implement setup/reset token generation (crypto-random token, store only the **hash**, short expiry, single-use, invalidate older links of the same purpose) and consumption endpoints — write failing integration tests first (single-use, expiry, hashed-at-rest, no enumeration on bad token).
-- [ ] Implement `TeamContextGuard`: read `X-Team-Id`, load the caller's `TeamMembership`, 403 if none, attach verified `{ userId, teamId, role }`. Write the guard test **first** (member of A + `X-Team-Id: B` → 403).
-- [ ] Implement the **team-scoped data-access helper** and prove with a test that a query issued through it always filters by the context `teamId` and stamps it on writes.
-- [ ] Implement role guards/decorators and default-deny; wire the admin endpoints (create team, create user + setup link, reset link, reset 2FA, revoke sessions, membership/role management) with role checks. Write authZ tests first (member → 403; team-admin acting on another team → 403).
-- [ ] Add rate limiting to auth + link endpoints; add non-PII audit logging of tenant/auth violations.
+- [x] Implement setup/reset token generation (crypto-random token, store only the **hash**, short expiry, single-use, invalidate older links of the same purpose) — `InviteTokenService`, integration-tested (single-use, expiry, hashed-at-rest, no enumeration). *(HTTP consumption endpoints still to wire — need Better Auth to set the password/session.)*
+- [x] Implement `TeamContextGuard`: read `X-Team-Id`, load the caller's `TeamMembership`, 403 if none, attach verified `{ userId, teamId, role }`. Guard test written (member of A + `X-Team-Id: B` → 403; forged → 403; 401/400 paths).
+- [x] Implement the **team-scoped data-access helper** and prove with a test that a query issued through it always filters by the context `teamId` and stamps it on writes. *(`createTeamScopedClient` / `TeamScopedPrisma`, tested.)*
+- [x] Implement role guards/decorators and default-deny; **[ ]** wire the admin endpoints (create team, create user + setup link, reset link, reset 2FA, revoke sessions, membership/role management) with role checks. Role guard + `@RequireInstanceAdmin`/`@RequireTeamRole` + `DomainExceptionFilter` done and unit-tested; **endpoints not yet wired** (need Better Auth for auth-dependent ones).
+- [ ] Add rate limiting to auth + link endpoints; add non-PII audit logging of tenant/auth violations. *(Tenant-violation audit logging done in `TeamContextGuard`; rate limiting still to add.)*
 - [ ] Build the frontend: API client injecting `X-Team-Id`; `queryKeys` helper; active-team context + selector; setup-link landing; login + TOTP; admin console; account settings. Component/hook tests for the team selector and query-key scoping.
 - [ ] Write the canonical Playwright e2e (below).
-- [ ] Update [README.md](README.md) status and any doc a decision touched (e.g. the finalized active-team convention in [api-conventions](../architecture/api-conventions.md)).
+- [x] Update any doc a decision touched: [multi-tenancy](../architecture/multi-tenancy.md) (custom-team decision) and [api-conventions](../architecture/api-conventions.md) (X-Team-Id + Better Auth table naming). **[ ]** Flip [README.md](README.md) status to ✅ when the phase completes.
+
+**Handoff note (session ending with phase 🚧)**
+
+Done and committed on branch `phase-01-auth-and-tenancy` (all local-green: `pnpm lint`, `typecheck`,
+`test` pass; 38 api + shared unit tests):
+1. `feat(shared)` — auth/teams/error-envelope Zod schemas.
+2. `feat(api)` — Prisma identity/tenancy models + first real migration + `PrismaService` (pg driver
+   adapter; CommonJS client via `moduleFormat "cjs"`, un-excluded from the build) + two-team fixtures.
+3. `feat(api)` — `InviteTokenService` (hashed, single-use, expiring links).
+4. `feat(api)` — `TeamContextGuard` + `@CurrentTeam()` + `createTeamScopedClient`/`TeamScopedPrisma`
+   (the tenant-isolation backbone; 15 isolation tests).
+5. `feat(api)` — `RoleGuard` + `@RequireInstanceAdmin`/`@RequireTeamRole` + `DomainExceptionFilter`.
+
+Remaining (in rough dependency order):
+- **Better Auth mounting (`AuthModule`)** — the linchpin. Confirmed 2026 facts: mount
+  `toNodeHandler(auth)` on the Express instance with `NestFactory.create(AppModule, { bodyParser: false })`
+  then re-add `express.json()` for non-auth routes; use the **admin plugin** (`createUser`,
+  `setUserPassword`, `listUserSessions`, `revokeUserSessions`) — it needs extra columns
+  (`role`,`banned`,`banReason`,`banExpires` on user; `impersonatedBy` on session) → **a second migration**;
+  `emailAndPassword` with `disableSignUp: true` + `minPasswordLength: 12`; plugins `twoFactor()`,
+  `username()`; `user.additionalFields` for displayName/isInstanceAdmin/authMethod/discord*; email is a
+  synthetic `<username>@users.teambrewer.local`. Add `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL` +
+  `DISCORD_CLIENT_ID/SECRET/REDIRECT_URI` to `apps/api/.env.example`. Then add an **authentication guard**
+  that calls `auth.api.getSession({ headers })` and sets `request.userId`/`isInstanceAdmin` — this is the
+  seam the already-built guards/`TeamScopedPrisma` consume. Provisioning flow: admin `createUser` (random
+  password) → setup link → consume → `setUserPassword` → sign in → `enableTwoFactor` → return
+  totpURI+backupCodes → verify TOTP.
+- **Discord provider** (slice 4): `socialProviders.discord` with `disableImplicitSignUp: true`
+  (invite-only), `identify` scope, `state`; claim-token binding of unique `discordUserId`; method
+  exclusivity; identity link/unlink. Stub the OAuth provider in tests.
+- **Endpoints (slice 7 remainder)**: wire the accounts/teams/self controllers using the built guards +
+  `TeamScopedPrisma` + `InviteTokenService`, with authZ + last-admin (422) tests. Note: instance-admins
+  are not necessarily team members, so team-scoped admin actions on an arbitrary team need either a bypass
+  in `TeamContextGuard` for instance-admins or path-based `teamId` for `/api/admin/*` — decide when wiring.
+- **Rate limiting** (slice 8): `@nestjs/throttler` on auth/link endpoints.
+- **Frontend** (slice 9) and **Playwright e2e** (slice 10).
+
+Known follow-ups recorded in commits: the team-scoped client is typed as the full `PrismaService` (a
+typed scoped client would drop the `create` `teamId` requirement); real Discord credentials needed for
+live login (stub-tested only).
 
 **Tests & verification**
 - **Unit (Vitest):** setup/reset Zod schemas; token hashing (stored value ≠ raw token); backup-code
