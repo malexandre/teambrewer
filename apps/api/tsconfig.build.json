@@ -9,12 +9,5 @@
     // builds shared first (topological order), so its dist is present.
     "paths": {}
   },
-  "exclude": [
-    "src/**/*.spec.ts",
-    "src/**/*.test.ts",
-    "src/generated",
-    "node_modules",
-    "dist",
-    "test"
-  ]
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts", "node_modules", "dist", "test"]
 }

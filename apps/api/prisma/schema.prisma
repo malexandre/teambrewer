@@ -1,13 +1,198 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  // The API bundle is CommonJS (package.json "type": "commonjs", Nest/SWC build).
+  // Generate a CJS client so `node dist/main.js` can require it — the default ESM
+  // client uses `import.meta.url` and cannot be required from CommonJS output.
+  moduleFormat = "cjs"
+  runtime      = "nodejs"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identity & tenancy (phase-01). See docs/architecture/data-model.md and
+// docs/architecture/multi-tenancy.md.
+//
+// Naming: TeamBrewer domain tables use snake_case columns/tables per
+// api-conventions.md. The Better Auth-owned tables (user/session/account/
+// verification/two_factor) keep Better Auth's native column names — the
+// `@map`/`@@map` here only snake_cases them in the database; the camelCase
+// Prisma field names Better Auth requires are preserved.
+// ---------------------------------------------------------------------------
+
+/// Per-team role. Instance-admin is a separate global flag on User, not a team role.
+enum TeamRole {
+  team_admin
+  member
+}
+
+/// Purpose of an admin-generated single-use link (see accounts-and-auth.md).
+enum InviteTokenPurpose {
+  setup
+  reset
+  discord_link
+}
+
+/// A person who can log in. Global (one login, many teams). Better Auth owns the
+/// core auth fields; TeamBrewer adds the domain fields below. There is no real
+/// email (ADR-0003): `email` holds a synthetic, non-routable value so Better
+/// Auth's schema is satisfied while login happens by `username` or Discord.
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false) @map("email_verified")
+  image         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // two-factor plugin
+  twoFactorEnabled Boolean? @default(false) @map("two_factor_enabled")
+
+  // username plugin
+  username        String? @unique
+  displayUsername String? @map("display_username")
+
+  // TeamBrewer domain fields
+  displayName     String  @map("display_name")
+  isInstanceAdmin Boolean @default(false) @map("is_instance_admin")
+  authMethod      String  @default("password_totp") @map("auth_method")
+  discordUserId   String? @unique @map("discord_user_id")
+  discordUsername String? @map("discord_username")
+
+  sessions     Session[]
+  accounts     Account[]
+  twoFactors   TwoFactor[]
+  memberships  TeamMembership[]
+  inviteTokens InviteToken[]
+
+  @@map("user")
+}
+
+/// Better Auth session (secure, httpOnly cookie carries the token).
+model Session {
+  id        String   @id
+  expiresAt DateTime @map("expires_at")
+  token     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+/// Better Auth account: credential (password) and social (Discord) links.
+model Account {
+  id                    String    @id
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+/// Better Auth verification tokens (used by internal flows).
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+/// Better Auth two-factor record. `backupCodes` holds the encrypted, single-use
+/// recovery codes — TeamBrewer relies on Better Auth for backup-code storage.
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String    @map("backup_codes")
+  userId                  String    @map("user_id")
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0) @map("failed_verification_count")
+  lockedUntil             DateTime? @map("locked_until")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([secret])
+  @@index([userId])
+  @@map("two_factor")
+}
+
+/// A team is an isolated workspace bound to exactly one game (the tenant root).
+model Team {
+  id         String    @id @default(cuid())
+  name       String
+  slug       String    @unique
+  gameId     String    @map("game_id")
+  createdBy  String    @map("created_by")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  memberships TeamMembership[]
+
+  @@index([gameId])
+  @@map("team")
+}
+
+/// Links a user to a team with a per-team role (the tenant link).
+model TeamMembership {
+  id       String   @id @default(cuid())
+  teamId   String   @map("team_id")
+  userId   String   @map("user_id")
+  role     TeamRole
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_membership")
+}
+
+/// A single-use, hashed, expiring link an admin generates for onboarding or
+/// recovery. Only the token hash is stored; the raw token lives only in the URL.
+model InviteToken {
+  id        String             @id @default(cuid())
+  userId    String?            @map("user_id")
+  teamId    String?            @map("team_id")
+  purpose   InviteTokenPurpose
+  tokenHash String             @unique @map("token_hash")
+  expiresAt DateTime           @map("expires_at")
+  usedAt    DateTime?          @map("used_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@map("invite_token")
 }
