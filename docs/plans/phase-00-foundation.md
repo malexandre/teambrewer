@@ -16,7 +16,9 @@ phase exists so that from phase-01 onward, adding a feature is only writing that
 - [ADR-0001 tech-stack](../decisions/0001-tech-stack.md)
 
 **Scope**
-- Git repository initialized with Conventional Commits tooling and a comprehensive `.gitignore`.
+- Git repository with Conventional Commits tooling and a comprehensive `.gitignore`. (The repo already
+  exists from the knowledge-base session — `main`, with `.gitignore` and the initial docs commits — so this
+  phase **adds the Conventional Commits tooling and builds on it**, it does not re-initialize.)
 - pnpm workspace monorepo: `apps/web`, `apps/api`, `packages/shared`.
 - Shared TypeScript config in **strict** mode; ESLint + Prettier consistent across all packages.
 - Test harness: Vitest (unit + integration) with an ephemeral Postgres test database; Playwright (e2e).
@@ -47,8 +49,8 @@ phase exists so that from phase-01 onward, adding a feature is only writing that
   (matching the contract in [CLAUDE.md](../../CLAUDE.md) "Commands").
 
 **Task checklist**
-- [ ] `git init`; add `.gitignore` (node_modules, dist/build, `.env`, coverage, Playwright artifacts, OS files).
-- [ ] Configure Conventional Commits (commitlint + a commit-msg hook via Husky or lefthook); make the first commit.
+- [ ] Confirm the git repo is initialized (it already is — created in the knowledge-base session with `main`, `.gitignore`, and the docs commits). Extend `.gitignore` for the new toolchain (dist/build, coverage, Playwright artifacts) if anything is missing.
+- [ ] Configure Conventional Commits tooling (commitlint + a commit-msg hook via Husky or lefthook).
 - [ ] Create the pnpm workspace: `pnpm-workspace.yaml` listing `apps/*` and `packages/*`; root `package.json` with workspace scripts.
 - [ ] Add `tsconfig.base.json` (strict: `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, etc.); per-package `tsconfig.json` extending it.
 - [ ] Add shared ESLint + Prettier config; wire `pnpm lint` and `pnpm typecheck` to run across all packages.
@@ -76,7 +78,9 @@ phase exists so that from phase-01 onward, adding a feature is only writing that
   - `pnpm dev` serves web + api in watch mode; opening the web app shows the health status; `curl http://localhost:<apiPort>/api/health` returns `{ "status": "ok" }`.
   - `pnpm lint`, `pnpm typecheck`, `pnpm test` all pass; `pnpm test:e2e` passes.
   - `docker compose up` boots Postgres + API + Nginx; the app is reachable through Nginx and `/api/health` responds through the proxy.
-  - The CI workflow is green on push.
+  - The CI workflow's steps **pass locally** (run lint + typecheck + tests as CI would). "Green on push" requires a
+    GitHub remote — creating/pushing to a remote is an **outward-facing action needing the user's go-ahead**
+    (see [git-and-commits](../../.claude/rules/git-and-commits.md)); until a remote exists, local CI-step passing is the bar.
 - No tenant-isolation tests apply yet (no team-owned data exists); the isolation backbone lands in phase-01.
 
 **Out of scope**
