@@ -1,29 +1,25 @@
+import { resolve } from "node:path";
+
 import { defineConfig, devices } from "@playwright/test";
 
 const webPort = 5173;
-const apiPort = 3000;
 
-// Boots the real stack for e2e: the built API on :3000 and the Vite dev server
-// on :5173 (its /api proxy forwards to the API, mirroring the Nginx proxy in
-// production). Playwright waits for both ports before running the specs.
+// The API is started by global-setup against an ephemeral Testcontainers Postgres
+// (seeded with the canonical onboarding fixtures), because it cannot boot without
+// a database. Playwright only launches the Vite dev server here; its /api proxy
+// forwards to the seeded API on :3000. global-teardown stops both.
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
   fullyParallel: true,
+  globalSetup: resolve(import.meta.dirname, "e2e/global-setup.ts"),
+  globalTeardown: resolve(import.meta.dirname, "e2e/global-teardown.ts"),
   use: {
     baseURL: `http://localhost:${webPort}`,
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
-    {
-      command:
-        "pnpm --filter @teambrewer/shared build && pnpm --filter @teambrewer/api build && pnpm --filter @teambrewer/api start",
-      port: apiPort,
-      env: { API_PORT: String(apiPort), WEB_ORIGIN: `http://localhost:${webPort}` },
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-    },
     {
       command: "pnpm --filter @teambrewer/web dev",
       port: webPort,

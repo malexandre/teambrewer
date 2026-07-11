@@ -25,6 +25,7 @@ coverage/
 playwright-report/
 test-results/
 .vitest/
+apps/web/e2e/.e2e-runtime.json
 
 # Prisma local artifacts
 prisma/*.db
