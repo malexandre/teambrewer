@@ -126,13 +126,18 @@ See the capability model in [multi-tenancy](../architecture/multi-tenancy.md#rol
 Better Auth mounts its own handlers for sessions, TOTP enrolment/verification, and backup codes. Custom,
 role-guarded admin endpoints follow [api-conventions](../architecture/api-conventions.md):
 
-- `POST /api/admin/users` — create account with `authMethod` (instance-admin, or team-admin for own team)
+Admin account routes are **path-scoped by team** (phase-01 "Option C"): the target team is the `:teamId`
+path segment, authorized by `TeamAdminGuard` (instance-admin, or the team's own team-admin), and each
+per-user action asserts the target is a member of that team.
+
+- `POST /api/admin/teams/:teamId/users` — create account with `authMethod` + membership `role`
   -> returns the user and a fresh **setup link** (password) or **Discord claim link** (discord).
-- `POST /api/admin/users/:userId/setup-link` — regenerate a setup link (or convert to password+TOTP).
-- `POST /api/admin/users/:userId/discord-claim-link` — generate a Discord claim link (or convert to Discord).
-- `POST /api/admin/users/:userId/reset-link` — generate a password reset link (password accounts).
-- `POST /api/admin/users/:userId/reset-2fa` — clear TOTP so the user re-enrolls (password accounts).
-- `DELETE /api/admin/users/:userId/sessions` — revoke all sessions for a user.
+- `POST /api/admin/teams/:teamId/users/:userId/setup-link` — regenerate a setup link (or convert to password+TOTP).
+- `POST /api/admin/teams/:teamId/users/:userId/discord-claim-link` — generate a Discord claim link (or convert to Discord).
+- `POST /api/admin/teams/:teamId/users/:userId/reset-link` — generate a password reset link (password accounts).
+- `POST /api/admin/teams/:teamId/users/:userId/reset-2fa` — clear TOTP so the user re-enrolls (password accounts).
+- `DELETE /api/admin/teams/:teamId/users/:userId/sessions` — revoke all sessions for a user.
+- `PATCH /api/admin/users/:userId` — set/clear the global `isInstanceAdmin` flag (instance-admin only).
 - `POST /api/auth/setup/:token` / `POST /api/auth/reset/:token` — consume a link (set password; setup flow
   then drives TOTP enrolment).
 - **Discord OAuth** (via Better Auth social provider): start + callback handlers for the login flow and for

@@ -13,10 +13,15 @@ incremental, agent-built development.
 
 ## Tenancy (see [multi-tenancy](multi-tenancy.md))
 
-- The **active team** is supplied by the client via the **`X-Team-Id` request header** (convention chosen
-  in phase-01; used everywhere) and **verified** by `TeamContextGuard`.
-- **Never** accept `teamId` in a request body for scoping; it is taken from the verified context and
-  stamped on writes.
+- **Member-facing** (team-scoped resource) endpoints take the **active team** from the **`X-Team-Id`
+  request header** (convention chosen in phase-01), **verified** by `TeamContextGuard` against the caller's
+  memberships. This is the convention every team-owned feature module uses.
+- **Admin/management** endpoints instead carry the target team in the **path** (`/api/admin/teams/:teamId/…`)
+  and are authorized by `RoleGuard` / `TeamAdminGuard` — an **instance-admin** may manage any team without a
+  membership, while `TeamContextGuard` keeps **no** instance-admin bypass, so *management* access never
+  implies *data* access (phase-01 "Option C"; see [multi-tenancy](multi-tenancy.md)).
+- **Never** accept `teamId` in a request body for scoping; it comes from the verified header context or the
+  path, and is stamped on writes.
 - Global reference endpoints (cards/formats/heroes) are filtered by the active team's `gameId`.
 
 ## Validation & types (single source of truth)

@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   adminCreateUserSchema,
+  adminUserSummarySchema,
   authMethodSchema,
   backupCodeSchema,
   loginSchema,
   passwordSchema,
+  setInstanceAdminSchema,
   setupPasswordSchema,
   teamRoleSchema,
   totpCodeSchema,
@@ -144,5 +146,31 @@ describe("adminCreateUserSchema", () => {
         role: "owner",
       }),
     ).toThrow();
+  });
+});
+
+describe("setInstanceAdminSchema", () => {
+  it("accepts a boolean flag", () => {
+    expect(setInstanceAdminSchema.parse({ isInstanceAdmin: true })).toEqual({
+      isInstanceAdmin: true,
+    });
+  });
+
+  it("rejects a non-boolean flag", () => {
+    expect(() => setInstanceAdminSchema.parse({ isInstanceAdmin: "yes" })).toThrow();
+  });
+});
+
+describe("adminUserSummarySchema", () => {
+  it("parses an admin-facing user summary with a nullable Discord username", () => {
+    const parsed = adminUserSummarySchema.parse({
+      id: "user-1",
+      username: "alpha",
+      displayName: "Alpha",
+      authMethod: "password_totp",
+      isInstanceAdmin: false,
+      discordUsername: null,
+    });
+    expect(parsed.discordUsername).toBeNull();
   });
 });

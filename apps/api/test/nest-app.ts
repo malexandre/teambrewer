@@ -1,0 +1,75 @@
+import {
+  type CanActivate,
+  type ExecutionContext,
+  type INestApplication,
+  type ModuleMetadata,
+} from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
+import { Test } from "@nestjs/testing";
+import { inject } from "vitest";
+
+import { configureApp } from "../src/app.setup.js";
+import type { RequestWithTenantContext } from "../src/tenancy/team-context.js";
+
+/**
+ * Drives the caller identity in HTTP tests from headers instead of a real Better
+ * Auth session, so a test can act as any user:
+ *
+ * - `x-test-user-id`        -> sets `request.userId`
+ * - `x-test-instance-admin` -> `"true"` sets `request.isInstanceAdmin`
+ *
+ * Registered as an additional global guard alongside the real AuthenticationGuard
+ * (which, finding no session cookie, attaches nothing and never clears what this
+ * guard set). The real guard is covered by its own integration test; endpoint
+ * tests focus on authorization (RoleGuard / TeamAdminGuard) and behavior.
+ */
+export class HeaderAuthenticationGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest<RequestWithTenantContext>();
+    const header = request.headers["x-test-user-id"];
+    const userId = Array.isArray(header) ? header[0] : header;
+    if (userId) {
+      request.userId = userId;
+      request.isInstanceAdmin = request.headers["x-test-instance-admin"] === "true";
+    }
+    return true;
+  }
+}
+
+/** Set the test-caller headers on a supertest request. */
+export function asUser(
+  request: { set(field: string, value: string): typeof request },
+  options: { userId: string; isInstanceAdmin?: boolean },
+): typeof request {
+  request.set("x-test-user-id", options.userId);
+  if (options.isInstanceAdmin) {
+    request.set("x-test-instance-admin", "true");
+  }
+  return request;
+}
+
+/**
+ * Build and initialise a Nest application for HTTP integration tests, pointing
+ * PrismaService at the ephemeral Testcontainers database and adding the
+ * header-driven authentication guard.
+ */
+export async function createApiTestApp(
+  imports: NonNullable<ModuleMetadata["imports"]>,
+): Promise<INestApplication> {
+  // PrismaService and Better Auth read these at construction; the DB URL is
+  // provided per-worker by the global setup (env does not cross the worker
+  // boundary, so set it from inject()).
+  process.env["DATABASE_URL"] = inject("databaseUrl");
+  process.env["BETTER_AUTH_SECRET"] ??= "test-better-auth-secret-please-change-0123456789";
+  process.env["BETTER_AUTH_URL"] ??= "http://localhost:3000";
+
+  const moduleRef = await Test.createTestingModule({
+    imports,
+    providers: [{ provide: APP_GUARD, useClass: HeaderAuthenticationGuard }],
+  }).compile();
+
+  const app = moduleRef.createNestApplication();
+  configureApp(app);
+  await app.init();
+  return app;
+}

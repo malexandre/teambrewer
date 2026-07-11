@@ -67,18 +67,21 @@ The authoritative table lives in
 
 ## API surface
 
-Per [api-conventions](../architecture/api-conventions.md); `teamId` from verified context, never the body:
+Per [api-conventions](../architecture/api-conventions.md); `teamId` from the verified path (admin routes)
+or header context (member routes), never the body. Admin/management routes are **path-scoped** and
+authorized by `RoleGuard`/`TeamAdminGuard` (phase-01 "Option C"):
 
 - `POST /api/admin/teams` — create team (instance-admin) `{ name, gameId, firstAdminUserId? }`.
 - `GET /api/admin/teams` / `DELETE /api/admin/teams/:teamId` — list / archive (instance-admin).
 - `GET /api/me/teams` — the teams the authenticated user belongs to (drives the selector).
-- `GET /api/teams/:teamId/members` — list members (any member of that team).
-- `POST /api/teams/:teamId/members` — invite/add a member with a role (team-admin/instance-admin).
-- `PATCH /api/teams/:teamId/members/:userId` — change role (team-admin/instance-admin).
-- `DELETE /api/teams/:teamId/members/:userId` — remove member (team-admin/instance-admin).
+- `GET /api/members` — members of the **active team** (`X-Team-Id` header, any member of that team).
+- `GET /api/admin/teams/:teamId/members` — admin roster view (team-admin/instance-admin).
+- `POST /api/admin/teams/:teamId/members` — add an existing user with a role (team-admin/instance-admin).
+- `PATCH /api/admin/teams/:teamId/members/:userId` — change role (team-admin/instance-admin).
+- `DELETE /api/admin/teams/:teamId/members/:userId` — remove member (team-admin/instance-admin).
 
-The active-team indicator (header `X-Team-Id` or path prefix — one convention chosen in phase-01) is
-verified by `TeamContextGuard` on every scoped request.
+Member-facing scoped requests carry the active team in the **`X-Team-Id` header**, verified by
+`TeamContextGuard`; admin/management requests carry `:teamId` in the path, verified by `TeamAdminGuard`.
 
 ## UI / UX
 

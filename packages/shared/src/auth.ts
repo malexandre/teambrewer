@@ -84,10 +84,10 @@ export const teamRoleSchema = z.enum(["team_admin", "member"]);
 export type TeamRole = z.infer<typeof teamRoleSchema>;
 
 /**
- * Admin create-user payload. The target team is taken from the verified request
- * context (`X-Team-Id`), never the body; `role` is the membership role granted
- * in that team. Returns a setup link (password accounts) or a Discord claim link
- * (Discord accounts).
+ * Admin create-user payload. The target team comes from the verified `:teamId`
+ * path parameter (admin routes are path-scoped — see phase-01 "Option C"), never
+ * the body; `role` is the membership role granted in that team. Returns the user
+ * and a setup link (password accounts) or a Discord claim link (Discord accounts).
  */
 export const adminCreateUserSchema = z.object({
   username: usernameSchema,
@@ -96,6 +96,23 @@ export const adminCreateUserSchema = z.object({
   role: teamRoleSchema,
 });
 export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;
+
+/** A user as seen by an admin managing accounts. */
+export const adminUserSummarySchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  displayName: displayNameSchema,
+  authMethod: authMethodSchema,
+  isInstanceAdmin: z.boolean(),
+  discordUsername: z.string().nullable(),
+});
+export type AdminUserSummary = z.infer<typeof adminUserSummarySchema>;
+
+/** Body for setting/clearing a user's global instance-admin flag (instance-admin only). */
+export const setInstanceAdminSchema = z.object({
+  isInstanceAdmin: z.boolean(),
+});
+export type SetInstanceAdminInput = z.infer<typeof setInstanceAdminSchema>;
 
 /**
  * Response returned after an admin generates a setup/reset/claim link. The raw
@@ -108,6 +125,13 @@ export const generatedLinkSchema = z.object({
   expiresAt: z.string(),
 });
 export type GeneratedLink = z.infer<typeof generatedLinkSchema>;
+
+/** Response for `POST /api/admin/teams/:teamId/users`: the new user and its link. */
+export const adminCreateUserResponseSchema = z.object({
+  user: adminUserSummarySchema,
+  link: generatedLinkSchema,
+});
+export type AdminCreateUserResponse = z.infer<typeof adminCreateUserResponseSchema>;
 
 /**
  * The one-time reveal of backup codes at TOTP enrolment (or regeneration). Shown
