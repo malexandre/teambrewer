@@ -9,6 +9,12 @@ allowBuilds:
   "@prisma/engines": true
   "@swc/core": true
   prisma: true
+  # Optional native/codegen scripts of Testcontainers' transitive deps. Declined:
+  # they are dev-only and not needed (Testcontainers uses the local Docker socket,
+  # so ssh2's native crypto is never exercised; the JS fallbacks suffice).
+  cpu-features: false
+  protobufjs: false
+  ssh2: false
 
 # Single source of truth for versions shared across packages. Packages reference
 # these with "catalog:" so a bump happens in exactly one place. Package-specific

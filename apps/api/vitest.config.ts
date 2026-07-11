@@ -30,9 +30,18 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.spec.ts"],
+    include: ["src/**/*.spec.ts", "test/**/*.spec.ts"],
     // Load the reflect-metadata polyfill once so NestJS decorator metadata is
     // available during tests, mirroring the import in main.ts.
     setupFiles: ["reflect-metadata"],
+    // Provisions an ephemeral Postgres via Testcontainers and applies the
+    // migrations once for the whole run (see test/global-setup.ts).
+    globalSetup: ["./test/global-setup.ts"],
+    // A single Postgres container is shared across the run; keep DB-touching
+    // suites from racing each other on shared tables.
+    fileParallelism: false,
+    // Starting the container + applying migrations can exceed the default hook
+    // timeout on a cold Docker image pull.
+    hookTimeout: 120_000,
   },
 });
