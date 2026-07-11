@@ -1,0 +1,171 @@
+import { ConflictException, UnprocessableEntityException } from "@nestjs/common";
+import { Client } from "pg";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
+
+import { createDatabaseClient, resetDatabase } from "../../test/database.js";
+import { createTestPrismaClient, createUser } from "../../test/factories.js";
+import type { PrismaClient } from "../generated/prisma/client.js";
+import type { PrismaService } from "../prisma/prisma.service.js";
+import { DiscordAccountService } from "./discord-account.service.js";
+import { InvalidInviteTokenError, InviteTokenService } from "./invite-token.service.js";
+
+describe("DiscordAccountService", () => {
+  let prisma: PrismaClient;
+  let inviteTokens: InviteTokenService;
+  let service: DiscordAccountService;
+
+  beforeEach(async () => {
+    const resetClient: Client = createDatabaseClient();
+    await resetClient.connect();
+    await resetDatabase(resetClient);
+    await resetClient.end();
+
+    prisma = createTestPrismaClient();
+    inviteTokens = new InviteTokenService(prisma as unknown as PrismaService);
+    service = new DiscordAccountService(prisma as unknown as PrismaService, inviteTokens);
+  });
+
+  afterAll(async () => {
+    await prisma?.$disconnect();
+  });
+
+  async function issueClaimToken(userId: string): Promise<string> {
+    const { rawToken } = await inviteTokens.issue({ userId, purpose: "discord_link" });
+    return rawToken;
+  }
+
+  describe("bindClaim", () => {
+    it("binds a Discord identity to a provisioned account and enables Discord login", async () => {
+      const user = await createUser(prisma, { authMethod: "discord" });
+      const token = await issueClaimToken(user.id);
+
+      const result = await service.bindClaim({
+        token,
+        discordUserId: "discord-1001",
+        discordUsername: "Alpha",
+      });
+
+      expect(result.userId).toBe(user.id);
+      const stored = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { discordUserId: true, discordUsername: true },
+      });
+      expect(stored).toEqual({ discordUserId: "discord-1001", discordUsername: "Alpha" });
+
+      // A login account link now exists, so a returning Discord login resolves.
+      const login = await service.resolveLoginUser("discord-1001");
+      expect(login?.id).toBe(user.id);
+    });
+
+    it("rejects an invalid or already-used claim token", async () => {
+      const user = await createUser(prisma, { authMethod: "discord" });
+      const token = await issueClaimToken(user.id);
+      await service.bindClaim({ token, discordUserId: "discord-1002", discordUsername: "Beta" });
+
+      await expect(
+        service.bindClaim({ token, discordUserId: "discord-1002", discordUsername: "Beta" }),
+      ).rejects.toBeInstanceOf(InvalidInviteTokenError);
+    });
+
+    it("rejects binding a Discord id that is already linked to another account", async () => {
+      const first = await createUser(prisma, { authMethod: "discord", username: "disc_one" });
+      const second = await createUser(prisma, { authMethod: "discord", username: "disc_two" });
+      await service.bindClaim({
+        token: await issueClaimToken(first.id),
+        discordUserId: "discord-shared",
+        discordUsername: "One",
+      });
+
+      await expect(
+        service.bindClaim({
+          token: await issueClaimToken(second.id),
+          discordUserId: "discord-shared",
+          discordUsername: "Two",
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it("rejects binding when the target account is a password account (method exclusivity)", async () => {
+      const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
+      const token = await issueClaimToken(passwordUser.id);
+
+      await expect(
+        service.bindClaim({ token, discordUserId: "discord-1003", discordUsername: "Gamma" }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+  });
+
+  describe("resolveLoginUser", () => {
+    it("returns null for a Discord identity with no provisioned account (invite-only)", async () => {
+      await expect(service.resolveLoginUser("unknown-discord-id")).resolves.toBeNull();
+    });
+  });
+
+  describe("identity link/unlink for password accounts", () => {
+    it("links an identity without granting Discord login", async () => {
+      const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
+
+      await service.linkIdentityOnly({
+        userId: passwordUser.id,
+        discordUserId: "discord-2001",
+        discordUsername: "Identity",
+      });
+
+      const stored = await prisma.user.findUnique({
+        where: { id: passwordUser.id },
+        select: { discordUserId: true },
+      });
+      expect(stored?.discordUserId).toBe("discord-2001");
+      // Identity link must NOT create a login account link.
+      const login = await service.resolveLoginUser("discord-2001");
+      expect(login).toBeNull();
+    });
+
+    it("rejects linking an identity on a Discord-login account", async () => {
+      const discordUser = await createUser(prisma, { authMethod: "discord" });
+
+      await expect(
+        service.linkIdentityOnly({
+          userId: discordUser.id,
+          discordUserId: "discord-2002",
+          discordUsername: "Nope",
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it("rejects linking a Discord id already used by another account", async () => {
+      const owner = await createUser(prisma, { authMethod: "discord", username: "owner" });
+      await service.bindClaim({
+        token: await issueClaimToken(owner.id),
+        discordUserId: "discord-2003",
+        discordUsername: "Owner",
+      });
+      const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
+
+      await expect(
+        service.linkIdentityOnly({
+          userId: passwordUser.id,
+          discordUserId: "discord-2003",
+          discordUsername: "Thief",
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it("unlinks a password account's identity", async () => {
+      const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
+      await service.linkIdentityOnly({
+        userId: passwordUser.id,
+        discordUserId: "discord-2004",
+        discordUsername: "Temp",
+      });
+
+      await service.unlinkIdentity(passwordUser.id);
+
+      const stored = await prisma.user.findUnique({
+        where: { id: passwordUser.id },
+        select: { discordUserId: true, discordUsername: true },
+      });
+      expect(stored).toEqual({ discordUserId: null, discordUsername: null });
+    });
+  });
+});
