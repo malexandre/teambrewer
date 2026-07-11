@@ -36,13 +36,17 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
 ## Entities (conceptual)
 
 ### Identity & tenancy
-- **User** `{ id, name, displayName, isInstanceAdmin, passwordHash (via Better Auth), totpEnabled, ... }`
+- **User** `{ id, name, displayName, isInstanceAdmin, authMethod: 'password_totp' | 'discord',
+  passwordHash? (password accounts, via Better Auth), totpEnabled?, discordUserId?, discordUsername?, ... }`
+  — each account uses exactly one login method; a `password_totp` user MAY also set `discordUserId` for
+  **identity only** (not login). See [ADR-0009](../decisions/0009-discord-authentication.md).
 - **Team** `{ id, name, slug, gameId (→ Game), createdBy, ... }` — bound to exactly one game.
 - **TeamMembership** `{ id, teamId, userId, role: 'team_admin' | 'member', joinedAt }`
 - **Session** — managed by Better Auth; carries the authenticated user; **active team** is resolved
   per-request (see [multi-tenancy](multi-tenancy.md)).
-- **InviteLink / SetupToken** `{ id, userId?, teamId?, tokenHash, purpose: 'setup' | 'reset', expiresAt, usedAt }`
-  — single-use, hashed at rest. See [security](security.md).
+- **InviteLink / SetupToken** `{ id, userId?, teamId?, tokenHash, purpose: 'setup' | 'reset' | 'discord_link', expiresAt, usedAt }`
+  — single-use, hashed at rest. `discord_link` binds a provisioned account to a Discord identity on first
+  authorization (preserves invite-only). See [security](security.md), [ADR-0009](../decisions/0009-discord-authentication.md).
 
 ### Game reference data (global, per game — owned by adapter)
 - **Game** `{ id, key: 'flesh_and_blood' | 'riftbound', name }`

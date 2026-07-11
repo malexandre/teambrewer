@@ -20,7 +20,7 @@ formal decision is [ADR-0001](../decisions/0001-tech-stack.md); this doc is the 
 | Database | **PostgreSQL** | Mature relational DB; ideal for the relational, multi-tenant data. |
 | ORM | **Prisma 7** | Best-in-class DX for complex relational work; TS/WASM engine (small bundle) since Prisma 7 (Nov 2025). |
 | Validation | **Zod** (in `packages/shared`) | One schema validates the API and types the client. |
-| Auth | **Better Auth** | Self-hosted, native TOTP 2FA + backup codes + admin/invite tooling. Lucia is deprecated. |
+| Auth | **Better Auth** | Self-hosted, native TOTP 2FA + backup codes + admin/invite tooling + **Discord social provider**. Lucia is deprecated. |
 | Testing | **Vitest** + **Playwright** | Fast unit/integration (Vitest) and e2e (Playwright). |
 | Lint/format | **ESLint + Prettier** | Consistency; enforced in CI. |
 | CI | **GitHub Actions** | Lint + typecheck + test; ready for when the repo lands on GitHub. |
@@ -50,8 +50,10 @@ SQL-first, edge-optimized approach — and we're not deploying to the edge.
 ### Auth: Better Auth
 Matches the exact requirements: **self-hosted, invite-only (no open signup), mandatory TOTP 2FA + backup
 codes, admin tooling**, and it lets us **generate invite/reset links without sending email** (we handle
-delivery ourselves — i.e. we don't). Lucia is deprecated in 2026; hosted options (Clerk/Auth0) violate the
-self-hosted requirement. See [ADR-0003](../decisions/0003-no-email-auth.md).
+delivery ourselves — i.e. we don't). It also provides a **Discord social provider** for the alternative
+Discord-SSO login method ([ADR-0009](../decisions/0009-discord-authentication.md)). Lucia is deprecated in
+2026; hosted options (Clerk/Auth0) violate the self-hosted requirement. See
+[ADR-0003](../decisions/0003-no-email-auth.md).
 
 ## Notable versions / caveats (verify at build time)
 - **Prisma 7** (Nov 2025) moved off the Rust engine to TS/WASM — confirm current major version.

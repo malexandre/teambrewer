@@ -12,8 +12,9 @@
   share manually (e.g. via Discord):
   - **Setup link** → user sets password + sets up TOTP + saves backup codes.
   - **Reset link** → admin-generated password reset (no self-service email reset).
-- **Mandatory TOTP 2FA** for all users, with **backup codes**. Lost device → backup code or admin resets
-  2FA.
+- **Mandatory TOTP 2FA** for **password-based accounts**, with **backup codes**. Lost device → backup code
+  or admin resets 2FA. (Discord SSO is an alternative login method where 2FA is delegated to Discord — see
+  [ADR-0009](0009-discord-authentication.md); each account uses exactly one login method.)
 - Tokens are stored **hashed**, single-use, short-lived, rate-limited.
 
 Details and flow diagram: [`../architecture/security.md`](../architecture/security.md).
@@ -30,4 +31,5 @@ Details and flow diagram: [`../architecture/security.md`](../architecture/securi
 
 - **Transactional email (Postmark/Resend/SES)** — rejected by user preference to avoid email; keep as a
   possible future opt-in enhancement.
-- **Optional 2FA** — rejected: 2FA is mandatory per requirements.
+- **Optional 2FA for password accounts** — rejected: TOTP is mandatory for password accounts. (Discord SSO
+  accounts delegate 2FA to Discord — see [ADR-0009](0009-discord-authentication.md).)

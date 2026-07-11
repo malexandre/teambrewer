@@ -25,9 +25,13 @@ matchup matrix to find under-explored angles. Rarely logs many games but shapes 
 ## Key use cases (user journeys)
 
 ### UC-1 — Onboard a new member (no email)
-1. Instance-admin or team-admin creates the account and generates a **setup link**.
+1. Instance-admin or team-admin creates the account, **choosing its login method**, and generates a
+   **setup link** (password) or **Discord claim link** (Discord SSO).
 2. Admin shares the link manually (e.g. Discord DM).
-3. The user opens it, sets a password, and **must set up TOTP 2FA** (scans a QR code) and saves backup codes.
+3. **Password account:** the user opens the link, sets a password, and **must set up TOTP 2FA** (scans a QR
+   code) and saves backup codes. **Discord account:** the user opens the claim link and authorizes with
+   Discord once; thereafter they log in with Discord (2FA is Discord's — see
+   [ADR-0009](../decisions/0009-discord-authentication.md)).
 4. The user lands in their team; if they belong to several teams, they pick the **active team**.
 → See [`../features/accounts-and-auth.md`](../features/accounts-and-auth.md), [`../features/teams-and-membership.md`](../features/teams-and-membership.md).
 

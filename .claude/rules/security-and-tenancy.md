@@ -22,7 +22,9 @@ The two hard security properties: **tenant isolation** and **strict access contr
 - **Default-deny.** Every endpoint checks: authenticated → correct role → tenant membership.
 - Roles: instance-admin (global), team-admin (per team), member. Enforce per the capability table in
   [multi-tenancy](../../docs/architecture/multi-tenancy.md).
-- No open signup; accounts are admin-created. **TOTP 2FA is mandatory.**
+- No open signup; accounts are admin-created (Discord login does **not** auto-provision). Each account uses
+  **one** login method: **password + mandatory TOTP 2FA** or **Discord SSO** (2FA delegated to Discord for
+  those; see [ADR-0009](../../docs/decisions/0009-discord-authentication.md)).
 
 ## Auth & data handling (must)
 

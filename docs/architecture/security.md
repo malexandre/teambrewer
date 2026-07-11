@@ -13,12 +13,25 @@ authentication (mandatory 2FA)**, and **tenant isolation**. Related:
 
 ## Authentication (Better Auth)
 
-- **Password + mandatory TOTP 2FA.** A user cannot reach app data until TOTP is set up. Backup codes are
-  generated at setup and shown once.
+**Each account uses exactly one login method** (`authMethod`), chosen at provisioning — see
+[ADR-0009](../decisions/0009-discord-authentication.md):
+
+- **Password + TOTP 2FA (`password_totp`)** — TOTP is **mandatory**; a user cannot reach app data until
+  TOTP is set up. Backup codes are generated at setup and shown once.
+- **Discord SSO (`discord`)** — sign in with Discord (OAuth2, `identify` scope only, `state` for CSRF).
+  **Two-factor is delegated to Discord** for these accounts (we cannot enforce it) — a **known, accepted
+  tradeoff** (ADR-0009). We surface a recommendation to enable Discord 2FA. Only **admin-provisioned**
+  accounts can log in via Discord (no auto-provisioning) — invite-only is preserved.
+
+Other properties:
+- **Optional identity link:** a password account MAY link a Discord identity for recognizability /
+  @mention mapping only — this does **not** enable Discord login.
 - **Sessions:** secure, httpOnly, sameSite cookies; reasonable expiry + rotation; server-side session
   revocation (admin can revoke).
 - **Password storage:** handled by Better Auth (strong hashing). We never store plaintext or handle raw
   card/financial data.
+- **Discord app config:** `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and a redirect URI are secrets/config
+  (env / Docker secrets), introducing an external login dependency for Discord accounts.
 
 ## The no-email onboarding & recovery flow
 
@@ -31,6 +44,10 @@ Instead, admins generate **single-use, expiring links** and share them manually 
 - **Reset link** (forgot password): admin generates a reset link the same way. (There is no self-service
   email reset.) A user who still has TOTP + backup codes but forgot their password needs an admin reset;
   a user who lost their TOTP device uses a **backup code**, or an admin resets 2FA.
+- **Discord account (provisioning):** for an account whose `authMethod` is `discord`, the admin either
+  pre-binds the user's Discord ID or issues a single-use **Discord claim link** (`purpose: 'discord_link'`,
+  shared manually, no email) that binds the user's Discord identity on first authorization. Thereafter the
+  user signs in with Discord. No matching provisioned account → login rejected (invite-only preserved).
 - **Token handling:** store only a **hash** of the token; single-use (`usedAt`); short expiry;
   invalidated on use or when a newer link is issued. Rate-limit link generation and consumption.
 

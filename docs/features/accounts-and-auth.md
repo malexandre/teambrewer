@@ -2,27 +2,34 @@
 
 ## Summary
 
-Invite-only authentication with **no email server**: admins create accounts and hand out single-use,
-expiring **setup** and **reset** links (copy-pasted manually, e.g. via Discord). Every user authenticates
-with **password + mandatory TOTP 2FA** and holds one-time **backup codes** for lost-device recovery. Built
-on Better Auth. See [ADR-0003](../decisions/0003-no-email-auth.md) and
-[security](../architecture/security.md).
+Invite-only authentication with **no email server**. **Each account uses exactly one login method**,
+chosen at provisioning: **password + mandatory TOTP 2FA** (+ one-time backup codes) **or Discord SSO**.
+Admins create accounts and hand out single-use, expiring links (setup / reset / Discord-claim) copy-pasted
+manually (e.g. via Discord). Built on Better Auth. See [ADR-0003](../decisions/0003-no-email-auth.md),
+[ADR-0009](../decisions/0009-discord-authentication.md), and [security](../architecture/security.md).
 
 ## Goals & value
 
 - Keep the instance strictly private — **no open signup**, access is admin-granted only.
 - Avoid running/maintaining an SMTP server and its deliverability headaches
   ([ADR-0003](../decisions/0003-no-email-auth.md)).
-- Enforce strong account security (2FA is not optional) for a competitive team that guards its tech.
+- Enforce strong account security: **TOTP 2FA is mandatory for password accounts**. Discord SSO is offered
+  as a convenient alternative for a Discord-native team, accepting that 2FA is delegated to Discord for
+  those accounts (a recorded tradeoff — [ADR-0009](../decisions/0009-discord-authentication.md)).
 - Give admins a simple, in-the-loop onboarding and recovery workflow appropriate for a 10–30 person team.
 
 ## User stories
 
-- As an **instance-admin**, I can create a user account and get a copyable **setup link** to send them.
-- As a **team-admin**, I can create an account **for my own team** and generate its setup link.
-- As a **new user**, I can open a setup link to set my password, set up TOTP, and save my backup codes.
-- As a **member**, I can log in with my password and a TOTP code.
-- As a **member** who lost my authenticator device, I can log in with a **backup code**.
+- As an **admin**, when I create a user I can choose their **login method** (password+TOTP or Discord SSO).
+- As an **instance-admin**, I can create a user account and get a copyable **setup link** (or **Discord
+  claim link**) to send them.
+- As a **team-admin**, I can create an account **for my own team** and generate its setup/claim link.
+- As a **new password user**, I can open a setup link to set my password, set up TOTP, and save my backup codes.
+- As a **new Discord user**, I can open a claim link, authorize with Discord once, and thereafter **log in
+  with Discord**.
+- As a **member**, I can log in with either my password + TOTP code, or with Discord — whichever my account uses.
+- As a **password member** who lost my authenticator device, I can log in with a **backup code**.
+- As a **password member**, I can optionally **link my Discord** for identity/@mentions (not for login).
 - As a **member** who forgot my password, I can ask an admin for a **reset link** (there is no self-service
   email reset).
 - As an **admin**, I can generate a reset link, reset a user's 2FA, and **revoke a user's sessions**.
@@ -32,12 +39,14 @@ on Better Auth. See [ADR-0003](../decisions/0003-no-email-auth.md) and
 
 Uses global identity/tenancy entities from [data-model](../architecture/data-model.md#identity--tenancy):
 
-- **User** `{ id, name, displayName, isInstanceAdmin, passwordHash (via Better Auth), totpEnabled, ... }`
+- **User** `{ id, name, displayName, isInstanceAdmin, authMethod: 'password_totp' | 'discord',
+  passwordHash? , totpEnabled?, discordUserId?, discordUsername?, ... }` — exactly one login method; a
+  `password_totp` user may set `discordUserId` for **identity only**.
 - **Session** — managed by Better Auth (secure, httpOnly, sameSite cookie); active team resolved
   per-request (see [multi-tenancy](../architecture/multi-tenancy.md)).
-- **InviteLink / SetupToken** `{ id, userId?, teamId?, tokenHash, purpose: 'setup' | 'reset', expiresAt,
-  usedAt }` — **single-use, hashed at rest**, short expiry.
-- Backup codes — generated at TOTP setup, stored hashed, each single-use.
+- **InviteLink / SetupToken** `{ id, userId?, teamId?, tokenHash, purpose: 'setup' | 'reset' | 'discord_link',
+  expiresAt, usedAt }` — **single-use, hashed at rest**, short expiry.
+- Backup codes — generated at TOTP setup (password accounts), stored hashed, each single-use.
 
 Account creation is coupled to team membership; the membership side lives in
 [teams-and-membership](teams-and-membership.md) (a **TeamMembership** with a role is created alongside the
@@ -66,7 +75,17 @@ sequenceDiagram
   storing only its **hash** -> admin copies and shares it. Opening it lets the user set a password, set up
   TOTP, and save backup codes. The user cannot reach any team data until TOTP is confirmed.
 - **Reset link (forgot password):** admin generates a reset link the same way; the user sets a new
-  password. TOTP is unaffected.
+  password. TOTP is unaffected. (Password accounts only.)
+- **Discord account (provisioning):** the admin sets the account's `authMethod` to `discord` and either
+  pre-binds the user's Discord ID or issues a single-use **Discord claim link** (`purpose: 'discord_link'`).
+  Opening it runs Discord OAuth (`identify` scope, `state` for CSRF) once and binds the user's Discord
+  identity to the account. No email; invite-only preserved — a Discord login with **no matching provisioned
+  account is rejected** (no auto-provisioning). See [ADR-0009](../decisions/0009-discord-authentication.md).
+- **Login method is exclusive & admin-changeable:** an account logs in via password+TOTP **or** Discord,
+  never both. Switching an account's method is an admin action (e.g. issue a setup link to convert a Discord
+  account to password+TOTP, or a claim link for the reverse).
+- **Identity link (password accounts):** a password user may link a Discord identity in settings for
+  recognizability / @mention mapping; this never enables Discord login.
 - **Lost TOTP device:** the user logs in with a **backup code**; or an admin **resets 2FA**, after which
   the user re-runs TOTP setup (a fresh set of backup codes is issued, invalidating the old set).
 - **Token handling:** single-use (`usedAt` stamped on consumption), short expiry, invalidated when a newer
@@ -74,19 +93,25 @@ sequenceDiagram
 
 ### Login
 
-1. Password check (Better Auth). 2. TOTP code (or a backup code). Access to app data requires
-`totpEnabled = true`. Failed attempts are rate-limited; tenant/auth violations are logged without PII.
+- **Password accounts:** 1. password check (Better Auth); 2. TOTP code (or a backup code). Access to app
+  data requires `totpEnabled = true`.
+- **Discord accounts:** "Log in with Discord" → OAuth (`identify`, `state`). The returned Discord ID must
+  match a provisioned account, else login is rejected. No app-side TOTP step (2FA is Discord's).
+
+Failed attempts are rate-limited; tenant/auth violations are logged without PII.
 
 ### Permissions per role
 
 | Action | Instance-admin | Team-admin | Member |
 |---|---|---|---|
-| Create user + generate setup link | ✅ (any team) | ✅ (own team only) | ❌ |
+| Create user (choose login method) + generate setup/claim link | ✅ (any team) | ✅ (own team only) | ❌ |
+| Change a user's login method (issue setup/claim link) | ✅ | ✅ (own-team users) | ❌ |
 | Generate reset link for a user | ✅ | ✅ (own-team users) | ❌ |
 | Reset a user's 2FA | ✅ | ✅ (own-team users) | ❌ |
 | Revoke a user's sessions | ✅ | ✅ (own-team users) | ❌ |
 | Set/clear `isInstanceAdmin` | ✅ | ❌ | ❌ |
-| Set own password / manage own TOTP & backup codes | ✅ | ✅ | ✅ |
+| Set own password / manage own TOTP & backup codes (password accounts) | ✅ | ✅ | ✅ |
+| Link/unlink own Discord identity (password accounts, identity only) | ✅ | ✅ | ✅ |
 
 See the capability model in [multi-tenancy](../architecture/multi-tenancy.md#roles--capabilities).
 
@@ -101,14 +126,19 @@ See the capability model in [multi-tenancy](../architecture/multi-tenancy.md#rol
 Better Auth mounts its own handlers for sessions, TOTP enrolment/verification, and backup codes. Custom,
 role-guarded admin endpoints follow [api-conventions](../architecture/api-conventions.md):
 
-- `POST /api/admin/users` — create account (instance-admin, or team-admin for own team) -> returns the user
-  and a fresh setup link.
-- `POST /api/admin/users/:userId/setup-link` — regenerate a setup link.
-- `POST /api/admin/users/:userId/reset-link` — generate a password reset link.
-- `POST /api/admin/users/:userId/reset-2fa` — clear TOTP so the user re-enrolls.
+- `POST /api/admin/users` — create account with `authMethod` (instance-admin, or team-admin for own team)
+  -> returns the user and a fresh **setup link** (password) or **Discord claim link** (discord).
+- `POST /api/admin/users/:userId/setup-link` — regenerate a setup link (or convert to password+TOTP).
+- `POST /api/admin/users/:userId/discord-claim-link` — generate a Discord claim link (or convert to Discord).
+- `POST /api/admin/users/:userId/reset-link` — generate a password reset link (password accounts).
+- `POST /api/admin/users/:userId/reset-2fa` — clear TOTP so the user re-enrolls (password accounts).
 - `DELETE /api/admin/users/:userId/sessions` — revoke all sessions for a user.
 - `POST /api/auth/setup/:token` / `POST /api/auth/reset/:token` — consume a link (set password; setup flow
   then drives TOTP enrolment).
+- **Discord OAuth** (via Better Auth social provider): start + callback handlers for the login flow and for
+  consuming a `discord_link` claim token (binds the returned Discord ID to the provisioned account).
+- `POST /api/me/discord/link` / `DELETE /api/me/discord/link` — identity-only Discord link for a password
+  account (does not enable Discord login).
 - `GET /api/me/sessions` / `DELETE /api/me/sessions/:sessionId` — self session management.
 
 `teamId`, where relevant, comes from the verified request context, never the body.
@@ -117,12 +147,16 @@ role-guarded admin endpoints follow [api-conventions](../architecture/api-conven
 
 Mobile-first (see [frontend](../architecture/frontend.md#auth-ux)):
 
-- **Setup-link landing page:** set password -> set up TOTP (scannable **QR** + manual secret) -> **show
-  backup codes once** with a copy/download prompt -> done -> pick active team.
-- **Login:** password -> TOTP, with a "use a backup code instead" affordance and clear "**ask your admin
-  for a reset link**" messaging (no email flows shown).
-- **Admin console:** create user, copy setup/reset link to clipboard, reset 2FA, revoke sessions.
-- **Account settings:** change password, regenerate backup codes, view/sign-out sessions.
+- **Setup-link landing page** (password): set password -> set up TOTP (scannable **QR** + manual secret) ->
+  **show backup codes once** with a copy/download prompt -> done -> pick active team.
+- **Discord claim-link landing page:** "Authorize with Discord" -> OAuth -> binds identity -> done -> pick
+  active team.
+- **Login:** offers **password + TOTP** (with a "use a backup code instead" affordance and "**ask your
+  admin for a reset link**" messaging) and a **"Log in with Discord"** button; no email flows shown.
+- **Admin console:** create user (**choose login method**), copy setup / Discord-claim / reset link to
+  clipboard, reset 2FA, revoke sessions, change a user's method.
+- **Account settings:** (password accounts) change password, regenerate backup codes, **link/unlink Discord
+  identity**; view/sign-out sessions.
 
 ## Tenancy & permissions
 
@@ -142,6 +176,11 @@ An instance-admin acts globally. Newly created accounts see only the teams they 
 - Team-admin attempts to create/recover a user outside their team -> 403.
 - Two setup links issued -> only the latest is valid (older invalidated).
 - Clock drift on TOTP -> accept a small window; backup code remains the fallback.
+- **Discord login with no matching provisioned account** -> rejected (no auto-provisioning; invite-only).
+- **Discord claim opened but OAuth denied/abandoned** -> account stays un-onboarded; admin can regenerate.
+- **Discord ID already bound to another account** -> reject (`discordUserId` is unique).
+- **Wrong method attempted** (password/reset flow on a Discord account, or Discord login on a password
+  account) -> rejected with guidance to use the account's actual method.
 
 ## Testing notes
 
@@ -152,21 +191,28 @@ Per [testing-strategy](../architecture/testing-strategy.md):
   reset-2fa forces re-enrolment and invalidates old backup codes; session revocation ends sessions.
 - **AuthZ:** unauthenticated -> 401; member cannot hit admin endpoints -> 403; team-admin cannot
   create/recover users in another team -> 403 (**tenant-isolation** test).
-- **Login:** cannot reach app data with `totpEnabled = false`; backup code works once; rate limiting on
-  auth and link generation/consumption.
-- **Validation:** password policy and Zod envelope errors.
+- **Login (password):** cannot reach app data with `totpEnabled = false`; backup code works once; rate
+  limiting on auth and link generation/consumption.
+- **Login (Discord):** a provisioned Discord account logs in via OAuth; an **unprovisioned Discord identity
+  is rejected** (invite-only); `discordUserId` is unique.
+- **Method exclusivity:** a password account cannot log in via Discord and vice-versa; an identity-linked
+  Discord on a password account does **not** grant Discord login.
+- **Validation:** password policy and Zod envelope errors; OAuth `state` mismatch rejected.
 
 ## Out of scope
 
 - **Transactional email / self-service email reset** — cut by [ADR-0003](../decisions/0003-no-email-auth.md)
   (possible future opt-in).
-- **Public / open signup** — cut (see [feature-catalog](../product/feature-catalog.md#explicitly-cut-out-of-scope)).
-- **Optional 2FA** — 2FA is mandatory.
+- **Public / open signup** — cut; Discord login does **not** auto-provision accounts.
+- **Discord bot-delivered links** — not now; a possible future convenience ([ADR-0009](../decisions/0009-discord-authentication.md)).
+- **App-enforced 2FA for Discord accounts** — out of our control by design; 2FA is delegated to Discord for
+  those accounts (mandatory TOTP applies to **password** accounts). See [ADR-0009](../decisions/0009-discord-authentication.md).
 - Per-team roles and the active-team selector are specified in [teams-and-membership](teams-and-membership.md).
 
 ## See also
 
 - [ADR-0003: Invite-only auth without email; mandatory TOTP 2FA](../decisions/0003-no-email-auth.md)
+- [ADR-0009: Discord as an alternative authentication method](../decisions/0009-discord-authentication.md)
 - [Security](../architecture/security.md) · [Multi-tenancy](../architecture/multi-tenancy.md) ·
   [API conventions](../architecture/api-conventions.md) · [Frontend](../architecture/frontend.md)
 - [Teams & membership](teams-and-membership.md)

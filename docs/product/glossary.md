@@ -14,6 +14,8 @@ these exact names in code and UI (see the no-abbreviations rule in
 | **Team-admin** | Manages a specific team's membership and content. Not an instance-admin. |
 | **Member** | A regular user within a team. Creates decks, logs games, comments, etc. |
 | **Membership** | The link between a user and a team, carrying that user's role in that team. |
+| **Auth method** | How an account logs in: `password_totp` (password + mandatory TOTP 2FA) or `discord` (Discord SSO). Exactly one per account; mutually exclusive for login. See [ADR-0009](../decisions/0009-discord-authentication.md). |
+| **Identity link** | A Discord account linked to a `password_totp` user for recognizability / @mentions only — does **not** enable Discord login. |
 | **Active team** | The team a multi-team user is currently viewing. The UI shows one team at a time. |
 | **Tenant isolation** | The guarantee that one team never sees another team's data. Enforced server-side. |
 | **Deck** | A **link-only** entry: `{ game, format, hero, external link, metadata }`. No stored card list. |

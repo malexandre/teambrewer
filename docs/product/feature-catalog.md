@@ -25,7 +25,7 @@ recommended and included; **Included** = optional in discovery, user chose to in
 
 | # | Module | Spec | Key capabilities | Origin |
 |---|---|---|---|---|
-| 1 | Accounts & Auth | [accounts-and-auth](../features/accounts-and-auth.md) | Invite-only, no-email setup/reset links, mandatory TOTP 2FA, backup codes | Locked |
+| 1 | Accounts & Auth | [accounts-and-auth](../features/accounts-and-auth.md) | Invite-only, no-email links; one login method per account: password + mandatory TOTP 2FA + backup codes, or Discord SSO | Locked |
 | 2 | Teams & Membership | [teams-and-membership](../features/teams-and-membership.md) | Isolated workspaces, per-team roles, active-team switching | Locked |
 | 3 | Card Database | [card-database](../features/card-database.md) | Search, autocomplete, hover-preview, card detail (global per game) | Locked |
 | 4 | Decks | [decks](../features/decks.md) | Link-only decks; hero/format/metadata; status lifecycle; iteration log | Locked + Included |
