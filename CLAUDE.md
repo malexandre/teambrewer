@@ -82,7 +82,7 @@ docker-compose.yml
 Node and pnpm are pinned via **mise** (`mise.toml`): **Node 26.5.0** and **pnpm 11.11.0**, mirrored in
 `package.json` (`engines` + `packageManager`) for corepack/CI. TypeScript is pinned to **6.0.3** (not 7.x):
 typescript-eslint 8 supports `typescript <6.1.0`, so the native TS 7 compiler would break typed linting.
-Run commands under the pinned toolchain with `mise exec -- <cmd>` (or activate mise in your shell).
+With mise activated in your shell, `pnpm`/`node` resolve to these pinned versions automatically.
 
 ## Commands
 
