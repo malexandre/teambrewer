@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
+
+import { errorCode } from "@teambrewer/shared";
 
 import type { InviteTokenPurpose } from "../generated/prisma/enums.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -8,11 +10,15 @@ import { PrismaService } from "../prisma/prisma.service.js";
 /**
  * Thrown when a setup/reset/claim token is unknown, expired, already used, or
  * superseded. Deliberately uniform so consumers cannot distinguish these cases
- * (no account/link enumeration — see security.md).
+ * (no account/link enumeration — see security.md). Extends BadRequestException
+ * so the error filter serialises it as a 400 `INVALID_TOKEN` envelope wherever
+ * it surfaces.
  */
-export class InvalidInviteTokenError extends Error {
+export class InvalidInviteTokenError extends BadRequestException {
   constructor() {
-    super("This link is invalid or has expired.");
+    super({
+      error: { code: errorCode.invalidToken, message: "This link is invalid or has expired." },
+    });
     this.name = "InvalidInviteTokenError";
   }
 }

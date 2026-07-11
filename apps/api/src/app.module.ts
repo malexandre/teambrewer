@@ -6,6 +6,7 @@ import { AdminModule } from "./admin/admin.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { DomainExceptionFilter } from "./common/domain-exception.filter.js";
 import { HealthModule } from "./health/health.module.js";
+import { MeModule } from "./me/me.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { TenancyModule } from "./tenancy/tenancy.module.js";
 
@@ -16,6 +17,7 @@ import { TenancyModule } from "./tenancy/tenancy.module.js";
     AuthModule,
     TenancyModule,
     AdminModule,
+    MeModule,
     HealthModule,
   ],
   // The uniform error envelope (api-conventions.md) is applied to every route.

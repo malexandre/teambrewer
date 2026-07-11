@@ -63,6 +63,16 @@ export const setupPasswordSchema = z.object({
 });
 export type SetupPasswordInput = z.infer<typeof setupPasswordSchema>;
 
+/**
+ * Result of consuming a setup/reset link: the account's username, so the web app
+ * can immediately sign the user in (with the password they just set) and drive
+ * the TOTP step. No secret is returned — the link's bearer is the account owner.
+ */
+export const onboardingResultSchema = z.object({
+  username: usernameSchema,
+});
+export type OnboardingResult = z.infer<typeof onboardingResultSchema>;
+
 /** Body for consuming a reset link: the user sets a new password (TOTP unaffected). */
 export const resetPasswordSchema = z.object({
   password: passwordSchema,

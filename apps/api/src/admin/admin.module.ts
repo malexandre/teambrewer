@@ -30,5 +30,7 @@ import { MembershipService } from "./membership.service.js";
     RoleGuard,
     TeamAdminGuard,
   ],
+  // MembershipService backs the member-facing roster (GET /api/members) too.
+  exports: [MembershipService],
 })
 export class AdminModule {}
