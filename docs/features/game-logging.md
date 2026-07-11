@@ -42,7 +42,7 @@ Uses **GameLog** from [data-model.md](../architecture/data-model.md#game-logging
 **GameLog** `{ id, teamId, loggedById, formatId, eventId?, playedAt,`
 `sideA: { pilotUserId, deckId },`
 `sideB: { pilotUserId? | externalOpponentName?, deckId? | heroId? | archetypeLabel? },`
-`onThePlaySide, bestOf, result, winType?, lossReason?, learnings,`
+`firstPlayerSide, bestOf, result, winType?, lossReason?, learnings,`
 `confidenceFactors: { skillParity, seriousness, deckMaturity, pilotFamiliarity },`
 `confidenceWeight (0–1, derived) }`
 
@@ -50,7 +50,7 @@ Uses **GameLog** from [data-model.md](../architecture/data-model.md#game-logging
 - **sideB** is the opponent: **either** a teammate (`pilotUserId`) on a team deck, **or** an external
   opponent (`externalOpponentName?`) identified by `deckId` (a reference deck), `heroId`, or free-text
   `archetypeLabel`. At least one opponent identifier must be present.
-- **onThePlaySide** — which side was on the play (play/draw matters for FaB matchups).
+- **firstPlayerSide** — which side took the first turn (going first vs second matters for FaB matchups).
 - **bestOf** — `1` (single game) or `3`/`5` (match); `result` records games won A / B, or single-game
   win/loss/draw.
 - **confidenceFactors** — four small enums (`skillParity`, `seriousness`, `deckMaturity`,
@@ -104,7 +104,7 @@ in responses.
     zero taps to accept.
   - Optional fields (`learnings`, `winType`/`lossReason`, `eventId`) collapsed behind a "more details"
     disclosure so the fast path stays short.
-  - Play/draw toggle; best-of selector.
+  - First/second player toggle; best-of selector.
 - Minimal free typing overall; card/hero references support **hover/press preview** of card details.
 - Show the **derived confidence weight** back to the logger after save (a small "this game counts as ~0.7"
   hint), reinforcing the model without asking them to compute it.

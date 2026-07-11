@@ -43,7 +43,7 @@ matchup matrix to find under-explored angles. Rarely logs many games but shapes 
 → See [`../features/events-and-gauntlets.md`](../features/events-and-gauntlets.md).
 
 ### UC-4 — Log a game with confidence
-1. After a game, a member records: our deck vs opponent deck/archetype, format, on-play/draw, best-of,
+1. After a game, a member records: our deck vs opponent deck/archetype, format, first/second player, best-of,
    result, **confidence factors**, win-type/loss-reason, and learnings.
 2. The game feeds the confidence-weighted matchup matrix and coverage tracker.
 → See [`../features/game-logging.md`](../features/game-logging.md), [`../features/confidence-and-matchups.md`](../features/confidence-and-matchups.md).

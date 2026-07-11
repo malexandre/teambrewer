@@ -37,8 +37,8 @@ assigned to them. `GameLog` is the source of truth (materialization may come lat
   - **Trust indicator** = low/medium/high bucket derived from effective sample (finalize thresholds here,
     per ADR-0005, in one well-tested place).
   - Computable **by deck** and **by hero**; scoped by team, filterable by format and optional event.
-  - Correctly attributes wins to the right side using `result`, `bestOf`, and `onThePlaySide` where relevant
-    (respect play/draw only as data, not as a separate axis in v1 unless the feature spec requires it).
+  - Correctly attributes wins to the right side using `result`, `bestOf`, and `firstPlayerSide` where relevant
+    (respect first/second player only as data, not as a separate axis in v1 unless the feature spec requires it).
 - **Matchup matrix UI** — our decks/heroes × opponent field; each cell shows weighted win rate, **raw N**,
   and the trust indicator; responsive (horizontal scroll / condensed view on mobile).
 - **Coverage tracker** — for a given event's gauntlet, flag matchups whose effective sample or raw N is

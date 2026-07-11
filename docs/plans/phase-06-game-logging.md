@@ -34,7 +34,7 @@ game**, the logging form must be fast: pickers, autocomplete, sensible defaults,
   `{ id, teamId, loggedById, formatId, eventId?, playedAt,`
   `sideA: { pilotUserId, deckId },`
   `sideB: { pilotUserId? | externalOpponentName?, deckId? | heroId? | archetypeLabel? },`
-  `onThePlaySide, bestOf, result, winType?, lossReason?, learnings,`
+  `firstPlayerSide, bestOf, result, winType?, lossReason?, learnings,`
   `confidenceFactors: { skillParity, seriousness, deckMaturity, pilotFamiliarity }, confidenceWeight }`.
   - `sideA` is always "our" side (team-member pilot + team deck).
   - `sideB` is a teammate **or** an external opponent identified by reference `deckId`, `heroId`, or
@@ -48,7 +48,7 @@ game**, the logging form must be fast: pickers, autocomplete, sensible defaults,
   (any referenced `deckId`/`eventId` must share `teamId`); `eventId` format-coherence warning (allowed).
 - **Fast mobile logging form**: big result buttons / games-won stepper, deck + opponent autocomplete
   (name+pitch for cards, hero list from adapter, recents first), confidence factors as segmented controls
-  pre-filled with defaults, optional fields behind a "more details" disclosure, play/draw + best-of toggles.
+  pre-filled with defaults, optional fields behind a "more details" disclosure, first/second player + best-of toggles.
 
 ## Deliverables
 

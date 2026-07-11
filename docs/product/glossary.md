@@ -22,6 +22,7 @@ these exact names in code and UI (see the no-abbreviations rule in
 | **Gauntlet** | The "field to beat" for an event: the set of reference decks/archetypes to test against. |
 | **Expected metagame** | Field-share percentages assigned to gauntlet archetypes, used to prioritize testing. |
 | **Game (log)** | A single recorded game/match result between two sides, with confidence factors. |
+| **First player / second player** | Which side took the first turn (`firstPlayerSide`). We use first/second player, **not** MTG's "on the play / on the draw". |
 | **Confidence factors** | Structured inputs (skill parity, seriousness, deck maturity, pilot familiarity) that combine into a game's confidence weight. |
 | **Confidence weight** | A value in `[0,1]` derived from a game's confidence factors; used to weight aggregates. |
 | **Matchup** | An aggregation of games between two decks/heroes, producing a confidence-weighted win rate. |

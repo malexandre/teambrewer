@@ -71,7 +71,7 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
 - **GameLog** `{ id, teamId, loggedById, formatId, eventId?, playedAt,
   sideA: { pilotUserId, deckId },
   sideB: { pilotUserId? | externalOpponentName?, deckId? | heroId? | archetypeLabel? },
-  onThePlaySide, bestOf, result (games won A / B or single-game win/loss/draw),
+  firstPlayerSide (which side took the first turn: 'A' | 'B'), bestOf, result (games won A / B or single-game win/loss/draw),
   winType?, lossReason?, learnings,
   confidenceFactors: { skillParity, seriousness, deckMaturity, pilotFamiliarity } (each an enum),
   confidenceWeight (0–1, derived) }`

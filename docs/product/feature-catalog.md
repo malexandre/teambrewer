@@ -30,7 +30,7 @@ recommended and included; **Included** = optional in discovery, user chose to in
 | 3 | Card Database | [card-database](../features/card-database.md) | Search, autocomplete, hover-preview, card detail (global per game) | Locked |
 | 4 | Decks | [decks](../features/decks.md) | Link-only decks; hero/format/metadata; status lifecycle; iteration log | Locked + Included |
 | 5 | Events & Gauntlets | [events-and-gauntlets](../features/events-and-gauntlets.md) | Events hub; gauntlet; expected-metagame weighting; attendance/RSVP | Locked + Core + Included |
-| 6 | Game Logging | [game-logging](../features/game-logging.md) | Match logging; confidence factors; on-play/draw; win-type/loss-reason tags | Locked + Included |
+| 6 | Game Logging | [game-logging](../features/game-logging.md) | Match logging; confidence factors; first/second player; win-type/loss-reason tags | Locked + Included |
 | 7 | Matchups & Coverage | [confidence-and-matchups](../features/confidence-and-matchups.md) | Confidence-weighted matchup matrix (+ raw N + trust); coverage tracker | Locked + Core |
 | 8 | Testing Queue | [testing-queue](../features/testing-queue.md) | Per-deck card-test suggestions + status; voting/reactions; test assignments | Locked + Core + Included |
 | 9 | Game-Plans & Deck Selection | [gameplans-and-deck-selection](../features/gameplans-and-deck-selection.md) | Per-matchup game-plans/"sideboard" guides; per-event deck selection/lock; retrospective | Core + Included |
