@@ -22,6 +22,8 @@ export interface TeamContext {
  */
 export interface RequestWithTenantContext extends Request {
   userId?: string;
+  /** Global instance-admin flag, attached by authentication alongside `userId`. */
+  isInstanceAdmin?: boolean;
   teamContext?: TeamContext;
 }
 

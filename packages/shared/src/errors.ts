@@ -37,6 +37,7 @@ export const errorCode = {
   lastTeamAdmin: "LAST_TEAM_ADMIN",
   loginMethodMismatch: "LOGIN_METHOD_MISMATCH",
   totpRequired: "TOTP_REQUIRED",
+  internal: "INTERNAL",
 } as const;
 
 export type ErrorCode = (typeof errorCode)[keyof typeof errorCode];
