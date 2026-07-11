@@ -1,0 +1,29 @@
+name: CI
+
+# Runs the same checks that are the local "done" bar. This activates once the
+# repository has a GitHub remote; until then, run the equivalent pnpm scripts
+# locally (see .claude/rules/git-and-commits.md).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install Node + pnpm from mise.toml so CI uses the same pinned toolchain
+      # as local development (single source of truth).
+      - uses: jdx/mise-action@v2
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
+
+      # Integration tests provision Postgres via Testcontainers, which uses the
+      # Docker daemon available on GitHub-hosted runners.
+      - run: pnpm test
