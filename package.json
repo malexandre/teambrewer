@@ -12,7 +12,7 @@
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "build": "pnpm --recursive --if-present build",
     "test": "pnpm --recursive --if-present test",
-    "test:e2e": "pnpm --filter web test:e2e",
+    "test:e2e": "pnpm --filter @teambrewer/web test:e2e",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",

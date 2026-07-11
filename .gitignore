@@ -11,6 +11,8 @@ out/
 *.tsbuildinfo
 apps/web/dist/
 apps/api/dist/
+# vite-plugin-pwa dev-mode service worker output
+dev-dist/
 
 # Environment / secrets
 .env
