@@ -121,12 +121,15 @@ export function GameLogWizard({
   const effectivePilotUserId = pilotUserId || currentUser?.id || "";
   const previewWeight = deriveConfidenceWeight(factors);
 
-  // In create mode, adopt the game's default best-of once the config resolves — unless
-  // the member has already chosen one — resetting the result so it stays consistent.
-  const bestOfTouchedRef = useRef(false);
+  // In create mode, adopt the game's default best-of once the config resolves —
+  // resetting the result so it stays consistent — but only until the member has taken
+  // control. Any interaction with the result (changing best-of or the outcome) or
+  // advancing past the matchup step supersedes the default, so a late-resolving config
+  // can never clobber a member's entry. In edit mode the stored best-of always wins.
+  const configDefaultSupersededRef = useRef(false);
   const defaultBestOf = gameConfig?.defaultBestOf;
   useEffect(() => {
-    if (isEditing || bestOfTouchedRef.current || defaultBestOf === undefined) return;
+    if (isEditing || configDefaultSupersededRef.current || defaultBestOf === undefined) return;
     setBestOf(defaultBestOf);
     if (defaultBestOf === 1) {
       setGamesWonA(1);
@@ -146,6 +149,7 @@ export function GameLogWizard({
 
   /** Best-of-1 records a single Win/Loss/Draw; a match records games won per side. */
   function setSingleGameOutcome(outcome: "win" | "loss" | "draw"): void {
+    configDefaultSupersededRef.current = true;
     if (outcome === "win") {
       setGamesWonA(1);
       setGamesWonB(0);
@@ -159,7 +163,7 @@ export function GameLogWizard({
   }
 
   function changeBestOf(next: BestOf): void {
-    bestOfTouchedRef.current = true;
+    configDefaultSupersededRef.current = true;
     setBestOf(next);
     // Reset the result to a valid default for the new best-of so the form never
     // sits in an inconsistent state.
@@ -213,6 +217,9 @@ export function GameLogWizard({
         setValidationError("Pick the format, your deck, and identify the opponent.");
         return;
       }
+      // Reaching the result step counts as taking control: a config that resolves
+      // now must not reset the result the member is about to enter.
+      configDefaultSupersededRef.current = true;
       setStep(2);
       return;
     }
