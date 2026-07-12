@@ -307,6 +307,113 @@ export async function createDeck(
 }
 
 /**
+ * Events & gauntlets fixtures (phase-05). Team-owned; permissions are a shared team
+ * board (no owner column). An event needs a `teamId` and a `formatId`; a gauntlet
+ * entry needs its `eventId`/`teamId` plus exactly one target form; attendance is one
+ * RSVP row per (event, user). Everything else defaults so isolation tests build one
+ * in a single call.
+ */
+
+type EventStatus = "upcoming" | "active" | "completed" | "archived";
+type EventImportance = "local" | "regional" | "national" | "major";
+type AttendanceStatus = "going" | "maybe" | "not_going";
+
+export interface CreateEventOptions {
+  teamId: string;
+  formatId: string;
+  name?: string;
+  date?: Date;
+  location?: string | null;
+  importance?: EventImportance;
+  description?: string;
+  status?: EventStatus;
+  archivedAt?: Date | null;
+}
+
+export interface TestEvent {
+  id: string;
+  teamId: string;
+  name: string;
+  formatId: string;
+  status: string;
+}
+
+export async function createEvent(
+  prisma: PrismaClient,
+  options: CreateEventOptions,
+): Promise<TestEvent> {
+  const suffix = randomUUID().slice(0, 8);
+  const created = await prisma.event.create({
+    data: {
+      teamId: options.teamId,
+      formatId: options.formatId,
+      name: options.name ?? `Event ${suffix}`,
+      date: options.date ?? new Date("2026-09-12T00:00:00.000Z"),
+      location: options.location ?? null,
+      importance: options.importance ?? "regional",
+      description: options.description ?? "",
+      status: options.status ?? "upcoming",
+      archivedAt: options.archivedAt ?? null,
+    },
+  });
+  return {
+    id: created.id,
+    teamId: created.teamId,
+    name: created.name,
+    formatId: created.formatId,
+    status: created.status,
+  };
+}
+
+export interface CreateGauntletEntryOptions {
+  eventId: string;
+  teamId: string;
+  referenceDeckId?: string | null;
+  heroId?: string | null;
+  archetypeLabel?: string | null;
+  expectedMetaShare?: number;
+  notes?: string;
+}
+
+export async function createGauntletEntry(
+  prisma: PrismaClient,
+  options: CreateGauntletEntryOptions,
+): Promise<{ id: string; eventId: string; teamId: string }> {
+  const created = await prisma.gauntletEntry.create({
+    data: {
+      eventId: options.eventId,
+      teamId: options.teamId,
+      referenceDeckId: options.referenceDeckId ?? null,
+      heroId: options.heroId ?? null,
+      archetypeLabel:
+        options.archetypeLabel ?? (options.referenceDeckId || options.heroId ? null : "Aggro Red"),
+      expectedMetaShare: options.expectedMetaShare ?? 20,
+      notes: options.notes ?? "",
+    },
+  });
+  return { id: created.id, eventId: created.eventId, teamId: created.teamId };
+}
+
+export async function createAttendance(
+  prisma: PrismaClient,
+  options: { eventId: string; userId: string; status?: AttendanceStatus },
+): Promise<{ id: string; eventId: string; userId: string; status: string }> {
+  const created = await prisma.attendance.create({
+    data: {
+      eventId: options.eventId,
+      userId: options.userId,
+      status: options.status ?? "going",
+    },
+  });
+  return {
+    id: created.id,
+    eventId: created.eventId,
+    userId: created.userId,
+    status: created.status,
+  };
+}
+
+/**
  * Collaboration fixtures (phase-04). Comments, notifications, and activity events
  * are team-scoped and addressed polymorphically by `(subjectType, subjectId)`.
  * A comment needs a `teamId`, `authorId`, and a subject; everything else defaults
