@@ -15,6 +15,11 @@ import {
   E2E_DECKS_USER,
   E2E_EVENTS_SETUP_TOKEN,
   E2E_EVENTS_USER,
+  E2E_GAMEPLAN_CARD_NAME,
+  E2E_GAMEPLAN_DECK_NAME,
+  E2E_GAMEPLAN_EVENT_NAME,
+  E2E_GAMEPLAN_SETUP_TOKEN,
+  E2E_GAMEPLAN_USER,
   E2E_GAMELOG_DECK_NAME,
   E2E_GAMELOG_SETUP_TOKEN,
   E2E_GAMELOG_USER,
@@ -58,10 +63,14 @@ async function seed(databaseUrl: string): Promise<void> {
         [id, name, slug, now],
       );
     }
-    async function addMembership(teamId: string, userId: string) {
+    async function addMembership(
+      teamId: string,
+      userId: string,
+      role: "member" | "team_admin" = "member",
+    ) {
       await client.query(
-        `INSERT INTO "team_membership" (id, team_id, user_id, role) VALUES ($1,$2,$3,'member')`,
-        [randomUUID(), teamId, userId],
+        `INSERT INTO "team_membership" (id, team_id, user_id, role) VALUES ($1,$2,$3,$4)`,
+        [randomUUID(), teamId, userId, role],
       );
     }
     async function insertSetupToken(userId: string, rawToken: string) {
@@ -122,6 +131,15 @@ async function seed(databaseUrl: string): Promise<void> {
     await addMembership(E2E_TEAMS.alpha.id, E2E_TESTQUEUE_USER.id);
     await addMembership(E2E_TEAMS.bravo.id, E2E_TESTQUEUE_USER.id);
 
+    // The game-plans user is a team-admin on alpha (to lock the roster) + member on bravo.
+    await insertUser(
+      E2E_GAMEPLAN_USER.id,
+      E2E_GAMEPLAN_USER.username,
+      E2E_GAMEPLAN_USER.displayName,
+    );
+    await addMembership(E2E_TEAMS.alpha.id, E2E_GAMEPLAN_USER.id, "team_admin");
+    await addMembership(E2E_TEAMS.bravo.id, E2E_GAMEPLAN_USER.id);
+
     // Two collaboration teammates on alpha only (mentions resolve within a team).
     await insertUser(
       E2E_COLLAB_AUTHOR.id,
@@ -144,6 +162,7 @@ async function seed(databaseUrl: string): Promise<void> {
     await insertSetupToken(E2E_COLLAB_AUTHOR.id, E2E_COLLAB_AUTHOR_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_MENTIONED.id, E2E_COLLAB_MENTIONED_SETUP_TOKEN);
     await insertSetupToken(E2E_TESTQUEUE_USER.id, E2E_TESTQUEUE_SETUP_TOKEN);
+    await insertSetupToken(E2E_GAMEPLAN_USER.id, E2E_GAMEPLAN_SETUP_TOKEN);
   } finally {
     await client.end();
   }
@@ -345,6 +364,57 @@ async function seedMatchups(databaseUrl: string): Promise<void> {
   }
 }
 
+/**
+ * Seed the game-plans journey's data on alpha: a team deck owned by the game-plans
+ * user, an event to select a deck for and retrospect on, and a FaB card for the
+ * game-plan editor's key-card autocomplete. FKs to the game + the "Classic
+ * Constructed" format the network-free `db:seed` created.
+ */
+async function seedGamePlans(databaseUrl: string): Promise<void> {
+  const client = new Client({ connectionString: databaseUrl });
+  await client.connect();
+  try {
+    const now = new Date().toISOString();
+    const format = await client.query<{ id: string }>(
+      `SELECT id FROM "format" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
+      [E2E_REFERENCE.formatName],
+    );
+    const formatId = format.rows[0]?.id;
+    if (!formatId) {
+      throw new Error("Expected the seeded Classic Constructed format to exist.");
+    }
+    await client.query(
+      `INSERT INTO "deck"
+         (id, team_id, name, game_id, format_id, external_url, source, owner_id,
+          status, visibility, is_reference, tags, notes, updated_at)
+       VALUES ($1,$2,$3,'flesh-and-blood',$4,$5,'fabrary',$6,
+          'testing','team',false, ARRAY[]::text[], '', $7)`,
+      [
+        randomUUID(),
+        E2E_TEAMS.alpha.id,
+        E2E_GAMEPLAN_DECK_NAME,
+        formatId,
+        "https://fabrary.net/decks/e2e-gameplan",
+        E2E_GAMEPLAN_USER.id,
+        now,
+      ],
+    );
+    await client.query(
+      `INSERT INTO "event"
+         (id, team_id, name, format_id, date, importance, description, status, updated_at)
+       VALUES ($1,$2,$3,$4,$5,'regional','','upcoming',$6)`,
+      [randomUUID(), E2E_TEAMS.alpha.id, E2E_GAMEPLAN_EVENT_NAME, formatId, now, now],
+    );
+    await client.query(
+      `INSERT INTO "card" (id, game_id, external_id, name, pitch, updated_at)
+         VALUES ($1,'flesh-and-blood','e2e-snatch',$2,1,$3)`,
+      [randomUUID(), E2E_GAMEPLAN_CARD_NAME, now],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 async function waitForHealth(timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -408,6 +478,9 @@ export default async function globalSetup(): Promise<void> {
 
   // A deck, an event + gauntlet, and a couple of logs for the matchups journey.
   await seedMatchups(databaseUrl);
+
+  // A deck, an event, and a card for the game-plans / deck-selection / retrospective journey.
+  await seedGamePlans(databaseUrl);
 
   const apiProcess = spawn(process.execPath, ["dist/main.js"], {
     cwd: apiDir,

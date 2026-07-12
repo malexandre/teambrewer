@@ -109,6 +109,27 @@ export const E2E_TESTQUEUE_SETUP_TOKEN = "e2e-testqueue-setup-token";
 export const E2E_TESTQUEUE_DECK_NAME = "E2E Testing Queue Deck";
 
 /**
+ * A dedicated onboardable user for the game-plans / deck-selection / retrospective
+ * journey — independent of the other specs so they can run in parallel (each consumes
+ * its own single-use token). Seeded as a **team-admin** on alpha (so the journey can
+ * lock the roster) and a member on bravo. The global-setup seeds this team a deck (to
+ * write a game-plan on and pick for the event) and an event (to select a deck for and
+ * retrospect on).
+ */
+export const E2E_GAMEPLAN_USER = {
+  id: "e2e-user-gameplan",
+  username: "gameplan_user",
+  displayName: "Gameplan User",
+};
+export const E2E_GAMEPLAN_SETUP_TOKEN = "e2e-gameplan-setup-token";
+/** The team deck seeded on alpha the game-plans user writes a plan on / picks for the event. */
+export const E2E_GAMEPLAN_DECK_NAME = "E2E Game-Plan Deck";
+/** The event seeded on alpha the game-plans user selects a deck for and retrospects on. */
+export const E2E_GAMEPLAN_EVENT_NAME = "E2E Game-Plan Cup";
+/** A FaB card seeded so the game-plan editor's key-card autocomplete has a real result. */
+export const E2E_GAMEPLAN_CARD_NAME = "Snatch";
+
+/**
  * Reference data for the specs. `formatName` comes from the network-free `db:seed`
  * (games + formats); `heroName` is a single hero the events e2e global-setup inserts
  * after the seed (heroes normally come from the network card sync, skipped in e2e).
