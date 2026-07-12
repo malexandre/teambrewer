@@ -52,6 +52,14 @@ export const queryKeys = {
     [teamId, "event", eventId, "attendance"] as const,
 
   /**
+   * Game logs, keyed by the active team first so switching teams yields a different
+   * cache entry and one team's logs never bleed into another's. `filters` keys each
+   * list variant.
+   */
+  games: (teamId: string, filters: Record<string, string>) => [teamId, "games", filters] as const,
+  game: (teamId: string, gameLogId: string) => [teamId, "game", gameLogId] as const,
+
+  /**
    * Collaboration keys, all team-scoped (teamId first) so switching teams yields
    * a different cache entry and one team's discussion/awareness never bleeds into
    * another's. Comments are keyed by their polymorphic subject; notifications are

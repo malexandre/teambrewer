@@ -10,6 +10,8 @@ import { DeckDetailPage } from "@/features/decks/DeckDetailPage";
 import { DecksPage } from "@/features/decks/DecksPage";
 import { EventDetailPage } from "@/features/events/EventDetailPage";
 import { EventsPage } from "@/features/events/EventsPage";
+import { GameDetailPage } from "@/features/game-logging/GameDetailPage";
+import { GamesPage } from "@/features/game-logging/GamesPage";
 import { ClaimPage } from "@/features/auth/ClaimPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RequireAuth } from "@/features/auth/RequireAuth";
@@ -105,6 +107,21 @@ const eventDetailRoute = createRoute({
   },
 });
 
+const gamesRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/games",
+  component: GamesPage,
+});
+
+const gameDetailRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/games/$gameLogId",
+  component: function GameDetailRoute() {
+    const { gameLogId } = gameDetailRoute.useParams();
+    return <GameDetailPage gameLogId={gameLogId} />;
+  },
+});
+
 const activityRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/activity",
@@ -134,6 +151,8 @@ const routeTree = rootRoute.addChildren([
     deckDetailRoute,
     eventsRoute,
     eventDetailRoute,
+    gamesRoute,
+    gameDetailRoute,
     activityRoute,
     adminRoute,
     settingsRoute,

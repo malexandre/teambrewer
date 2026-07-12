@@ -45,6 +45,9 @@ export function AppChrome({ children }: { children: ReactNode }) {
             <Link to="/events" className="px-2 py-1 hover:underline">
               Events
             </Link>
+            <Link to="/games" className="px-2 py-1 hover:underline">
+              Games
+            </Link>
             <Link to="/cards" className="px-2 py-1 hover:underline">
               Cards
             </Link>
