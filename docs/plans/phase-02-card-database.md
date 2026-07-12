@@ -57,18 +57,20 @@ card reads are filtered by the active team's game).
     `useHeroes`) with query keys that include the active `teamId` (so the correct game's data is fetched).
 
 **Task checklist**
-- [ ] Read [card-database](../features/card-database.md), [game-abstraction](../architecture/game-abstraction.md), [ADR-0006](../decisions/0006-game-agnostic-core.md), [ADR-0007](../decisions/0007-external-data-approach.md), [card-data-sources](../domain/card-data-sources.md), [flesh-and-blood](../domain/flesh-and-blood.md), and the [working-with-card-data](../../.claude/skills/working-with-card-data/SKILL.md) skill.
-- [ ] Pull the-fab-cube schema docs (`documentation/json-schemas.md`) at build time; confirm the current field list and license/attribution terms before shipping. Do **not** rely on memory for fields.
-- [ ] Finalize the `GameAdapter` interface + normalized card/format/hero types; write unit tests for the contract using a small **fixture** dataset (no live network).
-- [ ] Implement the FaB adapter `mapCard` (raw → normalized) and `cardIdentity` (name + pitch); test-first against the fixture, asserting a card that exists at multiple pitch values maps to distinct identities.
-- [ ] Add Prisma models + migration for `Game`, `Format`, `Hero`, `Card` with the required unique/search indexes; add fixtures.
-- [ ] Implement `CardSyncService` + command: fetch (mockable), map via adapter, upsert by `(gameId, externalId)`, store `sourceVersion`. Write the **idempotency** test first (running sync twice over the same fixture yields no duplicates and stable rows).
-- [ ] Add the scheduled job wrapper around the sync service (schedule configurable; disabled in tests).
-- [ ] Write the seed script (FaB `Game`, formats, heroes); verify the seed is idempotent.
-- [ ] Implement the search endpoint (indexed `name`; FaB name + pitch) filtered by the active team's `gameId`; cursor pagination. Write happy-path + validation + game-filter tests first (a team on game X never sees game Y cards).
-- [ ] Add `GET /api/cards/:cardId`, `GET /api/formats`, `GET /api/heroes` (game-filtered).
-- [ ] Build the frontend `CardPicker`, `CardPreview`, `CardDetail` + hooks; component tests for autocomplete and preview.
-- [ ] Update [README.md](README.md) status and [CLAUDE.md](../../CLAUDE.md) commands (add the `card:sync` command).
+- [x] Read [card-database](../features/card-database.md), [game-abstraction](../architecture/game-abstraction.md), [ADR-0006](../decisions/0006-game-agnostic-core.md), [ADR-0007](../decisions/0007-external-data-approach.md), [card-data-sources](../domain/card-data-sources.md), [flesh-and-blood](../domain/flesh-and-blood.md), and the [working-with-card-data](../../.claude/skills/working-with-card-data/SKILL.md) skill.
+- [x] Pull the-fab-cube schema docs (`documentation/json-schemas.md`) at build time; confirm the current field list and license/attribution terms before shipping. Do **not** rely on memory for fields.
+- [x] Finalize the `GameAdapter` interface + normalized card/format/hero types; write unit tests for the contract using a small **fixture** dataset (no live network).
+- [x] Implement the FaB adapter `mapCard` (raw → normalized) and `cardIdentity` (name + pitch); test-first against the fixture, asserting a card that exists at multiple pitch values maps to distinct identities.
+- [x] Add Prisma models + migration for `Game`, `Format`, `Hero`, `Card` with the required unique/search indexes; add fixtures.
+- [x] Implement `CardSyncService` + command: fetch (mockable), map via adapter, upsert by `(gameId, externalId)`, store `sourceVersion`. Write the **idempotency** test first (running sync twice over the same fixture yields no duplicates and stable rows).
+- [x] Add the scheduled job wrapper around the sync service (schedule configurable; disabled in tests).
+- [x] Write the seed script (FaB `Game`, formats); verify the seed is idempotent. *(Heroes are derived from
+  the synced dataset — hero-type cards — not statically seeded; the seed is network-free.)*
+- [x] Implement the search endpoint (indexed `name`; FaB name + pitch) filtered by the active team's `gameId`; cursor pagination. Write happy-path + validation + game-filter tests first (a team on game X never sees game Y cards).
+- [x] Add `GET /api/cards/:cardId`, `GET /api/formats`, `GET /api/heroes` (game-filtered).
+- [x] Build the frontend `CardPicker`, `CardPreview` + hooks; component tests for autocomplete and preview.
+  *(Lean model: the image preview is the detail — no separate rich `CardDetail` view.)*
+- [x] Update [README.md](README.md) status and [CLAUDE.md](../../CLAUDE.md) commands (add the `card:sync` command).
 
 **Tests & verification**
 - **Unit (Vitest):** FaB adapter `mapCard` maps fixture records correctly (all fields, legality flags);

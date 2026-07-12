@@ -64,7 +64,15 @@ describe("TeamContextGuard", () => {
       userId: world.memberA.id,
       teamId: world.teamA.id,
       role: "member",
+      gameId: world.teamA.gameId,
     });
+  });
+
+  it("attaches the team's game so reference reads can be game-filtered", async () => {
+    const request = requestFor({ userId: world.memberA.id, teamId: world.teamA.id });
+
+    await guard.canActivate(executionContextFor(request));
+    expect(request.teamContext?.gameId).toBe(world.teamA.gameId);
   });
 
   it("exposes the team-admin role in the context", async () => {

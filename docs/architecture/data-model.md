@@ -49,12 +49,20 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
   authorization (preserves invite-only). See [security](security.md), [ADR-0009](../decisions/0009-discord-authentication.md).
 
 ### Game reference data (global, per game — owned by adapter)
-- **Game** `{ id, key: 'flesh_and_blood' | 'riftbound', name }`
-- **Format** `{ id, gameId, key, name, isConstructed, ... }` (e.g. CC, Blitz, LL, SAGE)
-- **Hero** (a.k.a. identity) `{ id, gameId, name, classes[], talents[], startingLife?, ... }`
-- **Card** `{ id, gameId, externalId (stable source id), name, pitch?, cost?, power?, defense?, types[],
-  subtypes[], keywords[], text, rarity, imageUrl, formatLegality{}, sourceVersion, ... }`
-  — FaB card identity is effectively **name + pitch**. Fields vary by game; the adapter maps source → this.
+- **Game** `{ id (stable slug, e.g. "flesh-and-blood"), key: 'flesh_and_blood' | 'riftbound', name }`
+  — `Team.gameId` holds the slug `id`; `key` is the adapter/enum key.
+- **Format** `{ id, gameId, key, name, isConstructed, sortOrder }` (e.g. CC, Blitz, LL, SAGE)
+- **Hero** (a.k.a. identity) `{ id, gameId, externalId, name, classes[], talents[], startingLife?, imageUrl?, archivedAt? }`
+  — derived from the synced card dataset (hero-type cards).
+- **Card (lean)** `{ id, gameId, externalId (stable source id), name, pitch?, imageUrl?, archivedAt? }`
+  — FaB card identity is effectively **name + pitch**; the adapter maps source → this. **Cards are reference
+  data only** (decks are links, [ADR-0002](../decisions/0002-decks-as-links.md)); the matchup/confidence math
+  never reads card stats and the card **image** already conveys cost/power/text visually, so the model
+  intentionally stores no combat stats, format legality, or printings — just enough to reference a card via
+  search/autocomplete and show its image. Card-data provenance lives in **CardDataVersion**
+  `{ gameId, sourceName, sourceUrl, sourceVersion, lastSyncedAt, cardCount }` (one row per game), which drives
+  the "card data as of …" indicator. *(Decided in phase-02; a richer card model can be reintroduced by a
+  future phase + ADR if a feature needs structured stats.)*
 
 ### Decks (link-only — see ADR-0002)
 - **Deck** `{ id, teamId, name, gameId, formatId, heroId?, externalUrl, source, ownerId,

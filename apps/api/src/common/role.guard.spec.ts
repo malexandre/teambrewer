@@ -42,7 +42,7 @@ describe("RoleGuard", () => {
     const guard = new RoleGuard(reflectorReturning({ [REQUIRED_TEAM_ROLES_KEY]: ["team_admin"] }));
     const context = buildContext({
       userId: "u1",
-      teamContext: { userId: "u1", teamId: "t1", role: "member" },
+      teamContext: { userId: "u1", teamId: "t1", role: "member", gameId: "flesh-and-blood" },
     });
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
@@ -51,7 +51,7 @@ describe("RoleGuard", () => {
     const guard = new RoleGuard(reflectorReturning({ [REQUIRED_TEAM_ROLES_KEY]: ["team_admin"] }));
     const context = buildContext({
       userId: "u1",
-      teamContext: { userId: "u1", teamId: "t1", role: "team_admin" },
+      teamContext: { userId: "u1", teamId: "t1", role: "team_admin", gameId: "flesh-and-blood" },
     });
     expect(guard.canActivate(context)).toBe(true);
   });
@@ -62,7 +62,7 @@ describe("RoleGuard", () => {
     );
     const context = buildContext({
       userId: "u1",
-      teamContext: { userId: "u1", teamId: "t1", role: "member" },
+      teamContext: { userId: "u1", teamId: "t1", role: "member", gameId: "flesh-and-blood" },
     });
     expect(guard.canActivate(context)).toBe(true);
   });

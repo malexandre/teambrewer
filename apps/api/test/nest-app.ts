@@ -5,7 +5,7 @@ import {
   type ModuleMetadata,
 } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
-import { Test } from "@nestjs/testing";
+import { Test, type TestingModuleBuilder } from "@nestjs/testing";
 import { inject } from "vitest";
 
 import { configureApp } from "../src/app.setup.js";
@@ -55,6 +55,7 @@ export function asUser(
  */
 export async function createApiTestApp(
   imports: NonNullable<ModuleMetadata["imports"]>,
+  configure?: (builder: TestingModuleBuilder) => TestingModuleBuilder,
 ): Promise<INestApplication> {
   // PrismaService and Better Auth read these at construction; the DB URL is
   // provided per-worker by the global setup (env does not cross the worker
@@ -63,10 +64,13 @@ export async function createApiTestApp(
   process.env["BETTER_AUTH_SECRET"] ??= "test-better-auth-secret-please-change-0123456789";
   process.env["BETTER_AUTH_URL"] ??= "http://localhost:3000";
 
-  const moduleRef = await Test.createTestingModule({
+  // `configure` lets a test override providers (e.g. stub a network client with
+  // a fixture) so the suite stays deterministic and never hits the network.
+  const builder = Test.createTestingModule({
     imports,
     providers: [{ provide: APP_GUARD, useClass: HeaderAuthenticationGuard }],
-  }).compile();
+  });
+  const moduleRef = await (configure ? configure(builder) : builder).compile();
 
   const app = moduleRef.createNestApplication();
   configureApp(app);

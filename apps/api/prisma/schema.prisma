@@ -196,3 +196,112 @@ model InviteToken {
   @@index([userId, purpose])
   @@map("invite_token")
 }
+
+// ---------------------------------------------------------------------------
+// Game reference data (phase-02). Global, per-game, owned by the game adapter —
+// no teamId; reads are filtered by the active team's game. Seed populates the
+// network-free catalog (Game, Format); the card sync derives Hero and Card from
+// the sanctioned open dataset. See docs/architecture/data-model.md and
+// docs/features/card-database.md.
+//
+// Cards are reference data only (decks are links, ADR-0002): a lean Card stores
+// just name + pitch + image — enough to reference a card via search/autocomplete
+// and show its image (which already conveys the stats). No combat stats, format
+// legality, or printings are stored.
+// ---------------------------------------------------------------------------
+
+/// A supported card game. `id` is a stable slug (e.g. "flesh-and-blood") that
+/// Team.gameId holds; `key` is the adapter/enum key (e.g. "flesh_and_blood").
+model Game {
+  id        String   @id
+  key       String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  formats         Format[]
+  heroes          Hero[]
+  cards           Card[]
+  cardDataVersion CardDataVersion?
+
+  @@map("game")
+}
+
+/// A play format for a game (e.g. Classic Constructed, Blitz). Reference context
+/// only — TeamBrewer does not enforce legality.
+model Format {
+  id            String   @id @default(cuid())
+  gameId        String   @map("game_id")
+  key           String
+  name          String
+  isConstructed Boolean  @map("is_constructed")
+  sortOrder     Int      @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, key])
+  @@index([gameId])
+  @@map("format")
+}
+
+/// A hero/identity for a game, derived from the synced card dataset. Soft-deleted
+/// (archivedAt) when it disappears upstream, never hard-deleted.
+model Hero {
+  id           String    @id @default(cuid())
+  gameId       String    @map("game_id")
+  externalId   String    @map("external_id")
+  name         String
+  classes      String[]
+  talents      String[]
+  startingLife Int?      @map("starting_life")
+  imageUrl     String?   @map("image_url")
+  archivedAt   DateTime? @map("archived_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, externalId])
+  @@index([gameId, name])
+  @@map("hero")
+}
+
+/// A lean card reference row (see the section note above). Unique by
+/// (gameId, externalId); searchable by (gameId, name). Soft-deleted when it
+/// disappears upstream so references and history survive.
+model Card {
+  id         String    @id @default(cuid())
+  gameId     String    @map("game_id")
+  externalId String    @map("external_id")
+  name       String
+  pitch      Int?
+  imageUrl   String?   @map("image_url")
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, externalId])
+  @@index([gameId, name])
+  @@map("card")
+}
+
+/// Provenance of a game's synced card data (one row per game): the sanctioned
+/// source, its version, and when it was last synced. Drives "card data as of …".
+model CardDataVersion {
+  gameId        String   @id @map("game_id")
+  sourceName    String   @map("source_name")
+  sourceUrl     String   @map("source_url")
+  sourceVersion String   @map("source_version")
+  lastSyncedAt  DateTime @map("last_synced_at")
+  cardCount     Int      @map("card_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@map("card_data_version")
+}

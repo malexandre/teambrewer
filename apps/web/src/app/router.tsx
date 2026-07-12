@@ -4,6 +4,7 @@ import { SettingsPage } from "@/features/account/SettingsPage";
 import { AdminPage } from "@/features/admin/AdminPage";
 import { AppChrome } from "@/features/app/AppChrome";
 import { HomePage } from "@/features/app/HomePage";
+import { CardsPage } from "@/features/cards/CardsPage";
 import { ClaimPage } from "@/features/auth/ClaimPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RequireAuth } from "@/features/auth/RequireAuth";
@@ -63,6 +64,12 @@ const homeRoute = createRoute({
   component: HomePage,
 });
 
+const cardsRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/cards",
+  component: CardsPage,
+});
+
 const adminRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/admin",
@@ -79,7 +86,7 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   setupRoute,
   claimRoute,
-  authenticatedLayout.addChildren([homeRoute, adminRoute, settingsRoute]),
+  authenticatedLayout.addChildren([homeRoute, cardsRoute, adminRoute, settingsRoute]),
 ]);
 
 export const router = createRouter({ routeTree });
