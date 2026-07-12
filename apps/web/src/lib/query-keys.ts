@@ -59,6 +59,9 @@ export const queryKeys = {
   games: (teamId: string, filters: Record<string, string>) => [teamId, "games", filters] as const,
   game: (teamId: string, gameLogId: string) => [teamId, "game", gameLogId] as const,
 
+  /** The active team's per-game UI config (GET /api/game-config). */
+  gameConfig: (teamId: string) => [teamId, "game-config"] as const,
+
   /**
    * Collaboration keys, all team-scoped (teamId first) so switching teams yields
    * a different cache entry and one team's discussion/awareness never bleeds into
