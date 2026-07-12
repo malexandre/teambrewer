@@ -19,8 +19,10 @@ The project is version-controlled from the start and will live on GitHub.
 
 - **Do not create or push to a remote unless the user explicitly asks.** `git push` is an outward-facing
   action requiring the user's go-ahead.
-- Integrate by **merging feature branches into `main` locally** (fast-forward or `--no-ff`), not via pull
-  requests, until a remote exists.
+- Integrate by **merging feature branches into `main` locally with a fast-forward merge** (`git merge
+  --ff-only`), not via pull requests, until a remote exists. **Do not use `--no-ff`** — history stays linear
+  and the detail lives in the atomic commits themselves. If `main` has advanced so a fast-forward isn't
+  possible, **rebase the branch onto the latest `main` first** (`git rebase main`), then `--ff-only`.
 - **GitHub Actions CI runs only once a remote exists.** Until then, the verification bar is running the same
   steps locally: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`. A phase is "done" on local
   green, not on CI.
@@ -29,8 +31,8 @@ The project is version-controlled from the start and will live on GitHub.
 ## Branching & workflow
 
 - `main` is the integration branch and should stay green.
-- Do real work on feature branches (e.g. `phase-03-decks`, `feat/matchup-matrix`); merge to `main` locally
-  (open a PR instead once a remote exists).
+- Do real work on feature branches (e.g. `phase-03-decks`, `feat/matchup-matrix`); **fast-forward** merge to
+  `main` locally (rebase onto `main` first if needed; open a PR instead once a remote exists).
 - Only commit when the user asks, or per the active workflow. If on `main` for a substantive change,
   branch first. Never push without an explicit request.
 - Interactive git flags (`-i`) are not available in this environment.
