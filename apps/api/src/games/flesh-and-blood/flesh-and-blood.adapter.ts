@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 
 import type {
+  CardSourceDescription,
   FormatDefinition,
   GameAdapter,
   NormalizedCard,
@@ -47,6 +48,14 @@ export class FleshAndBloodAdapter implements GameAdapter {
 
   listFormats(): FormatDefinition[] {
     return FLESH_AND_BLOOD_FORMATS.map((format) => ({ ...format }));
+  }
+
+  describeSource(): CardSourceDescription {
+    return {
+      sourceName: "the-fab-cube/flesh-and-blood-cards",
+      sourceUrl: this.source.sourceUrl,
+      sourceVersion: this.source.sourceVersion,
+    };
   }
 
   fetchCardSource(): Promise<RawCardRecord[]> {

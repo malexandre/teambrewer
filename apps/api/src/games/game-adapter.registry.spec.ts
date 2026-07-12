@@ -21,6 +21,9 @@ function createStubAdapter(key: string): GameAdapter {
     listFormats(): FormatDefinition[] {
       return [{ key: "constructed", name: "Constructed", isConstructed: true, sortOrder: 0 }];
     },
+    describeSource() {
+      return { sourceName: "stub", sourceUrl: "https://stub.test", sourceVersion: "v0" };
+    },
     async fetchCardSource(): Promise<RawCardRecord[]> {
       return [];
     },

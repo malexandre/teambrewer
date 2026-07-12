@@ -56,6 +56,13 @@ export interface RecognizedDeckUrl {
   externalId?: string;
 }
 
+/** Provenance of a game's card data, recorded as `CardDataVersion` on each sync. */
+export interface CardSourceDescription {
+  sourceName: string;
+  sourceUrl: string;
+  sourceVersion: string;
+}
+
 /** The contract every supported game implements. */
 export interface GameAdapter {
   /** Matches `Game.key` (e.g. "flesh_and_blood"); the registry key. */
@@ -66,6 +73,9 @@ export interface GameAdapter {
 
   /** The game's play formats, stored as `Format` rows by the seed. */
   listFormats(): FormatDefinition[];
+
+  /** Describe the card data source (name, url, pinned version) for provenance. */
+  describeSource(): CardSourceDescription;
 
   /** Fetch the raw card dataset from the sanctioned open source. */
   fetchCardSource(): Promise<RawCardRecord[]>;
