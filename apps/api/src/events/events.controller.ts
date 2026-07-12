@@ -14,6 +14,7 @@ import {
 
 import {
   type Attendance,
+  type AttendanceList,
   type EventDetail,
   type EventListResponse,
   createEventSchema,
@@ -111,7 +112,7 @@ export class EventsController {
   }
 
   @Get(":eventId/attendance")
-  listAttendance(@Param("eventId") eventId: string): Promise<{ data: Attendance[] }> {
+  listAttendance(@Param("eventId") eventId: string): Promise<AttendanceList> {
     return this.events.listAttendance(eventId);
   }
 

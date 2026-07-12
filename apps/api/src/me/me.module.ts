@@ -6,17 +6,15 @@ import { TenancyModule } from "../tenancy/tenancy.module.js";
 import { MembersController } from "./members.controller.js";
 import { MeController } from "./me.controller.js";
 import { MeService } from "./me.service.js";
-import { OnboardingController } from "../onboarding/onboarding.controller.js";
-import { OnboardingService } from "../onboarding/onboarding.service.js";
 
 /**
- * Self-service (`/api/me`), the member-facing roster (`/api/members`), and the
- * public link-consumption endpoints (`/api/onboarding/*`). Imports TenancyModule
- * for the header-based TeamContextGuard and AdminModule for MembershipService.
+ * Self-service (`/api/me`) and the member-facing roster (`/api/members`). Imports
+ * TenancyModule for the header-based TeamContextGuard and AdminModule for
+ * MembershipService. The public onboarding endpoints live in OnboardingModule.
  */
 @Module({
   imports: [TenancyModule, AdminModule],
-  controllers: [MeController, MembersController, OnboardingController],
-  providers: [MeService, OnboardingService, RoleGuard],
+  controllers: [MeController, MembersController],
+  providers: [MeService, RoleGuard],
 })
 export class MeModule {}

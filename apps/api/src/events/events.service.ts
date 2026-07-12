@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, UnprocessableEntityException } from "@ne
 
 import {
   type Attendance,
+  type AttendanceList,
   type AttendanceStatus,
   type AttendanceSummary,
   type CreateEventInput,
@@ -266,7 +267,7 @@ export class EventsService {
   }
 
   /** The event's attendance roster (every member's RSVP). */
-  async listAttendance(eventId: string): Promise<{ data: Attendance[] }> {
+  async listAttendance(eventId: string): Promise<AttendanceList> {
     await this.requireEvent(eventId);
     // Attendance carries no teamId; it is reached only through the team-scoped
     // event we just verified, so filtering by eventId is the tenant boundary.
