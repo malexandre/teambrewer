@@ -6,6 +6,8 @@ import type { PrismaClient } from "../generated/prisma/client.js";
 import { FabCardSourceClient } from "../games/flesh-and-blood/fab-card-source.client.js";
 import { FleshAndBloodAdapter } from "../games/flesh-and-blood/flesh-and-blood.adapter.js";
 import { GameAdapterRegistry } from "../games/game-adapter.registry.js";
+import { RiftboundAdapter } from "../games/riftbound/riftbound.adapter.js";
+import { RiftcodexCardSourceClient } from "../games/riftbound/riftcodex-card-source.client.js";
 import type { PrismaService } from "../prisma/prisma.service.js";
 import { ReferenceDataSeedService } from "./reference-data-seed.service.js";
 
@@ -15,7 +17,11 @@ describe("ReferenceDataSeedService (integration)", () => {
 
   beforeAll(() => {
     prisma = createTestPrismaClient();
-    const registry = new GameAdapterRegistry([new FleshAndBloodAdapter(new FabCardSourceClient())]);
+    // Both registered games, mirroring GamesModule — the seed iterates the catalog.
+    const registry = new GameAdapterRegistry([
+      new FleshAndBloodAdapter(new FabCardSourceClient()),
+      new RiftboundAdapter(new RiftcodexCardSourceClient()),
+    ]);
     service = new ReferenceDataSeedService(prisma as unknown as PrismaService, registry);
   });
 
@@ -30,18 +36,23 @@ describe("ReferenceDataSeedService (integration)", () => {
     await client.end();
   });
 
-  it("seeds the game and its formats", async () => {
+  it("seeds every catalog game and its formats", async () => {
     const result = await service.seed();
 
-    expect(result.gamesSeeded).toBe(1);
+    expect(result.gamesSeeded).toBe(2);
     expect(result.formatsSeeded).toBeGreaterThan(0);
 
-    const game = await prisma.game.findUnique({ where: { id: "flesh-and-blood" } });
-    expect(game?.key).toBe("flesh_and_blood");
+    const fab = await prisma.game.findUnique({ where: { id: "flesh-and-blood" } });
+    expect(fab?.key).toBe("flesh_and_blood");
+    const riftbound = await prisma.game.findUnique({ where: { id: "riftbound" } });
+    expect(riftbound?.key).toBe("riftbound");
 
-    const formats = await prisma.format.findMany({ where: { gameId: "flesh-and-blood" } });
-    expect(formats.map((format) => format.key)).toContain("cc");
-    expect(formats.map((format) => format.key)).toContain("blitz");
+    const fabFormats = await prisma.format.findMany({ where: { gameId: "flesh-and-blood" } });
+    expect(fabFormats.map((format) => format.key)).toContain("cc");
+    expect(fabFormats.map((format) => format.key)).toContain("blitz");
+
+    const riftboundFormats = await prisma.format.findMany({ where: { gameId: "riftbound" } });
+    expect(riftboundFormats.map((format) => format.key)).toContain("standard");
   });
 
   it("is idempotent: re-seeding produces no duplicates and stable rows", async () => {
@@ -61,6 +72,6 @@ describe("ReferenceDataSeedService (integration)", () => {
     expect(secondFormats.map((format) => format.id)).toEqual(
       firstFormats.map((format) => format.id),
     );
-    expect(await prisma.game.count()).toBe(1);
+    expect(await prisma.game.count()).toBe(2);
   });
 });
