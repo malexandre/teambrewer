@@ -189,3 +189,51 @@ describe("updateGameLogSchema", () => {
     expect(() => updateGameLogSchema.parse({ confidenceWeight: 0.5 })).toThrow();
   });
 });
+
+import {
+  gameLogCardInputSchema,
+  gameLogCardRoleSchema,
+  gameLogCardSideSchema,
+} from "./game-log.js";
+
+describe("game-log card capture", () => {
+  it("accepts a valid card reference with a side", () => {
+    expect(gameLogCardInputSchema.parse({ cardId: "card_1", side: "ours" })).toEqual({
+      cardId: "card_1",
+      side: "ours",
+    });
+  });
+
+  it("rejects an unknown side", () => {
+    expect(() => gameLogCardInputSchema.parse({ cardId: "card_1", side: "mine" })).toThrow();
+  });
+
+  it("rejects a missing cardId", () => {
+    expect(() => gameLogCardInputSchema.parse({ side: "ours" })).toThrow();
+  });
+
+  it("enumerates roles and sides", () => {
+    expect(gameLogCardRoleSchema.options).toEqual(["impressive", "underperforming"]);
+    expect(gameLogCardSideSchema.options).toEqual(["ours", "theirs"]);
+  });
+
+  it("accepts card arrays on create and defaults them to empty", () => {
+    const parsed = createGameLogSchema.parse(validCreateInput());
+    expect(parsed.impressiveCards).toEqual([]);
+    expect(parsed.underperformingCards).toEqual([]);
+  });
+
+  it("accepts card arrays on create when provided", () => {
+    const parsed = createGameLogSchema.parse(
+      validCreateInput({ impressiveCards: [{ cardId: "c1", side: "ours" }] }),
+    );
+    expect(parsed.impressiveCards).toEqual([{ cardId: "c1", side: "ours" }]);
+  });
+
+  it("accepts a card-array-only update", () => {
+    const parsed = updateGameLogSchema.parse({
+      underperformingCards: [{ cardId: "c2", side: "theirs" }],
+    });
+    expect(parsed.underperformingCards).toHaveLength(1);
+  });
+});

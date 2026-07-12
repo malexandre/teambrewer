@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { archetypeLabelSchema } from "./events.js";
+import { cardSummarySchema } from "./cards.js";
 
 /**
  * Shared game-log contracts (see docs/features/game-logging.md, ADR-0005). A game
@@ -159,6 +160,28 @@ export type LossReason = z.infer<typeof lossReasonSchema>;
 /** Free-text takeaways from the game. */
 export const learningsSchema = z.string().max(2000);
 
+/** Whether a card over- or under-performed in the game. */
+export const gameLogCardRoleSchema = z.enum(["impressive", "underperforming"]);
+export type GameLogCardRole = z.infer<typeof gameLogCardRoleSchema>;
+
+/** Whose card it was: our side or the opponent's. */
+export const gameLogCardSideSchema = z.enum(["ours", "theirs"]);
+export type GameLogCardSide = z.infer<typeof gameLogCardSideSchema>;
+
+/** A card reference captured on a game log, tagged by side. */
+export const gameLogCardInputSchema = z.object({
+  cardId: z.string().min(1),
+  side: gameLogCardSideSchema,
+});
+export type GameLogCardInput = z.infer<typeof gameLogCardInputSchema>;
+
+/** A captured card as returned by the API (the card summary + its side). */
+export const gameLogCardSchema = z.object({
+  card: cardSummarySchema,
+  side: gameLogCardSideSchema,
+});
+export type GameLogCard = z.infer<typeof gameLogCardSchema>;
+
 /**
  * When the game was played. Accepts any string a `Date` can parse; optional on
  * create (the service defaults to now). Past dates are allowed (back-filling).
@@ -259,6 +282,8 @@ export const createGameLogSchema = z
       deckMaturity: "both_tuned",
       pilotFamiliarity: "knows_well",
     }),
+    impressiveCards: z.array(gameLogCardInputSchema).max(20).default([]),
+    underperformingCards: z.array(gameLogCardInputSchema).max(20).default([]),
   })
   .refine((value) => isGameResultConsistent(value.bestOf, value.result), {
     message: "The result is not consistent with the best-of.",
@@ -286,6 +311,8 @@ export const updateGameLogSchema = z
     lossReason: lossReasonSchema.nullable().optional(),
     learnings: learningsSchema.optional(),
     confidenceFactors: confidenceFactorsUpdateSchema.optional(),
+    impressiveCards: z.array(gameLogCardInputSchema).max(20).optional(),
+    underperformingCards: z.array(gameLogCardInputSchema).max(20).optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
@@ -350,6 +377,8 @@ export const gameLogDetailSchema = gameLogSummarySchema.extend({
     deckMaturity: deckMaturitySchema,
     pilotFamiliarity: pilotFamiliaritySchema,
   }),
+  impressiveCards: z.array(gameLogCardSchema),
+  underperformingCards: z.array(gameLogCardSchema),
 });
 export type GameLogDetail = z.infer<typeof gameLogDetailSchema>;
 

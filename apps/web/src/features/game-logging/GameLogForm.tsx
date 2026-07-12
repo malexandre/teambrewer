@@ -280,6 +280,8 @@ export function GameLogForm({
       result,
       confidenceFactors: factors,
       learnings,
+      impressiveCards: [],
+      underperformingCards: [],
       ...(eventId ? { eventId } : {}),
       ...(winType ? { winType } : {}),
       ...(lossReason ? { lossReason } : {}),

@@ -491,5 +491,7 @@ function toGameLogDetail(row: GameLogRow): GameLogDetail {
       deckMaturity: row.deckMaturity,
       pilotFamiliarity: row.pilotFamiliarity,
     },
+    impressiveCards: [],
+    underperformingCards: [],
   };
 }
