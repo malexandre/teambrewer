@@ -104,3 +104,10 @@ describe("FleshAndBloodAdapter.listFormats", () => {
     expect(keys).toContain("blitz");
   });
 });
+
+describe("FleshAndBloodAdapter defaultBestOf", () => {
+  it("defaults Flesh and Blood games to a single game (Bo1)", () => {
+    const adapter = createAdapter();
+    expect(adapter.defaultBestOf).toBe(1);
+  });
+});

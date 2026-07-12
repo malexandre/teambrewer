@@ -43,6 +43,7 @@ export class FleshAndBloodAdapter implements GameAdapter {
   readonly key = "flesh_and_blood";
   readonly displayName = "Flesh and Blood";
   readonly identityLabel = "Hero";
+  readonly defaultBestOf = 1 as const;
 
   constructor(private readonly source: FabCardSourceClient) {}
 

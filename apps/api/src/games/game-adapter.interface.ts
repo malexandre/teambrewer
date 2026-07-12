@@ -12,6 +12,8 @@
  * phase-12) must be only a new adapter + reference data, never a core change.
  */
 
+import type { BestOf } from "@teambrewer/shared";
+
 /**
  * An untyped record from a game's card data source. The core stays
  * schema-agnostic — each adapter narrows this to its own source shape internally.
@@ -70,6 +72,8 @@ export interface GameAdapter {
   readonly displayName: string;
   /** The game's word for its identity concept (e.g. "Hero", "Legend"). */
   readonly identityLabel: string;
+  /** The best-of a new game log pre-selects for this game (FaB: 1, Riftbound: 3). */
+  readonly defaultBestOf: BestOf;
 
   /** The game's play formats, stored as `Format` rows by the seed. */
   listFormats(): FormatDefinition[];

@@ -18,6 +18,7 @@ function createStubAdapter(key: string): GameAdapter {
     key,
     displayName: `Game ${key}`,
     identityLabel: "Identity",
+    defaultBestOf: 1,
     listFormats(): FormatDefinition[] {
       return [{ key: "constructed", name: "Constructed", isConstructed: true, sortOrder: 0 }];
     },
