@@ -12,6 +12,8 @@ import { EventDetailPage } from "@/features/events/EventDetailPage";
 import { EventsPage } from "@/features/events/EventsPage";
 import { GameDetailPage } from "@/features/game-logging/GameDetailPage";
 import { GamesPage } from "@/features/game-logging/GamesPage";
+import { KnowledgePage } from "@/features/knowledge/KnowledgePage";
+import { PrimerDetailPage } from "@/features/knowledge/PrimerDetailPage";
 import { MatchupsPage } from "@/features/matchups/MatchupsPage";
 import { AssignmentsPage } from "@/features/testing-queue/AssignmentsPage";
 import { ClaimPage } from "@/features/auth/ClaimPage";
@@ -136,6 +138,21 @@ const assignmentsRoute = createRoute({
   component: AssignmentsPage,
 });
 
+const knowledgeRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/knowledge",
+  component: KnowledgePage,
+});
+
+const primerDetailRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/knowledge/primers/$primerId",
+  component: function PrimerDetailRoute() {
+    const { primerId } = primerDetailRoute.useParams();
+    return <PrimerDetailPage primerId={primerId} />;
+  },
+});
+
 const activityRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/activity",
@@ -169,6 +186,8 @@ const routeTree = rootRoute.addChildren([
     gameDetailRoute,
     matchupsRoute,
     assignmentsRoute,
+    knowledgeRoute,
+    primerDetailRoute,
     activityRoute,
     adminRoute,
     settingsRoute,

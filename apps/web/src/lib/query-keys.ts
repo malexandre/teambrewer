@@ -112,4 +112,18 @@ export const queryKeys = {
     [teamId, "event", eventId, "deck-selections"] as const,
   eventRetrospective: (teamId: string, eventId: string) =>
     [teamId, "event", eventId, "retrospective"] as const,
+
+  /**
+   * Team knowledge (phase-10) — primers, decisions, polls — keyed by the active team
+   * first (teamId) so switching teams yields a different cache entry and one team's
+   * knowledge never bleeds into another's. `filters` keys each list variant.
+   */
+  primers: (teamId: string, filters: Record<string, string>) =>
+    [teamId, "primers", filters] as const,
+  primer: (teamId: string, primerId: string) => [teamId, "primer", primerId] as const,
+  decisions: (teamId: string, filters: Record<string, string>) =>
+    [teamId, "decisions", filters] as const,
+  decision: (teamId: string, decisionId: string) => [teamId, "decision", decisionId] as const,
+  polls: (teamId: string, filters: Record<string, string>) => [teamId, "polls", filters] as const,
+  poll: (teamId: string, pollId: string) => [teamId, "poll", pollId] as const,
 } as const;
