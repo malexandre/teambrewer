@@ -13,7 +13,10 @@ import {
   E2E_COLLAB_MENTIONED_SETUP_TOKEN,
   E2E_DECKS_SETUP_TOKEN,
   E2E_DECKS_USER,
+  E2E_EVENTS_SETUP_TOKEN,
+  E2E_EVENTS_USER,
   E2E_ONBOARDING_USER,
+  E2E_REFERENCE,
   E2E_SETUP_TOKEN,
   E2E_TEAMS,
   RUNTIME_FILE,
@@ -85,6 +88,11 @@ async function seed(databaseUrl: string): Promise<void> {
     await addMembership(E2E_TEAMS.alpha.id, E2E_DECKS_USER.id);
     await addMembership(E2E_TEAMS.bravo.id, E2E_DECKS_USER.id);
 
+    // The events user also belongs to both teams (alpha first -> default active).
+    await insertUser(E2E_EVENTS_USER.id, E2E_EVENTS_USER.username, E2E_EVENTS_USER.displayName);
+    await addMembership(E2E_TEAMS.alpha.id, E2E_EVENTS_USER.id);
+    await addMembership(E2E_TEAMS.bravo.id, E2E_EVENTS_USER.id);
+
     // Two collaboration teammates on alpha only (mentions resolve within a team).
     await insertUser(
       E2E_COLLAB_AUTHOR.id,
@@ -101,8 +109,28 @@ async function seed(databaseUrl: string): Promise<void> {
 
     await insertSetupToken(E2E_ONBOARDING_USER.id, E2E_SETUP_TOKEN);
     await insertSetupToken(E2E_DECKS_USER.id, E2E_DECKS_SETUP_TOKEN);
+    await insertSetupToken(E2E_EVENTS_USER.id, E2E_EVENTS_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_AUTHOR.id, E2E_COLLAB_AUTHOR_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_MENTIONED.id, E2E_COLLAB_MENTIONED_SETUP_TOKEN);
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * Insert a single hero so the events journey can add a hero gauntlet target.
+ * Heroes normally come from the network card sync (skipped in e2e), so this runs
+ * after `db:seed` has created the Game the hero FKs to.
+ */
+async function seedHero(databaseUrl: string): Promise<void> {
+  const client = new Client({ connectionString: databaseUrl });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO "hero" (id, game_id, external_id, name, classes, talents, updated_at)
+       VALUES ($1,'flesh-and-blood','e2e-hero-dorinthea',$2, ARRAY['Warrior']::text[], ARRAY[]::text[], $3)`,
+      [randomUUID(), E2E_REFERENCE.heroName, new Date().toISOString()],
+    );
   } finally {
     await client.end();
   }
@@ -156,6 +184,9 @@ export default async function globalSetup(): Promise<void> {
     env: { ...process.env, DATABASE_URL: databaseUrl },
     stdio: "inherit",
   });
+
+  // A hero for the events journey's gauntlet (FKs to the game the seed just created).
+  await seedHero(databaseUrl);
 
   const apiProcess = spawn(process.execPath, ["dist/main.js"], {
     cwd: apiDir,

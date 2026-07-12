@@ -45,9 +45,27 @@ export const E2E_COLLAB_MENTIONED = {
 };
 export const E2E_COLLAB_MENTIONED_SETUP_TOKEN = "e2e-collab-mentioned-setup-token";
 
-/** Reference data the network-free `db:seed` provides (games + formats) for the decks spec. */
+/**
+ * A dedicated onboardable user for the events journey — independent of the other
+ * specs so they can run in parallel (each consumes its own single-use token).
+ * Belongs to both teams (alpha first → default active) to exercise event isolation
+ * across a team switch.
+ */
+export const E2E_EVENTS_USER = {
+  id: "e2e-user-events",
+  username: "events_user",
+  displayName: "Events User",
+};
+export const E2E_EVENTS_SETUP_TOKEN = "e2e-events-setup-token";
+
+/**
+ * Reference data for the specs. `formatName` comes from the network-free `db:seed`
+ * (games + formats); `heroName` is a single hero the events e2e global-setup inserts
+ * after the seed (heroes normally come from the network card sync, skipped in e2e).
+ */
 export const E2E_REFERENCE = {
   formatName: "Classic Constructed",
+  heroName: "Dorinthea",
 };
 
 /** Where global-setup records the container id + API pid for global-teardown. */
