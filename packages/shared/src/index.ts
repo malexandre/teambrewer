@@ -235,6 +235,50 @@ export {
 
 export { gameConfigSchema, type GameConfig } from "./game-config.js";
 
+export {
+  trustIndicatorSchema,
+  MATCHUP_TRUST_THRESHOLDS,
+  deriveGameOutcome,
+  trustIndicator,
+  aggregateMatchup,
+  DEFAULT_COVERAGE_MIN_EFFECTIVE_SAMPLE,
+  normalizeExpectedShares,
+  isUnderCovered,
+  compareCoverageByPriority,
+  matchupGroupingSchema,
+  matchupQuerySchema,
+  matchupMatrixQuerySchema,
+  matchupCoverageQuerySchema,
+  matchupSideSchema,
+  matchupOpponentSchema,
+  matchupCellSchema,
+  matchupSchema,
+  matchupListResponseSchema,
+  matchupMatrixCellSchema,
+  matchupMatrixResponseSchema,
+  matchupCoverageCandidateSchema,
+  matchupCoverageRowSchema,
+  matchupCoverageResponseSchema,
+  type GameOutcome,
+  type TrustIndicator,
+  type MatchupGame,
+  type MatchupAggregate,
+  type MatchupGrouping,
+  type MatchupQuery,
+  type MatchupMatrixQuery,
+  type MatchupCoverageQuery,
+  type MatchupSide,
+  type MatchupOpponent,
+  type MatchupCell,
+  type Matchup,
+  type MatchupListResponse,
+  type MatchupMatrixCell,
+  type MatchupMatrixResponse,
+  type MatchupCoverageCandidate,
+  type MatchupCoverageRow,
+  type MatchupCoverageResponse,
+} from "./matchups.js";
+
 export { subjectTypeSchema, parseMentionHandles, type SubjectType } from "./collaboration.js";
 
 export {
