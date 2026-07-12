@@ -242,6 +242,71 @@ export async function createFormat(
 }
 
 /**
+ * Deck fixtures (phase-03). Team-owned, link-only (ADR-0002). A deck needs a
+ * `teamId`, the team's `gameId`, a `formatId`, and an `ownerId`; everything else
+ * has a sensible default so isolation tests can create a deck in one call.
+ */
+
+export interface CreateDeckOptions {
+  teamId: string;
+  ownerId: string;
+  formatId: string;
+  gameId?: string;
+  heroId?: string | null;
+  name?: string;
+  externalUrl?: string;
+  source?: string;
+  status?: "exploratory" | "testing" | "tournament_ready" | "retired";
+  visibility?: "team" | "private";
+  isReference?: boolean;
+  tags?: string[];
+  notes?: string;
+  archivedAt?: Date | null;
+}
+
+export interface TestDeck {
+  id: string;
+  teamId: string;
+  ownerId: string;
+  name: string;
+  status: string;
+  visibility: string;
+}
+
+export async function createDeck(
+  prisma: PrismaClient,
+  options: CreateDeckOptions,
+): Promise<TestDeck> {
+  const suffix = randomUUID().slice(0, 8);
+  const created = await prisma.deck.create({
+    data: {
+      teamId: options.teamId,
+      ownerId: options.ownerId,
+      formatId: options.formatId,
+      gameId: options.gameId ?? "flesh-and-blood",
+      heroId: options.heroId ?? null,
+      name: options.name ?? `Deck ${suffix}`,
+      externalUrl: options.externalUrl ?? `https://fabrary.net/decks/${suffix}`,
+      source: options.source ?? "fabrary",
+      status: options.status ?? "exploratory",
+      visibility: options.visibility ?? "team",
+      isReference: options.isReference ?? false,
+      tags: options.tags ?? [],
+      notes: options.notes ?? "",
+      archivedAt: options.archivedAt ?? null,
+    },
+  });
+  return {
+    id: created.id,
+    teamId: created.teamId,
+    ownerId: created.ownerId,
+    name: created.name,
+    status: created.status,
+    visibility: created.visibility,
+  };
+}
+
+/**
  * The canonical two-team world for isolation tests: an instance-admin, plus
  * team A (with a team-admin and a member) and team B (with its own member).
  * `memberA` belongs only to team A and must never be able to reach team B.

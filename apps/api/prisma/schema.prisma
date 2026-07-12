@@ -66,11 +66,13 @@ model User {
   discordUserId   String? @unique @map("discord_user_id")
   discordUsername String? @map("discord_username")
 
-  sessions     Session[]
-  accounts     Account[]
-  twoFactors   TwoFactor[]
-  memberships  TeamMembership[]
-  inviteTokens InviteToken[]
+  sessions             Session[]
+  accounts             Account[]
+  twoFactors           TwoFactor[]
+  memberships          TeamMembership[]
+  inviteTokens         InviteToken[]
+  ownedDecks           Deck[]
+  deckIterationEntries DeckIterationEntry[]
 
   @@map("user")
 }
@@ -157,6 +159,7 @@ model Team {
   archivedAt DateTime? @map("archived_at")
 
   memberships TeamMembership[]
+  decks       Deck[]
 
   @@index([gameId])
   @@map("team")
@@ -223,6 +226,7 @@ model Game {
   heroes          Hero[]
   cards           Card[]
   cardDataVersion CardDataVersion?
+  decks           Deck[]
 
   @@map("game")
 }
@@ -239,7 +243,8 @@ model Format {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  game  Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  decks Deck[]
 
   @@unique([gameId, key])
   @@index([gameId])
@@ -261,7 +266,8 @@ model Hero {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  game  Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  decks Deck[]
 
   @@unique([gameId, externalId])
   @@index([gameId, name])
@@ -304,4 +310,82 @@ model CardDataVersion {
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
   @@map("card_data_version")
+}
+
+// ---------------------------------------------------------------------------
+// Decks (phase-03). Team-owned, link-only (ADR-0002): a deck is a hero/format +
+// external link + metadata plus a manual prose iteration log — there is NO stored
+// card list. Every row carries a non-null teamId and is scoped to the active team
+// server-side (multi-tenancy.md). See docs/architecture/data-model.md and
+// docs/features/decks.md.
+// ---------------------------------------------------------------------------
+
+/// A deck's position in its testing lifecycle. Transitions are validated
+/// server-side (see docs/features/decks.md); `retired` is a reopenable terminal.
+enum DeckStatus {
+  exploratory
+  testing
+  tournament_ready
+  retired
+}
+
+/// `team` = visible to all members; `private` = a personal draft visible only to
+/// its owner and moderating team-admins.
+enum DeckVisibility {
+  team
+  private
+}
+
+/// A team's deck: a link to an external list (Fabrary, etc.) plus structured,
+/// aggregable metadata. `source` is the recognized link provider (URL-pattern
+/// recognition only, never a content fetch). `isReference` marks an opponent/meta
+/// archetype used by gauntlets. Soft-deleted via `archivedAt` so history survives.
+model Deck {
+  id          String         @id @default(cuid())
+  teamId      String         @map("team_id")
+  name        String
+  gameId      String         @map("game_id")
+  formatId    String         @map("format_id")
+  heroId      String?        @map("hero_id")
+  externalUrl String         @map("external_url")
+  source      String
+  ownerId     String         @map("owner_id")
+  status      DeckStatus     @default(exploratory)
+  visibility  DeckVisibility @default(team)
+  isReference Boolean        @default(false) @map("is_reference")
+  tags        String[]
+  notes       String         @default("")
+  archivedAt  DateTime?      @map("archived_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  game   Game   @relation(fields: [gameId], references: [id])
+  format Format @relation(fields: [formatId], references: [id])
+  hero   Hero?  @relation(fields: [heroId], references: [id])
+  owner  User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  iterationEntries DeckIterationEntry[]
+
+  @@index([teamId])
+  @@index([teamId, status])
+  @@index([teamId, heroId])
+  @@index([teamId, formatId])
+  @@map("deck")
+}
+
+/// One append-only entry in a deck's iteration log (a prose changelog line, e.g.
+/// "-2 X, +2 Y after the event"). There is no stored card list or computed diff.
+model DeckIterationEntry {
+  id        String   @id @default(cuid())
+  deckId    String   @map("deck_id")
+  authorId  String   @map("author_id")
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  deck   Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([deckId, createdAt])
+  @@map("deck_iteration_entry")
 }
