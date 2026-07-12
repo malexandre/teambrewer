@@ -74,7 +74,7 @@ Update as phases complete.
 | 03 | Decks | ✅ done |
 | 04 | Collaboration Core | ✅ done |
 | 05 | Events & Gauntlets | ✅ done |
-| 06 | Game Logging | ⛔ not started |
+| 06 | Game Logging | ✅ done |
 | 07 | Matchups & Coverage | ⛔ not started |
 | 08 | Testing Queue | ⛔ not started |
 | 09 | Game-Plans & Deck Selection | ⛔ not started |

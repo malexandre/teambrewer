@@ -90,8 +90,31 @@ toggle + roster), create/edit form, team-scoped hooks. **Decision (with the user
 to record it. **Post-phase follow-up (with the user):** events were then retrofitted onto the collaboration
 subsystem — `event` is a commentable subject (`EventSubjectResolver`), the hub renders the shared
 `CommentThread` + `ActivityFeed`, and create/update/status-change emit `event_created`/`event_updated`/
-`event_status_changed` activity (shared `subjectType`/`activityVerb` enums extended). Next: **phase-06 (game
-logging)** — pick it up per [`docs/plans/`](docs/plans/README.md).
+`event_status_changed` activity (shared `subjectType`/`activityVerb` enums extended).
+
+**Phase-06 (game logging) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 271 API +
+176 shared + 38 web unit/integration tests + 5 e2e journeys): the **`GameLog`** as the confidence-weighted
+source of truth for every matchup aggregate (ADR-0005, finalized this phase). The signature decision is the
+**confidence-weight model** — four 3-level factor enums (`skillParity`/`seriousness`/`deckMaturity`/
+`pilotFamiliarity`) each mapping to a `1.0`/`0.7`/`0.4` sub-score, combined by the pure
+**`deriveConfidenceWeight`** (in `packages/shared`, so the API derives it authoritatively and the web form
+previews it live) as a **weighted mean** (`0.35`/`0.25`/`0.25`/`0.15`); all-best → `1.0`, all-worst → the
+documented `0.40` floor, always within `[0,1]`, locked by table-driven tests. Backend `GameLogsModule` —
+team-scoped CRUD, `sideA` (our pilot+deck) / `sideB` (teammate **or** external opponent via exactly one of
+reference deck / hero / archetype), result↔best-of consistency, cross-team deck/event + cross-game
+format/hero FK rejection, logger/team-admin ownership (404-before-403), `archivedAt` soft-delete, keyset
+pagination + filters (`formatId`/`eventId`/`deckId`/`heroId`/`pilotUserId`, matching either side); the
+`GameLog` model + migration (`gameLog` added to `TEAM_OWNED_MODELS`); and the collaboration retrofit
+(`game_log` subject + `game_log_created`/`game_log_updated` activity). Endpoints `GET/POST /api/game-logs`,
+`GET/PATCH/DELETE /api/game-logs/:gameLogId`. Frontend `game-logging` feature — the **fast mobile logging
+form** (deck + opponent-kind pickers, big result buttons / games-won steppers, confidence factors as
+segmented controls pre-filled with defaults, a live "counts as ~0.78" hint, optional details behind a
+disclosure), the list + the detail hub (matchup, weight + factors, shared `CommentThread` + `ActivityFeed`).
+**Decisions (with the user):** the weight combination is a weighted mean and `deriveConfidenceWeight` lives
+in `packages/shared`; trust-indicator buckets are deferred to phase-07. **Notes:** result/best-of and
+sideB-identity violations surface as `400` at the schema boundary (the events convention; DB-dependent
+domain rules stay `422`); the game-logging e2e runs on a **phone-viewport Playwright project**. Next:
+**phase-07 (matchups & coverage)** — pick it up per [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 

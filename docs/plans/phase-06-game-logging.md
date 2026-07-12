@@ -68,27 +68,27 @@ game**, the logging form must be fast: pickers, autocomplete, sensible defaults,
 
 ## Task checklist (test-first, ordered)
 
-- [ ] Write the **table-driven** failing unit tests for `deriveConfidenceWeight`: enumerate factor
+- [x] Write the **table-driven** failing unit tests for `deriveConfidenceWeight`: enumerate factor
       combinations → expected weight; assert every output is within `[0,1]`; assert the "all-best" and
       "all-worst" boundary combinations. Then implement the function to pass.
-- [ ] Write failing Zod schema tests for `GameLog` create/update (valid + invalid: bad `result`/`bestOf`
+- [x] Write failing Zod schema tests for `GameLog` create/update (valid + invalid: bad `result`/`bestOf`
       pairing, sideB with zero/conflicting opponent identifiers, missing sideA pilot/deck), then add the
       schemas.
-- [ ] Add the Prisma `GameLog` model + migration; run `pnpm --filter api prisma migrate dev`.
-- [ ] Write a failing integration test proving a **client-supplied `confidenceWeight` is ignored** and the
+- [x] Add the Prisma `GameLog` model + migration; run `pnpm --filter api prisma migrate dev`.
+- [x] Write a failing integration test proving a **client-supplied `confidenceWeight` is ignored** and the
       server-derived value is stored, then implement the create path.
-- [ ] Write failing integration tests for CRUD, filtering (`?formatId=&eventId=&deckId=&heroId=&pilotUserId=`),
+- [x] Write failing integration tests for CRUD, filtering (`?formatId=&eventId=&deckId=&heroId=&pilotUserId=`),
       and re-derivation on factor edit, then implement.
-- [ ] Write failing **cross-team FK** tests (a `GameLog` referencing a team-B deck or event is rejected),
+- [x] Write failing **cross-team FK** tests (a `GameLog` referencing a team-B deck or event is rejected),
       then enforce the same-`teamId` check in the service.
-- [ ] Write failing **tenant-isolation** tests (team A cannot read/write team B's logs; forged `teamId`;
+- [x] Write failing **tenant-isolation** tests (team A cannot read/write team B's logs; forged `teamId`;
       cross-tenant read → `404`) and **AuthZ** tests (unauthenticated → `401`; editing another member's log
       without admin → `403`), then confirm.
-- [ ] Write failing component tests for the logging form (defaults applied, result/best-of consistency,
+- [x] Write failing component tests for the logging form (defaults applied, result/best-of consistency,
       opponent-identifier selection), then build the mobile form.
-- [ ] Wire the frontend to the API with team-scoped TanStack Query keys; show the derived-weight hint after
+- [x] Wire the frontend to the API with team-scoped TanStack Query keys; show the derived-weight hint after
       save.
-- [ ] Update [README.md](README.md) status table and cross-links.
+- [x] Update [README.md](README.md) status table and cross-links.
 
 ## Tests & verification
 
