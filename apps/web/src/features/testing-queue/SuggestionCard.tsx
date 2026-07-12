@@ -1,6 +1,9 @@
 import type { CardTestSuggestion, CardTestSuggestionStatus } from "@teambrewer/shared";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
+import { CommentThread } from "@/features/collaboration/CommentThread";
 
 import { SuggestionStatusControl } from "./SuggestionStatusControl";
 import { cardSwapSummary } from "./testing-queue-display";
@@ -23,6 +26,7 @@ export function SuggestionCard({
 }) {
   const updateSuggestion = useUpdateSuggestion(teamId, suggestion.id);
   const archiveSuggestion = useArchiveSuggestion(teamId, suggestion.id);
+  const [showDiscussion, setShowDiscussion] = useState(false);
 
   function changeStatus(next: CardTestSuggestionStatus, resolutionNote?: string) {
     updateSuggestion.mutate({ status: next, ...(resolutionNote ? { resolutionNote } : {}) });
@@ -67,6 +71,33 @@ export function SuggestionCard({
           >
             Archive
           </Button>
+        </div>
+      ) : null}
+
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="self-start"
+        aria-expanded={showDiscussion}
+        onClick={() => setShowDiscussion((open) => !open)}
+      >
+        {showDiscussion ? "Hide discussion" : "Discussion"}
+      </Button>
+
+      {showDiscussion ? (
+        <div className="flex flex-col gap-4 border-t border-input pt-2">
+          <CommentThread
+            teamId={teamId}
+            subjectType="card_test_suggestion"
+            subjectId={suggestion.id}
+            canComment
+          />
+          <ActivityFeed
+            teamId={teamId}
+            filters={{ subjectType: "card_test_suggestion", subjectId: suggestion.id }}
+            title="Suggestion activity"
+          />
         </div>
       ) : null}
     </article>
