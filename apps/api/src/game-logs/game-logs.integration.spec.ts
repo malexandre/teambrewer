@@ -445,6 +445,61 @@ describe("Game-log endpoints (integration)", () => {
       const read = await asMemberB(http().get(`/api/game-logs/${created.body.id}`));
       expect(read.status).toBe(404);
     });
+
+    it("blocks a cross-tenant PATCH carrying a card array (404, no card write)", async () => {
+      const card = await prisma.card.create({
+        data: {
+          gameId: "flesh-and-blood",
+          externalId: "c-cross",
+          name: "Cross Tenant Card",
+          pitch: 1,
+        },
+      });
+      const created = await asMemberA(http().post("/api/game-logs")).send(validGame());
+
+      // memberB (team B) hits team A's log with a card-array payload: the 404
+      // must fire before the card-write path ever runs.
+      const response = await asMemberB(http().patch(`/api/game-logs/${created.body.id}`)).send({
+        impressiveCards: [{ cardId: card.id, side: "ours" }],
+      });
+      expect(response.status).toBe(404);
+
+      const persistedCards = await prisma.gameLogCard.findMany({
+        where: { gameLogId: created.body.id },
+      });
+      expect(persistedCards).toHaveLength(0);
+    });
+
+    it("replaces only the targeted role, leaving the other role's cards untouched", async () => {
+      const cardA = await prisma.card.create({
+        data: { gameId: "flesh-and-blood", externalId: "c-role-a", name: "Card A", pitch: 1 },
+      });
+      const cardB = await prisma.card.create({
+        data: { gameId: "flesh-and-blood", externalId: "c-role-b", name: "Card B", pitch: 2 },
+      });
+      const cardC = await prisma.card.create({
+        data: { gameId: "flesh-and-blood", externalId: "c-role-c", name: "Card C", pitch: 3 },
+      });
+      const created = await asMemberA(http().post("/api/game-logs")).send({
+        ...validGame(),
+        impressiveCards: [{ cardId: cardA.id, side: "ours" }],
+        underperformingCards: [{ cardId: cardB.id, side: "theirs" }],
+      });
+
+      // Only underperformingCards is sent; impressiveCards is omitted entirely.
+      const updated = await asMemberA(http().patch(`/api/game-logs/${created.body.id}`)).send({
+        underperformingCards: [{ cardId: cardC.id, side: "ours" }],
+      });
+
+      expect(updated.status).toBe(200);
+      expect(updated.body.underperformingCards).toEqual([
+        expect.objectContaining({ side: "ours", card: expect.objectContaining({ id: cardC.id }) }),
+      ]);
+      // impressiveCards must be exactly what was created, untouched by the update.
+      expect(updated.body.impressiveCards).toEqual([
+        expect.objectContaining({ side: "ours", card: expect.objectContaining({ id: cardA.id }) }),
+      ]);
+    });
   });
 
   describe("DELETE /api/game-logs/:id", () => {

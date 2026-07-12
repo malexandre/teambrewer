@@ -457,7 +457,36 @@ export class GameLogsService {
       ...impressive.map((entry) => ({ ...entry, role: "impressive" as const })),
       ...underperforming.map((entry) => ({ ...entry, role: "underperforming" as const })),
     ];
-    for (const entry of all) {
+    await this.assertCardsInGame(gameId, all);
+    return all;
+  }
+
+  /** Replace the captured cards for one role on a log (validated against the game). */
+  private async replaceCapturedCards(
+    gameLogId: string,
+    gameId: string,
+    role: "impressive" | "underperforming",
+    cards: { cardId: string; side: "ours" | "theirs" }[],
+  ): Promise<void> {
+    await this.assertCardsInGame(gameId, cards);
+    // gameLogCard is reached only through its team-scoped parent; scope by the
+    // parent id (already confirmed visible by loadModifiableGameLog above).
+    await this.scoped.db.gameLogCard.deleteMany({ where: { gameLogId, role } });
+    if (cards.length > 0) {
+      await this.scoped.db.gameLogCard.createMany({
+        data: cards.map((entry) => ({
+          gameLogId,
+          cardId: entry.cardId,
+          role,
+          side: entry.side,
+        })),
+      });
+    }
+  }
+
+  /** Shared per-card game-validation used by both the create and update card paths (→ 422). */
+  private async assertCardsInGame(gameId: string, entries: { cardId: string }[]): Promise<void> {
+    for (const entry of entries) {
       // `card` is a global model; the scoping proxy passes this query through
       // untouched (matching assertHeroInGame), filtered explicitly by the team's game.
       const card = await this.scoped.db.card.findFirst({
@@ -472,43 +501,6 @@ export class GameLogsService {
           },
         });
       }
-    }
-    return all;
-  }
-
-  /** Replace the captured cards for one role on a log (validated against the game). */
-  private async replaceCapturedCards(
-    gameLogId: string,
-    gameId: string,
-    role: "impressive" | "underperforming",
-    cards: { cardId: string; side: "ours" | "theirs" }[],
-  ): Promise<void> {
-    for (const entry of cards) {
-      const card = await this.scoped.db.card.findFirst({
-        where: { id: entry.cardId, gameId },
-        select: { id: true },
-      });
-      if (!card) {
-        throw new UnprocessableEntityException({
-          error: {
-            code: errorCode.domainRuleViolation,
-            message: "A captured card does not belong to this team's game.",
-          },
-        });
-      }
-    }
-    // gameLogCard is reached only through its team-scoped parent; scope by the
-    // parent id (already confirmed visible by loadModifiableGameLog above).
-    await this.scoped.db.gameLogCard.deleteMany({ where: { gameLogId, role } });
-    if (cards.length > 0) {
-      await this.scoped.db.gameLogCard.createMany({
-        data: cards.map((entry) => ({
-          gameLogId,
-          cardId: entry.cardId,
-          role,
-          side: entry.side,
-        })),
-      });
     }
   }
 
