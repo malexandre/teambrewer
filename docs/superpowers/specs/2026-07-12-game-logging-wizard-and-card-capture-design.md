@@ -1,7 +1,7 @@
 # Game Logging v2 — Wizard, game-driven defaults, and card capture
 
 - **Date:** 2026-07-12
-- **Status:** Approved (design)
+- **Status:** Implemented (2026-07-12)
 - **Type:** Additive follow-up to phase-06 (game logging), built on its own feature branch.
 - **Builds on:** [phase-06-game-logging](../../plans/phase-06-game-logging.md),
   [ADR-0005](../../decisions/0005-confidence-weight-model.md),

@@ -113,8 +113,19 @@ disclosure), the list + the detail hub (matchup, weight + factors, shared `Comme
 **Decisions (with the user):** the weight combination is a weighted mean and `deriveConfidenceWeight` lives
 in `packages/shared`; trust-indicator buckets are deferred to phase-07. **Notes:** result/best-of and
 sideB-identity violations surface as `400` at the schema boundary (the events convention; DB-dependent
-domain rules stay `422`); the game-logging e2e runs on a **phone-viewport Playwright project**. Next:
-**phase-07 (matchups & coverage)** — pick it up per [`docs/plans/`](docs/plans/README.md).
+domain rules stay `422`); the game-logging e2e runs on a **phone-viewport Playwright project**.
+**Post-phase follow-up (game-logging v2, on branch `feat/game-logging-wizard`):** the single-screen form was
+replaced by a **`GameLogWizard`** — a 3-step fast path (matchup → result → confidence, with its live "counts
+as ~0.XX" hint and the primary **Log game** button) plus an optional step 4 for notes and card capture, used
+on every viewport, reusing the same wizard for edit. The pre-selected `bestOf` is now **game-driven**: a new
+`readonly defaultBestOf: BestOf` on the `GameAdapter` (FaB → `1`) resolved through the new team-scoped
+**`GET /api/game-config`** seam (`{ gameId, identityLabel, defaultBestOf }`, shared `gameConfigSchema`) that
+the wizard reads via `useGameConfig`; `bestOf` itself stays a required, client-supplied field. Logs can also
+capture optional **impressive/underperforming cards**, each tagged ours/theirs, via the new
+**`GameLogCard`** model (scoped transitively through its parent `GameLog`, like `Attendance` on `Event`) and
+`impressiveCards[]`/`underperformingCards[]` on create/update (update replaces the set per role); cross-game
+`cardId` is rejected. Next: **phase-07 (matchups & coverage)** — pick it up per
+[`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 

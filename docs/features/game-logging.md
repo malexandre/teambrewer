@@ -13,6 +13,10 @@ identified by name, deck, hero, or archetype), the result, and the confidence fa
 [`confidence-and-matchups.md`](confidence-and-matchups.md); the factor→weight model is defined by
 [ADR-0005](../decisions/0005-confidence-weight-model.md).
 
+Logging is a short **wizard** (a fast 3-step path plus an optional 4th step) rather than a single long
+form, and a log can optionally capture which **cards over- or under-performed**, each tagged as ours or
+theirs — see [UI / UX](#ui--ux) and [Data](#data) below.
+
 ## Goals & value
 
 - Make logging so fast that people actually do it — the value of matchup data depends on volume.
@@ -60,6 +64,13 @@ Uses **GameLog** from [data-model.md](../architecture/data-model.md#game-logging
 - **winType? / lossReason?** — optional tags (e.g. won on time, decked out, misplay); free-text
   `learnings`. These are captured but **do not affect the weight**.
 
+**GameLogCard** `{ id, gameLogId, cardId, role: 'impressive' | 'underperforming', side: 'ours' | 'theirs' }`
+(see [data-model.md](../architecture/data-model.md#game-logging--matchups)) — an optional set of card
+references captured per log: which cards over- or under-performed, each tagged by side. Scoped transitively
+through its parent `GameLog` (no `teamId` of its own), the same pattern as `Attendance` on `Event`. This is
+a per-game observation, not durable matchup knowledge — "cards to watch for vs archetype X" is out of scope
+here and belongs to phase-09's `MatchupGamePlan.keyCards[]`.
+
 ## Behavior & rules
 
 - **confidenceWeight is always derived server-side** from `confidenceFactors` using the single, well-tested
@@ -76,6 +87,12 @@ Uses **GameLog** from [data-model.md](../architecture/data-model.md#game-logging
   Editing confidence factors re-derives the weight and thus affects aggregates. See
   [multi-tenancy §Roles](../architecture/multi-tenancy.md#roles--capabilities).
 - **Soft-delete:** archived via `archivedAt`; excluded from aggregates but retained for history.
+- **Captured cards:** `cardId` is validated against the team's game (cross-game card → `422`). On update,
+  the impressive/underperforming arrays each **replace** the existing set for that role — the wizard always
+  sends "the current set", not a delta.
+- **Best-of default is game-driven:** the wizard pre-selects `bestOf` from `GET /api/game-config` (Flesh and
+  Blood: `1`); `bestOf` itself stays a required, client-supplied field on create — the game config only
+  seeds the initial selection, never a silent server-side default.
 
 ## API surface
 
@@ -90,24 +107,37 @@ context.
 | `PATCH` | `/api/game-logs/:gameLogId` | Edit (re-derives `confidenceWeight` if factors change) |
 | `DELETE` | `/api/game-logs/:gameLogId` | Archive (soft-delete) |
 
+`POST`/`PATCH` accept optional `impressiveCards[]` / `underperformingCards[]` (each `{ cardId, side }`);
+`GET .../:gameLogId` nests them back as `{ card: <card summary>, side }` per role. The team-scoped
+`GET /api/game-config` (used by the wizard, not by game-logs itself) is documented in
+[game-abstraction.md](../architecture/game-abstraction.md).
+
 Request/response bodies validate against Zod schemas in `packages/shared`; `confidenceWeight` appears only
 in responses.
 
 ## UI / UX
 
-- **Mobile-first, fast logging form** — the signature UX requirement. Optimized for one-handed use right
-  after a game:
-  - Big result buttons (Win / Loss / Draw or a games-won stepper for matches).
-  - **My deck** and **opponent hero/deck** via autocomplete pickers (name + pitch for cards; hero list
-    from the adapter); recent decks/heroes surfaced first.
-  - Confidence factors as compact segmented controls, **pre-filled with defaults** — visible but requiring
-    zero taps to accept.
-  - Optional fields (`learnings`, `winType`/`lossReason`, `eventId`) collapsed behind a "more details"
-    disclosure so the fast path stays short.
-  - First/second player toggle; best-of selector.
+- **A short wizard, not one long form** — the signature UX requirement, used on every viewport (mobile-first;
+  desktop renders the same steps centered and roomier). A `GameLogWizard` owns all form state; each step is
+  a small, independently-testable child. A header shows a **"Step N of 3"** indicator with **Back**/**Next**;
+  **Next** validates the current step before advancing. Only the three core steps count toward the
+  indicator — step 4 is an optional appendix, so a fast log always reads "of 3". Edit mode reuses the same
+  wizard, seeded from the existing log; step 4 opens by default on edit if the log already has notes/cards.
+  - **Step 1 · Matchup** — format; my deck; opponent (kind switcher → hero / teammate / archetype /
+    reference deck, revealing the matching control). Validates format + deck + opponent identified.
+  - **Step 2 · Result** — best-of (pre-selected from the team's game via `GET /api/game-config`); who went
+    first; Win/Loss/Draw for a single game, or games-won steppers for a match. Validates result-vs-best-of
+    consistency.
+  - **Step 3 · Confidence** — the four segmented confidence factors, **pre-filled with defaults**, plus the
+    live "counts as ~0.XX" hint and the primary **Log game** button — the fast finish; a fast log is three
+    steps and zero required taps on the factors.
+  - **Step 4 · Notes & cards (optional)** — reached via "Add notes & cards" from step 3, or skipped entirely.
+    Holds impressive cards, underperforming cards (each added via `CardPicker` and tagged ours/theirs),
+    `learnings`, `winType`/`lossReason`, `eventId`, opponent pilot/name. Has its own **Save**.
 - Minimal free typing overall; card/hero references support a **hover/press image preview** of the card.
 - Show the **derived confidence weight** back to the logger after save (a small "this game counts as ~0.7"
-  hint), reinforcing the model without asking them to compute it.
+  hint), reinforcing the model without asking them to compute it; the detail hub also renders any captured
+  impressive/underperforming cards, tagged ours/theirs.
 
 ## Tenancy & permissions
 
@@ -139,10 +169,15 @@ Follow [testing-strategy.md](../architecture/testing-strategy.md).
 - **Validation:** `result` inconsistent with `bestOf` rejected; sideB with zero or conflicting opponent
   identifiers rejected; missing sideA pilot/deck rejected.
 - **Tenant isolation:** a user in team A cannot read/write team B's game logs; a log cannot reference a
-  deck or event from another team.
+  deck or event from another team; a cross-tenant log's captured cards are never reachable (the
+  `GameLogCard` parent-scoping pattern is explicitly proven, not assumed).
 - **AuthZ:** unauthenticated → `401`; editing another member's log without admin role → `403`.
 - **Aggregation feed:** a crafted set of logs produces the expected inputs consumed by
   [`confidence-and-matchups.md`](confidence-and-matchups.md) (raw N and Σ weights).
+- **Card capture:** a cross-game `cardId` is rejected (`422`); update replaces the captured set per role;
+  each wizard step renders, validates, and navigates correctly (mocked `GET /api/game-config` for the
+  best-of default); the phone-viewport e2e walks the 3-step fast path, then a second run opens step 4,
+  adds an impressive card, and sees it on the detail hub.
 
 ## Out of scope
 
@@ -151,6 +186,9 @@ Follow [testing-strategy.md](../architecture/testing-strategy.md).
 - The exact factor→weight combination formula — owned by
   [ADR-0005](../decisions/0005-confidence-weight-model.md) (finalized in phase-06).
 - Importing results from external match-trackers; deck card-list capture (decks are links).
+- **"Cards to look out for vs archetype X"** — durable matchup knowledge, owned by phase-09's
+  `MatchupGamePlan.keyCards[]`, not a per-game observation. "Try card X" tech ideas remain phase-08's
+  `CardTestSuggestion`.
 
 ## See also
 
@@ -164,4 +202,7 @@ Follow [testing-strategy.md](../architecture/testing-strategy.md).
   [`events-and-gauntlets.md`](events-and-gauntlets.md) · [`decks.md`](decks.md) ·
   [`card-database.md`](card-database.md)
 - Implementing phase: [`phase-06-game-logging.md`](../plans/phase-06-game-logging.md)
+- Wizard + card-capture design:
+  [`2026-07-12-game-logging-wizard-and-card-capture-design.md`](../superpowers/specs/2026-07-12-game-logging-wizard-and-card-capture-design.md)
+- [game-abstraction.md](../architecture/game-abstraction.md) (`defaultBestOf`, `GET /api/game-config`)
 </content>

@@ -18,6 +18,7 @@ behind an interface keeps the core clean and makes adding a game a contained job
 |---|---|
 | Identity concept & label ("Hero" vs "Legend") | Deck as `{ identity, format, link, metadata }` |
 | Format list & metadata (CC, Blitz… vs Riftbound formats) | Event / gauntlet / expected-metagame structure |
+| Default best-of a new game log pre-selects (FaB Bo1 vs Riftbound Bo3) | Game logging + confidence model |
 | Card schema mapping (pitch, cost… vs might, domain…) | Game logging + confidence model |
 | Card data source + sync mapping | Matchup aggregation math |
 | Identity/faction/affinity constraints (display only) | Testing queue, game-plans, collaboration, knowledge |
@@ -32,6 +33,7 @@ interface GameAdapter {
   key: 'flesh_and_blood' | 'riftbound'
   displayName: string
   identityLabel: string            // "Hero" | "Legend"
+  defaultBestOf: BestOf             // the best-of a new game log pre-selects (FaB: 1, Riftbound: 3)
 
   listFormats(): FormatDefinition[] // core stores these as Format rows per game
 
@@ -52,6 +54,12 @@ interface GameAdapter {
   globally; teams read only their game's reference data.
 - Adapters live in the backend (e.g. `apps/api/src/games/flesh-and-blood/`, `.../riftbound/`) and expose
   any needed labels to the frontend via config/endpoints so the UI shows correct terms.
+- **`GET /api/game-config`** (team-scoped via `TeamContextGuard`) is the seam that exposes adapter-derived
+  config to the web: it resolves the adapter from the verified team's `gameId` and returns
+  `{ gameId, identityLabel, defaultBestOf }` (shared `gameConfigSchema` in `packages/shared`). Game logging's
+  wizard uses it to pre-select `bestOf`; this is also where the hardcoded "Hero"/"Format" labels will
+  eventually be replaced by `identityLabel`, once that wiring is done (not yet — see
+  [`game-logging.md`](../features/game-logging.md)).
 
 ## Guardrails
 
