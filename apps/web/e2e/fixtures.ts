@@ -74,6 +74,25 @@ export const E2E_GAMELOG_SETUP_TOKEN = "e2e-gamelog-setup-token";
 export const E2E_GAMELOG_DECK_NAME = "E2E Rhinar Aggro";
 
 /**
+ * A dedicated onboardable user for the matchups journey — independent of the other
+ * specs so they can run in parallel (each consumes its own single-use token).
+ * Belongs to both teams (alpha first → default active) to exercise matchup
+ * isolation across a team switch. The global-setup seeds this team a deck, an
+ * event with a gauntlet, and a couple of game logs so the matrix + coverage have
+ * real numbers without driving the (phone-oriented) logging wizard on desktop.
+ */
+export const E2E_MATCHUP_USER = {
+  id: "e2e-user-matchup",
+  username: "matchup_user",
+  displayName: "Matchup User",
+};
+export const E2E_MATCHUP_SETUP_TOKEN = "e2e-matchup-setup-token";
+/** The team deck seeded on alpha whose matchup vs the seeded hero the matrix shows. */
+export const E2E_MATCHUP_DECK_NAME = "E2E Matchup Deck";
+/** The event (with a gauntlet) seeded on alpha for the coverage tracker. */
+export const E2E_MATCHUP_EVENT_NAME = "E2E Matchup Cup";
+
+/**
  * Reference data for the specs. `formatName` comes from the network-free `db:seed`
  * (games + formats); `heroName` is a single hero the events e2e global-setup inserts
  * after the seed (heroes normally come from the network card sync, skipped in e2e).

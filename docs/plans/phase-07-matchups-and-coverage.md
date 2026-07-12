@@ -61,24 +61,24 @@ assigned to them. `GameLog` is the source of truth (materialization may come lat
 
 ## Task checklist (test-first, ordered)
 
-- [ ] Write failing unit tests for `trustIndicator(effectiveSample)` at each bucket boundary, then
+- [x] Write failing unit tests for `trustIndicator(effectiveSample)` at each bucket boundary, then
       implement the bucketing (lock the finalized ADR-0005 thresholds).
-- [ ] Write failing unit tests for `aggregateMatchup` using **crafted datasets → known expected**
+- [x] Write failing unit tests for `aggregateMatchup` using **crafted datasets → known expected**
       weighted win rate, raw N, and effective sample (include a small/low-weight sample that yields a high
       win rate but **low trust**), then implement the aggregation.
-- [ ] Write failing unit tests for **by-deck vs by-hero** grouping producing the correct partitions, then
+- [x] Write failing unit tests for **by-deck vs by-hero** grouping producing the correct partitions, then
       implement grouping.
-- [ ] Write failing unit tests for coverage threshold logic (which gauntlet matchups fall below a given
+- [x] Write failing unit tests for coverage threshold logic (which gauntlet matchups fall below a given
       sample/confidence threshold; ordering by normalized expected share), then implement.
-- [ ] Write failing integration tests for the matrix/detail/coverage endpoints (team-scoped queries,
+- [x] Write failing integration tests for the matrix/detail/coverage endpoints (team-scoped queries,
       format/event filters), then implement the service + controller.
-- [ ] Write failing **tenant-isolation** integration tests (team A's aggregates never include team B's
+- [x] Write failing **tenant-isolation** integration tests (team A's aggregates never include team B's
       `GameLog`s; cross-tenant event/deck ids → `404`), then confirm.
-- [ ] Write failing component tests for the matrix (raw N + trust always visible; mobile horizontal scroll)
+- [x] Write failing component tests for the matrix (raw N + trust always visible; mobile horizontal scroll)
       and the coverage tracker (threshold control changes the flagged set), then build the UI.
-- [ ] Wire the frontend with team-scoped TanStack Query keys; link coverage rows to assignments when
+- [x] Wire the frontend with team-scoped TanStack Query keys; link coverage rows to assignments when
       [phase-08-testing-queue.md](phase-08-testing-queue.md) exists.
-- [ ] Update [README.md](README.md) status table and cross-links.
+- [x] Update [README.md](README.md) status table and cross-links.
 
 ## Tests & verification
 

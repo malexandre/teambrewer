@@ -124,8 +124,27 @@ the wizard reads via `useGameConfig`; `bestOf` itself stays a required, client-s
 capture optional **impressive/underperforming cards**, each tagged ours/theirs, via the new
 **`GameLogCard`** model (scoped transitively through its parent `GameLog`, like `Attendance` on `Event`) and
 `impressiveCards[]`/`underperformingCards[]` on create/update (update replaces the set per role); cross-game
-`cardId` is rejected. Next: **phase-07 (matchups & coverage)** — pick it up per
-[`docs/plans/`](docs/plans/README.md).
+`cardId` is rejected.
+
+**Phase-07 (matchups & coverage) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 284
+API + 211 shared + 49 web unit/integration tests + 6 e2e journeys): the signature **confidence-weighted
+matchup reads**, derived read-only from `GameLog` (still the source of truth — no materialized table). The
+math is pure and single-sourced in `packages/shared` (`aggregateMatchup`, `trustIndicator`,
+`deriveGameOutcome`, coverage helpers) next to `deriveConfidenceWeight`: **weighted win rate**
+`Σ(w·win)/Σ(w)`, **raw N** (always shown), **effective sample** `Σ(w)`, and a **trust indicator**. Backend
+read-only **`MatchupsModule`** — `GET /api/matchups` (list), `/api/matchups/matrix` (our decks/heroes × the
+opponent field), `/api/matchups/coverage` (an event's gauntlet coverage) — reads team-scoped `GameLog`s via
+`TeamScopedPrisma`, groups **by deck** or **by hero**, resolves deck/hero identities, and validates
+`formatId`/`eventId`/`ourDeckId` (cross-tenant → 404, forged team → 403). Frontend **`matchups`** feature:
+the responsive `MatchupMatrix` (sticky first column + horizontal scroll; every cell shows rate + raw N + a
+trust badge, styled tentative below `high`), the `CoverageTracker` (thin gauntlet matchups ordered by
+normalized field share, with a threshold control), and scope selectors + a by-deck/by-hero toggle.
+**Decisions (with the user), recorded in ADR-0005:** a **draw** counts in raw N but is **excluded** from the
+weighted win rate and the effective sample; **trust thresholds** are `low <5 · medium 5–<15 · high ≥15`;
+coverage aggregates all relevant reps in the event's **format** against each target, flagging effective
+sample below a configurable threshold (default the `high` boundary). `firstPlayerSide` is data, not an
+aggregation axis (v1). Test assignments (`assignments: []`) arrive with phase-08. Next: **phase-08 (testing
+queue)** — pick it up per [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 

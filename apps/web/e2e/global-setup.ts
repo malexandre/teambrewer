@@ -18,6 +18,10 @@ import {
   E2E_GAMELOG_DECK_NAME,
   E2E_GAMELOG_SETUP_TOKEN,
   E2E_GAMELOG_USER,
+  E2E_MATCHUP_DECK_NAME,
+  E2E_MATCHUP_EVENT_NAME,
+  E2E_MATCHUP_SETUP_TOKEN,
+  E2E_MATCHUP_USER,
   E2E_ONBOARDING_USER,
   E2E_REFERENCE,
   E2E_SETUP_TOKEN,
@@ -101,6 +105,11 @@ async function seed(databaseUrl: string): Promise<void> {
     await addMembership(E2E_TEAMS.alpha.id, E2E_GAMELOG_USER.id);
     await addMembership(E2E_TEAMS.bravo.id, E2E_GAMELOG_USER.id);
 
+    // The matchups user also belongs to both teams (alpha first -> default active).
+    await insertUser(E2E_MATCHUP_USER.id, E2E_MATCHUP_USER.username, E2E_MATCHUP_USER.displayName);
+    await addMembership(E2E_TEAMS.alpha.id, E2E_MATCHUP_USER.id);
+    await addMembership(E2E_TEAMS.bravo.id, E2E_MATCHUP_USER.id);
+
     // Two collaboration teammates on alpha only (mentions resolve within a team).
     await insertUser(
       E2E_COLLAB_AUTHOR.id,
@@ -119,6 +128,7 @@ async function seed(databaseUrl: string): Promise<void> {
     await insertSetupToken(E2E_DECKS_USER.id, E2E_DECKS_SETUP_TOKEN);
     await insertSetupToken(E2E_EVENTS_USER.id, E2E_EVENTS_SETUP_TOKEN);
     await insertSetupToken(E2E_GAMELOG_USER.id, E2E_GAMELOG_SETUP_TOKEN);
+    await insertSetupToken(E2E_MATCHUP_USER.id, E2E_MATCHUP_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_AUTHOR.id, E2E_COLLAB_AUTHOR_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_MENTIONED.id, E2E_COLLAB_MENTIONED_SETUP_TOKEN);
   } finally {
@@ -202,6 +212,88 @@ async function seedGameLogCard(databaseUrl: string): Promise<void> {
   }
 }
 
+/**
+ * Seed the matchups journey's data on alpha: a team deck, an event with a two-target
+ * gauntlet (the seeded hero + an archetype label), and two logged wins of our deck
+ * vs the seeded hero. That gives the matrix a real cell (100% · N=2 · low trust) and
+ * the coverage tracker an under-tested target, without driving the logging wizard.
+ */
+async function seedMatchups(databaseUrl: string): Promise<void> {
+  const client = new Client({ connectionString: databaseUrl });
+  await client.connect();
+  try {
+    const now = new Date().toISOString();
+    const format = await client.query<{ id: string }>(
+      `SELECT id FROM "format" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
+      [E2E_REFERENCE.formatName],
+    );
+    const formatId = format.rows[0]?.id;
+    const hero = await client.query<{ id: string }>(
+      `SELECT id FROM "hero" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
+      [E2E_REFERENCE.heroName],
+    );
+    const heroId = hero.rows[0]?.id;
+    if (!formatId || !heroId) {
+      throw new Error("Expected the seeded format + hero to exist for the matchups journey.");
+    }
+
+    const deckId = randomUUID();
+    await client.query(
+      `INSERT INTO "deck"
+         (id, team_id, name, game_id, format_id, external_url, source, owner_id,
+          status, visibility, is_reference, tags, notes, updated_at)
+       VALUES ($1,$2,$3,'flesh-and-blood',$4,$5,'fabrary',$6,
+          'testing','team',false, ARRAY[]::text[], '', $7)`,
+      [
+        deckId,
+        E2E_TEAMS.alpha.id,
+        E2E_MATCHUP_DECK_NAME,
+        formatId,
+        "https://fabrary.net/decks/e2e-matchup",
+        E2E_MATCHUP_USER.id,
+        now,
+      ],
+    );
+
+    const eventId = randomUUID();
+    await client.query(
+      `INSERT INTO "event"
+         (id, team_id, name, format_id, date, importance, description, status, updated_at)
+       VALUES ($1,$2,$3,$4,$5,'regional','','upcoming',$6)`,
+      [eventId, E2E_TEAMS.alpha.id, E2E_MATCHUP_EVENT_NAME, formatId, now, now],
+    );
+    // Two gauntlet targets: the seeded hero (which our logs cover, thinly) and an
+    // archetype label (fully untested) — both read as under-covered by default.
+    await client.query(
+      `INSERT INTO "gauntlet_entry"
+         (id, event_id, team_id, hero_id, expected_meta_share, notes, updated_at)
+       VALUES ($1,$2,$3,$4,40,'',$5)`,
+      [randomUUID(), eventId, E2E_TEAMS.alpha.id, heroId, now],
+    );
+    await client.query(
+      `INSERT INTO "gauntlet_entry"
+         (id, event_id, team_id, archetype_label, expected_meta_share, notes, updated_at)
+       VALUES ($1,$2,$3,'Aggro Red',60,'',$4)`,
+      [randomUUID(), eventId, E2E_TEAMS.alpha.id, now],
+    );
+
+    // Two wins of our deck vs the seeded hero (Bo1), full confidence weight.
+    for (let index = 0; index < 2; index += 1) {
+      await client.query(
+        `INSERT INTO "game_log"
+           (id, team_id, logged_by_id, format_id, played_at, pilot_user_id, deck_id, hero_id,
+            first_player_side, best_of, games_won_a, games_won_b, learnings,
+            skill_parity, seriousness, deck_maturity, pilot_familiarity, confidence_weight, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$3,$6,$7,'A',1,1,0,'',
+            'evenly_matched','tournament_serious','both_tuned','knows_well',1,$5)`,
+        [randomUUID(), E2E_TEAMS.alpha.id, E2E_MATCHUP_USER.id, formatId, now, deckId, heroId],
+      );
+    }
+  } finally {
+    await client.end();
+  }
+}
+
 async function waitForHealth(timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -259,6 +351,9 @@ export default async function globalSetup(): Promise<void> {
 
   // A card for the game-logging journey's optional card-capture step.
   await seedGameLogCard(databaseUrl);
+
+  // A deck, an event + gauntlet, and a couple of logs for the matchups journey.
+  await seedMatchups(databaseUrl);
 
   const apiProcess = spawn(process.execPath, ["dist/main.js"], {
     cwd: apiDir,

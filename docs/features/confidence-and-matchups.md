@@ -43,12 +43,14 @@ For a pairing `(ourDeck or ourHero) vs (opponentDeck or opponentHero/archetype)`
 (and optionally a single event), over the relevant non-archived `GameLog`s, compute
 ([ADR-0005](../decisions/0005-confidence-weight-model.md)):
 
-- **Weighted win rate** = `Σ(weightᵢ · winᵢ) / Σ(weightᵢ)` where `winᵢ ∈ {1, 0}` (draws handled per the
-  aggregation rules below).
-- **Raw N** = count of games — **always displayed**.
-- **Effective sample** = `Σ(weightᵢ)` — a trust-adjusted sample size.
-- **Trust indicator** = a `low` / `medium` / `high` bucket derived from the **effective sample** (thresholds
-  finalized in phase-06, kept in one well-tested place).
+- **Weighted win rate** = `Σ(weightᵢ · winᵢ) / Σ(weightᵢ)` over **decisive** games, where `winᵢ ∈ {1, 0}`.
+  A **draw** is excluded from both the numerator and the denominator (see draw handling below); the rate is
+  `null` (no data) when a matchup has no decisive games.
+- **Raw N** = count of games — **always displayed** (includes draws, so it can exceed the games behind the rate).
+- **Effective sample** = `Σ(weightᵢ)` over **decisive** games — a trust-adjusted sample size.
+- **Trust indicator** = a `low` / `medium` / `high` bucket derived from the **effective sample**: `low < 5`,
+  `medium 5–<15`, `high ≥ 15` (finalized in phase-07, kept in one well-tested place —
+  [ADR-0005](../decisions/0005-confidence-weight-model.md)).
 
 Aggregation is derived from `GameLog` (the source of truth); it may be materialized later for performance
 but must stay consistent with the logs.
@@ -108,8 +110,10 @@ Consumes, does not own, most of these — see [data-model.md](../architecture/da
   optionally one `eventId`. Cross-format and cross-event games are never silently merged.
 - **By-deck vs by-hero:** the matrix can aggregate opponents by specific reference deck or by hero/archetype
   (per [ADR-0002](../decisions/0002-decks-as-links.md), meta aggregates by hero/identity as well as deck).
-- **Draw handling** and the exact trust-indicator thresholds and formula live in
-  [ADR-0005](../decisions/0005-confidence-weight-model.md) / phase-06, in one tested module.
+- **Draw handling:** a draw (neither side ahead — a Bo1 `{0,0}` or a tied/timed match) counts in raw N but
+  is **excluded from the weighted win rate and the effective sample**, so a rare draw never distorts a
+  small-sample rate. The exact rule, trust-indicator thresholds, and formula live in
+  [ADR-0005](../decisions/0005-confidence-weight-model.md) (finalized phase-07), in one tested module.
 
 ## API surface
 

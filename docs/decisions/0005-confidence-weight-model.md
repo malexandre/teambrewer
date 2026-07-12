@@ -1,6 +1,7 @@
 # ADR-0005: Confidence-weighted results model
 
-- **Status:** Accepted (2026-07-11); **formula finalized in phase-06 (2026-07-12)** — see "Finalized model" below
+- **Status:** Accepted (2026-07-11); **formula finalized in phase-06 (2026-07-12)** — see "Finalized model" below;
+  **aggregation (draw rule + trust thresholds) finalized in phase-07 (2026-07-12)** — see "Finalized aggregation" below
 - **Context:** The signature idea: not all game results are equally trustworthy. A serious, well-played
   game between evenly-matched teammates on tuned decks is high-value; a win over a brand-new player with an
   untuned brew is low-value even though it "counts." Pro practice ties confidence to specifics and to
@@ -41,13 +42,33 @@ previews it live) and locked by table-driven tests. **Trust-indicator buckets ar
 (matchup aggregation), which consumes the raw N + Σ weights this model produces.
 
 **Matchup aggregation** (scoped by team, format, optional event), over the relevant GameLogs:
-- **Weighted win rate** = `Σ(weightᵢ · winᵢ) / Σ(weightᵢ)`
-- **Effective sample** = `Σ(weightᵢ)`
-- **Raw N** = count of games (**always shown alongside**)
-- **Trust indicator** = low/medium/high bucket derived from effective sample (thresholds finalized in
-  phase-07, with the aggregation layer).
+- **Weighted win rate** = `Σ(weightᵢ · winᵢ) / Σ(weightᵢ)` over **decisive** games
+- **Effective sample** = `Σ(weightᵢ)` over **decisive** games
+- **Raw N** = count of games (**always shown alongside**; includes draws)
+- **Trust indicator** = low/medium/high bucket derived from effective sample.
 
 Sample size is **never hidden**. A high win rate over a tiny/low-confidence sample must read as untrusted.
+
+### Finalized aggregation (phase-07)
+
+The aggregation layer (feature: confidence-and-matchups) is implemented once as pure functions in
+`packages/shared` (`aggregateMatchup`, `trustIndicator`, `deriveGameOutcome`), locked by table-driven tests
+and consumed by the API service. Two open points were finalized here **with the user**:
+
+- **Draw handling.** A game is a **draw** when neither side won more games (a Bo1 `{0,0}` or a tied/timed
+  match). A draw is **excluded from the weighted win rate**: its weight counts toward **neither** the
+  numerator **nor** the effective sample. It still counts in **raw N**. So `effectiveSample = Σ(weightᵢ)`
+  is over **decisive games only**, and raw N can exceed the games behind the rate. The win rate is `null`
+  (no data) when a matchup has no decisive games. (Rejected alternatives: draw = ½ win, or draw = loss —
+  both let a rare draw distort a small-sample rate; excluding keeps the rate a clean win-vs-loss reading.)
+- **Trust-indicator thresholds** on the effective sample: **`low < 5`, `medium 5 ≤ x < 15`, `high ≥ 15`**.
+  A single lopsided game (effective ≈ 1) and the feature's worked example (effective 2.4) both read `low`;
+  `high` takes a substantial trusted sample, per the methodology's "55% over 30 games is trustworthy."
+  Kept in one tunable place (`MATCHUP_TRUST_THRESHOLDS`).
+
+**Coverage** flags a gauntlet matchup as under-covered when its effective sample is below a configurable
+threshold (default: the `high` boundary — anything not yet high-trust), prioritized by the gauntlet's
+**normalized** expected metagame share.
 
 ## Consequences
 
