@@ -66,25 +66,28 @@ model User {
   discordUserId   String? @unique @map("discord_user_id")
   discordUsername String? @map("discord_username")
 
-  sessions             Session[]
-  accounts             Account[]
-  twoFactors           TwoFactor[]
-  memberships          TeamMembership[]
-  inviteTokens         InviteToken[]
-  ownedDecks           Deck[]
-  deckIterationEntries DeckIterationEntry[]
-  attendances          Attendance[]
-  authoredComments     Comment[]
-  mentions             Mention[]
-  notifications        Notification[]
-  activityEvents       ActivityEvent[]
-  loggedGameLogs       GameLog[]            @relation("GameLogLoggedBy")
-  pilotedGameLogs      GameLog[]            @relation("GameLogPilot")
-  opponentGameLogs     GameLog[]            @relation("GameLogOpponentPilot")
+  sessions                    Session[]
+  accounts                    Account[]
+  twoFactors                  TwoFactor[]
+  memberships                 TeamMembership[]
+  inviteTokens                InviteToken[]
+  ownedDecks                  Deck[]
+  deckIterationEntries        DeckIterationEntry[]
+  attendances                 Attendance[]
+  authoredComments            Comment[]
+  mentions                    Mention[]
+  notifications               Notification[]
+  activityEvents              ActivityEvent[]
+  loggedGameLogs              GameLog[]            @relation("GameLogLoggedBy")
+  pilotedGameLogs             GameLog[]            @relation("GameLogPilot")
+  opponentGameLogs            GameLog[]            @relation("GameLogOpponentPilot")
   authoredCardTestSuggestions CardTestSuggestion[]
   suggestionVotes             SuggestionVote[]
-  assignedTestAssignments     TestAssignment[]  @relation("TestAssignmentAssignee")
-  createdTestAssignments      TestAssignment[]  @relation("TestAssignmentAssignedBy")
+  assignedTestAssignments     TestAssignment[]     @relation("TestAssignmentAssignee")
+  createdTestAssignments      TestAssignment[]     @relation("TestAssignmentAssignedBy")
+  updatedGamePlans            MatchupGamePlan[]    @relation("MatchupGamePlanUpdatedBy")
+  deckSelections              DeckSelection[]
+  authoredRetrospectives      Retrospective[]
 
   @@map("user")
 }
@@ -170,16 +173,18 @@ model Team {
   updatedAt  DateTime  @updatedAt @map("updated_at")
   archivedAt DateTime? @map("archived_at")
 
-  memberships     TeamMembership[]
-  decks           Deck[]
-  events          Event[]
-  gauntletEntries GauntletEntry[]
-  comments        Comment[]
-  notifications   Notification[]
-  activityEvents  ActivityEvent[]
-  gameLogs        GameLog[]
+  memberships         TeamMembership[]
+  decks               Deck[]
+  events              Event[]
+  gauntletEntries     GauntletEntry[]
+  comments            Comment[]
+  notifications       Notification[]
+  activityEvents      ActivityEvent[]
+  gameLogs            GameLog[]
   cardTestSuggestions CardTestSuggestion[]
   testAssignments     TestAssignment[]
+  matchupGamePlans    MatchupGamePlan[]
+  retrospectives      Retrospective[]
 
   @@index([gameId])
   @@map("team")
@@ -263,10 +268,11 @@ model Format {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  game     Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  decks    Deck[]
-  events   Event[]
-  gameLogs GameLog[]
+  game             Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  decks            Deck[]
+  events           Event[]
+  gameLogs         GameLog[]
+  matchupGamePlans MatchupGamePlan[]
 
   @@unique([gameId, key])
   @@index([gameId])
@@ -288,11 +294,12 @@ model Hero {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  game            Game            @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  decks           Deck[]
-  gauntletEntries GauntletEntry[]
-  gameLogs        GameLog[]
-  testAssignments TestAssignment[]
+  game             Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  decks            Deck[]
+  gauntletEntries  GauntletEntry[]
+  gameLogs         GameLog[]
+  testAssignments  TestAssignment[]
+  matchupGamePlans MatchupGamePlan[]
 
   @@unique([gameId, externalId])
   @@index([gameId, name])
@@ -313,10 +320,11 @@ model Card {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameLogCards GameLogCard[]
-  cardTestSuggestionsAsIn  CardTestSuggestion[] @relation("SuggestionCardIn")
-  cardTestSuggestionsAsOut CardTestSuggestion[] @relation("SuggestionCardOut")
+  game                     Game                  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameLogCards             GameLogCard[]
+  cardTestSuggestionsAsIn  CardTestSuggestion[]  @relation("SuggestionCardIn")
+  cardTestSuggestionsAsOut CardTestSuggestion[]  @relation("SuggestionCardOut")
+  gamePlanKeyCards         MatchupGamePlanCard[]
 
   @@unique([gameId, externalId])
   @@index([gameId, name])
@@ -393,12 +401,14 @@ model Deck {
   hero   Hero?  @relation(fields: [heroId], references: [id])
   owner  User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
-  iterationEntries DeckIterationEntry[]
-  gauntletEntries  GauntletEntry[]
-  gameLogsAsDeck         GameLog[] @relation("GameLogDeck")
-  gameLogsAsOpponentDeck GameLog[] @relation("GameLogOpponentDeck")
+  iterationEntries       DeckIterationEntry[]
+  gauntletEntries        GauntletEntry[]
+  gameLogsAsDeck         GameLog[]            @relation("GameLogDeck")
+  gameLogsAsOpponentDeck GameLog[]            @relation("GameLogOpponentDeck")
   cardTestSuggestions    CardTestSuggestion[]
   testAssignments        TestAssignment[]
+  matchupGamePlans       MatchupGamePlan[]
+  deckSelections         DeckSelection[]
 
   @@index([teamId])
   @@index([teamId, status])
@@ -485,6 +495,8 @@ model Event {
   attendances     Attendance[]
   gameLogs        GameLog[]
   testAssignments TestAssignment[]
+  deckSelections  DeckSelection[]
+  retrospective   Retrospective?
 
   @@index([teamId])
   @@index([teamId, status])
@@ -515,7 +527,8 @@ model GauntletEntry {
   referenceDeck Deck? @relation(fields: [referenceDeckId], references: [id], onDelete: SetNull)
   hero          Hero? @relation(fields: [heroId], references: [id], onDelete: SetNull)
 
-  testAssignments TestAssignment[]
+  testAssignments  TestAssignment[]
+  matchupGamePlans MatchupGamePlan[]
 
   @@index([eventId])
   @@index([teamId])
@@ -608,52 +621,52 @@ enum PilotFamiliarity {
 /// free-text archetype label. Opponent identifier rules are enforced server-side;
 /// confidenceWeight is derived from the four factor columns (never client-supplied).
 model GameLog {
-  id                   String    @id @default(cuid())
-  teamId               String    @map("team_id")
-  loggedById           String    @map("logged_by_id")
-  formatId             String    @map("format_id")
-  eventId              String?   @map("event_id")
-  playedAt             DateTime  @map("played_at")
+  id         String   @id @default(cuid())
+  teamId     String   @map("team_id")
+  loggedById String   @map("logged_by_id")
+  formatId   String   @map("format_id")
+  eventId    String?  @map("event_id")
+  playedAt   DateTime @map("played_at")
 
   // side A — our side
-  pilotUserId          String    @map("pilot_user_id")
-  deckId               String    @map("deck_id")
+  pilotUserId String @map("pilot_user_id")
+  deckId      String @map("deck_id")
 
   // side B — opponent (teammate or external)
-  opponentPilotUserId  String?   @map("opponent_pilot_user_id")
-  externalOpponentName String?   @map("external_opponent_name")
-  opponentDeckId       String?   @map("opponent_deck_id")
-  heroId               String?   @map("hero_id")
-  archetypeLabel       String?   @map("archetype_label")
+  opponentPilotUserId  String? @map("opponent_pilot_user_id")
+  externalOpponentName String? @map("external_opponent_name")
+  opponentDeckId       String? @map("opponent_deck_id")
+  heroId               String? @map("hero_id")
+  archetypeLabel       String? @map("archetype_label")
 
-  firstPlayerSide      GameSide    @map("first_player_side")
-  bestOf               Int         @map("best_of")
-  gamesWonA            Int         @map("games_won_a")
-  gamesWonB            Int         @map("games_won_b")
-  winType              WinType?    @map("win_type")
-  lossReason           LossReason? @map("loss_reason")
-  learnings            String      @default("")
+  firstPlayerSide GameSide    @map("first_player_side")
+  bestOf          Int         @map("best_of")
+  gamesWonA       Int         @map("games_won_a")
+  gamesWonB       Int         @map("games_won_b")
+  winType         WinType?    @map("win_type")
+  lossReason      LossReason? @map("loss_reason")
+  learnings       String      @default("")
 
   // confidence factors (ADR-0005) → confidenceWeight
-  skillParity          SkillParity      @map("skill_parity")
-  seriousness          Seriousness      @map("seriousness")
-  deckMaturity         DeckMaturity     @map("deck_maturity")
-  pilotFamiliarity     PilotFamiliarity @map("pilot_familiarity")
-  confidenceWeight     Float            @map("confidence_weight")
+  skillParity      SkillParity      @map("skill_parity")
+  seriousness      Seriousness      @map("seriousness")
+  deckMaturity     DeckMaturity     @map("deck_maturity")
+  pilotFamiliarity PilotFamiliarity @map("pilot_familiarity")
+  confidenceWeight Float            @map("confidence_weight")
 
-  archivedAt           DateTime? @map("archived_at")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  team          Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  loggedBy      User   @relation("GameLogLoggedBy", fields: [loggedById], references: [id], onDelete: Cascade)
-  format        Format @relation(fields: [formatId], references: [id])
-  event         Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  pilot         User   @relation("GameLogPilot", fields: [pilotUserId], references: [id], onDelete: Cascade)
-  deck          Deck   @relation("GameLogDeck", fields: [deckId], references: [id], onDelete: Cascade)
-  opponentPilot User?  @relation("GameLogOpponentPilot", fields: [opponentPilotUserId], references: [id], onDelete: SetNull)
-  opponentDeck  Deck?  @relation("GameLogOpponentDeck", fields: [opponentDeckId], references: [id], onDelete: SetNull)
-  hero          Hero?  @relation(fields: [heroId], references: [id], onDelete: SetNull)
+  team          Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  loggedBy      User          @relation("GameLogLoggedBy", fields: [loggedById], references: [id], onDelete: Cascade)
+  format        Format        @relation(fields: [formatId], references: [id])
+  event         Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  pilot         User          @relation("GameLogPilot", fields: [pilotUserId], references: [id], onDelete: Cascade)
+  deck          Deck          @relation("GameLogDeck", fields: [deckId], references: [id], onDelete: Cascade)
+  opponentPilot User?         @relation("GameLogOpponentPilot", fields: [opponentPilotUserId], references: [id], onDelete: SetNull)
+  opponentDeck  Deck?         @relation("GameLogOpponentDeck", fields: [opponentDeckId], references: [id], onDelete: SetNull)
+  hero          Hero?         @relation(fields: [heroId], references: [id], onDelete: SetNull)
   cards         GameLogCard[]
 
   @@index([teamId])
@@ -915,4 +928,121 @@ model ActivityEvent {
   @@index([teamId, createdAt])
   @@index([teamId, subjectType, subjectId, createdAt])
   @@map("activity_event")
+}
+
+// ---------------------------------------------------------------------------
+// Game-plans & deck selection (phase-09). Turns testing into decisions: a written
+// matchup game-plan per (our deck × opponent archetype), a per-member deck
+// selection per event that a team-admin can lock, and a post-event retrospective.
+// See docs/features/gameplans-and-deck-selection.md and docs/architecture/data-model.md.
+//
+// MatchupGamePlan and Retrospective carry teamId and are team-scoped by
+// construction. MatchupGamePlanCard (key cards) and DeckSelection carry no teamId —
+// each is reached only through its team-scoped parent (the game-plan / the event),
+// like GameLogCard and Attendance. The opponent is exactly one of a gauntlet entry,
+// a bare hero, or a free-text archetype label; opponentSnapshotLabel is a
+// server-derived human label resolved at write time that survives deletion of the
+// referenced gauntlet entry/hero, and opponentRef is a normalized key
+// (gauntlet:<id> | hero:<id> | label:<lowercased>) so the one-canonical-plan
+// uniqueness can be enforced across the polymorphic target (Postgres treats NULLs
+// as distinct, so a unique index over the three nullable columns would not).
+// ---------------------------------------------------------------------------
+
+/// A written, living guide for one matchup (our deck × an opponent archetype) —
+/// FaB's equivalent of a sideboard guide. One canonical plan per
+/// (teamId, ourDeckId, opponentRef, formatId). Soft-deleted via archivedAt.
+model MatchupGamePlan {
+  id                      String    @id @default(cuid())
+  teamId                  String    @map("team_id")
+  ourDeckId               String    @map("our_deck_id")
+  formatId                String    @map("format_id")
+  opponentGauntletEntryId String?   @map("opponent_gauntlet_entry_id")
+  opponentHeroId          String?   @map("opponent_hero_id")
+  opponentArchetypeLabel  String?   @map("opponent_archetype_label")
+  opponentRef             String    @map("opponent_ref")
+  opponentSnapshotLabel   String    @map("opponent_snapshot_label")
+  body                    String
+  updatedById             String    @map("updated_by_id")
+  archivedAt              DateTime? @map("archived_at")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  team                  Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  ourDeck               Deck           @relation(fields: [ourDeckId], references: [id], onDelete: Cascade)
+  format                Format         @relation(fields: [formatId], references: [id])
+  opponentGauntletEntry GauntletEntry? @relation(fields: [opponentGauntletEntryId], references: [id], onDelete: SetNull)
+  opponentHero          Hero?          @relation(fields: [opponentHeroId], references: [id], onDelete: SetNull)
+  updatedBy             User           @relation("MatchupGamePlanUpdatedBy", fields: [updatedById], references: [id], onDelete: Cascade)
+
+  keyCards MatchupGamePlanCard[]
+
+  @@unique([teamId, ourDeckId, opponentRef, formatId])
+  @@index([teamId])
+  @@index([teamId, ourDeckId])
+  @@map("matchup_game_plan")
+}
+
+/// A key card referenced by a game-plan (replacement set on update). Like
+/// GameLogCard it carries no teamId — reached only through its team-scoped parent
+/// game-plan. The referenced card must belong to the team's game.
+model MatchupGamePlanCard {
+  id         String   @id @default(cuid())
+  gamePlanId String   @map("game_plan_id")
+  cardId     String   @map("card_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  gamePlan MatchupGamePlan @relation(fields: [gamePlanId], references: [id], onDelete: Cascade)
+  card     Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([gamePlanId, cardId])
+  @@index([gamePlanId])
+  @@index([cardId])
+  @@map("matchup_game_plan_card")
+}
+
+/// A member's committed deck for an event (one per event per member), plus free-text
+/// reasoning. No teamId — reached only through its team-scoped parent event (like
+/// Attendance). Only a team-admin can lock/unlock; while locked, the member cannot
+/// change deckId/reasoning.
+model DeckSelection {
+  id        String    @id @default(cuid())
+  eventId   String    @map("event_id")
+  userId    String    @map("user_id")
+  deckId    String    @map("deck_id")
+  reasoning String    @default("")
+  locked    Boolean   @default(false)
+  lockedAt  DateTime? @map("locked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deck  Deck  @relation(fields: [deckId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@map("deck_selection")
+}
+
+/// The post-event review (one per event). Required body plus optional resultsSummary
+/// and learnings. Any member authors; team-admins edit/archive. Soft-deleted via
+/// archivedAt. Carries teamId and is team-scoped by construction.
+model Retrospective {
+  id             String    @id @default(cuid())
+  eventId        String    @unique @map("event_id")
+  teamId         String    @map("team_id")
+  authorId       String    @map("author_id")
+  body           String
+  resultsSummary String    @default("") @map("results_summary")
+  learnings      String    @default("")
+  archivedAt     DateTime? @map("archived_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  event  Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  team   Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@map("retrospective")
 }
