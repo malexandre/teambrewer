@@ -60,6 +60,11 @@ interface GameLogRow {
   archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  cards?: {
+    role: "impressive" | "underperforming";
+    side: "ours" | "theirs";
+    card: { id: string; name: string; pitch: number | null; imageUrl: string | null };
+  }[];
 }
 
 /** Resolved, validated side-B columns ready to persist. */
@@ -154,6 +159,11 @@ export class GameLogsService {
     await this.assertTeamMember(input.sideA.pilotUserId, "Our pilot is not a member of this team.");
     await this.assertTeamDeck(input.sideA.deckId, "Our deck does not belong to this team.");
     const sideB = await this.resolveSideB(team.gameId, input.sideB);
+    const capturedCards = await this.resolveCapturedCards(
+      team.gameId,
+      input.impressiveCards,
+      input.underperformingCards,
+    );
 
     const confidenceWeight = deriveConfidenceWeight(input.confidenceFactors);
 
@@ -185,6 +195,7 @@ export class GameLogsService {
         deckMaturity: input.confidenceFactors.deckMaturity,
         pilotFamiliarity: input.confidenceFactors.pilotFamiliarity,
         confidenceWeight,
+        cards: { create: capturedCards },
       },
     })) as GameLogRow;
 
@@ -418,6 +429,37 @@ export class GameLogsService {
     return { ...empty, externalOpponentName, archetypeLabel: sideB.archetypeLabel ?? null };
   }
 
+  /** Validate captured cards belong to the team's game and map to GameLogCard rows. */
+  private async resolveCapturedCards(
+    gameId: string,
+    impressive: { cardId: string; side: "ours" | "theirs" }[],
+    underperforming: { cardId: string; side: "ours" | "theirs" }[],
+  ): Promise<
+    { cardId: string; role: "impressive" | "underperforming"; side: "ours" | "theirs" }[]
+  > {
+    const all = [
+      ...impressive.map((entry) => ({ ...entry, role: "impressive" as const })),
+      ...underperforming.map((entry) => ({ ...entry, role: "underperforming" as const })),
+    ];
+    for (const entry of all) {
+      // `card` is a global model; the scoping proxy passes this query through
+      // untouched (matching assertHeroInGame), filtered explicitly by the team's game.
+      const card = await this.scoped.db.card.findFirst({
+        where: { id: entry.cardId, gameId },
+        select: { id: true },
+      });
+      if (!card) {
+        throw new UnprocessableEntityException({
+          error: {
+            code: errorCode.domainRuleViolation,
+            message: "A captured card does not belong to this team's game.",
+          },
+        });
+      }
+    }
+    return all;
+  }
+
   /** Read a log honoring archived visibility (team-scoped by construction). */
   private async findGameLog(
     gameLogId: string,
@@ -425,6 +467,9 @@ export class GameLogsService {
   ): Promise<GameLogRow | null> {
     const row = (await this.scoped.db.gameLog.findFirst({
       where: { id: gameLogId },
+      include: {
+        cards: { include: { card: true }, orderBy: { createdAt: "asc" } },
+      },
     })) as GameLogRow | null;
     if (!row) {
       return null;
@@ -482,6 +527,18 @@ function toGameLogSummary(row: GameLogRow): GameLogSummary {
 }
 
 function toGameLogDetail(row: GameLogRow): GameLogDetail {
+  const cards = row.cards ?? [];
+  const toCapturedCard = (
+    card: (typeof cards)[number],
+  ): GameLogDetail["impressiveCards"][number] => ({
+    side: card.side,
+    card: {
+      id: card.card.id,
+      name: card.card.name,
+      pitch: card.card.pitch,
+      imageUrl: card.card.imageUrl,
+    },
+  });
   return {
     ...toGameLogSummary(row),
     learnings: row.learnings,
@@ -491,7 +548,9 @@ function toGameLogDetail(row: GameLogRow): GameLogDetail {
       deckMaturity: row.deckMaturity,
       pilotFamiliarity: row.pilotFamiliarity,
     },
-    impressiveCards: [],
-    underperformingCards: [],
+    impressiveCards: cards.filter((card) => card.role === "impressive").map(toCapturedCard),
+    underperformingCards: cards
+      .filter((card) => card.role === "underperforming")
+      .map(toCapturedCard),
   };
 }

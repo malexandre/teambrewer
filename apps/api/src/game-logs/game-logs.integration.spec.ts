@@ -251,6 +251,40 @@ describe("Game-log endpoints (integration)", () => {
       expect(response.status).toBe(422);
     });
 
+    it("persists impressive/underperforming cards with role and side", async () => {
+      const card = await prisma.card.create({
+        data: {
+          gameId: "flesh-and-blood",
+          externalId: "c-boost",
+          name: "Command and Conquer",
+          pitch: 1,
+        },
+      });
+      const response = await asMemberA(http().post("/api/game-logs")).send({
+        ...validGame(),
+        impressiveCards: [{ cardId: card.id, side: "ours" }],
+        underperformingCards: [{ cardId: card.id, side: "theirs" }],
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.impressiveCards).toEqual([
+        expect.objectContaining({ side: "ours", card: expect.objectContaining({ id: card.id }) }),
+      ]);
+      expect(response.body.underperformingCards).toEqual([
+        expect.objectContaining({ side: "theirs", card: expect.objectContaining({ id: card.id }) }),
+      ]);
+    });
+
+    it("rejects a captured card from another game (422)", async () => {
+      const riftCard = await prisma.card.create({
+        data: { gameId: "riftbound", externalId: "c-rift", name: "Rift Bolt", pitch: null },
+      });
+      const response = await asMemberA(http().post("/api/game-logs")).send({
+        ...validGame(),
+        impressiveCards: [{ cardId: riftCard.id, side: "ours" }],
+      });
+      expect(response.status).toBe(422);
+    });
+
     it("requires authentication (401)", async () => {
       const response = await http()
         .post("/api/game-logs")
