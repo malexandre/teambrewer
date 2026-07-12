@@ -233,6 +233,8 @@ export {
   type GameLogListResponse,
 } from "./game-log.js";
 
+export { gameConfigSchema, type GameConfig } from "./game-config.js";
+
 export { subjectTypeSchema, parseMentionHandles, type SubjectType } from "./collaboration.js";
 
 export {
