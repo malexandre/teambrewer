@@ -5,6 +5,9 @@ import { TenancyModule } from "../tenancy/tenancy.module.js";
 import { CardTestSuggestionSubjectResolver } from "./card-test-suggestion-subject-resolver.js";
 import { CardTestSuggestionsController } from "./card-test-suggestions.controller.js";
 import { CardTestSuggestionsService } from "./card-test-suggestions.service.js";
+import { TestAssignmentSubjectResolver } from "./test-assignment-subject-resolver.js";
+import { TestAssignmentsController } from "./test-assignments.controller.js";
+import { TestAssignmentsService } from "./test-assignments.service.js";
 
 /**
  * Testing queue (phase-08): per-deck card-test suggestions (with upvotes) and test
@@ -15,7 +18,12 @@ import { CardTestSuggestionsService } from "./card-test-suggestions.service.js";
  */
 @Module({
   imports: [TenancyModule, CollaborationModule],
-  controllers: [CardTestSuggestionsController],
-  providers: [CardTestSuggestionsService, CardTestSuggestionSubjectResolver],
+  controllers: [CardTestSuggestionsController, TestAssignmentsController],
+  providers: [
+    CardTestSuggestionsService,
+    CardTestSuggestionSubjectResolver,
+    TestAssignmentsService,
+    TestAssignmentSubjectResolver,
+  ],
 })
 export class TestingQueueModule {}
