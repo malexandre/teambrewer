@@ -12,4 +12,5 @@ export interface GameCatalogEntry {
 
 export const GAME_CATALOG: readonly GameCatalogEntry[] = [
   { id: "flesh-and-blood", key: "flesh_and_blood", name: "Flesh and Blood" },
+  { id: "riftbound", key: "riftbound", name: "Riftbound" },
 ];

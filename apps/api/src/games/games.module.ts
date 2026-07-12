@@ -4,6 +4,8 @@ import { FabCardSourceClient } from "./flesh-and-blood/fab-card-source.client.js
 import { FleshAndBloodAdapter } from "./flesh-and-blood/flesh-and-blood.adapter.js";
 import type { GameAdapter } from "./game-adapter.interface.js";
 import { GAME_ADAPTERS, GameAdapterRegistry } from "./game-adapter.registry.js";
+import { RiftboundAdapter } from "./riftbound/riftbound.adapter.js";
+import { RiftcodexCardSourceClient } from "./riftbound/riftcodex-card-source.client.js";
 
 /**
  * Wires the game adapters and the registry that resolves them by game key. This
@@ -15,13 +17,18 @@ import { GAME_ADAPTERS, GameAdapterRegistry } from "./game-adapter.registry.js";
   providers: [
     FabCardSourceClient,
     FleshAndBloodAdapter,
+    RiftcodexCardSourceClient,
+    RiftboundAdapter,
     {
       provide: GAME_ADAPTERS,
-      useFactory: (fleshAndBlood: FleshAndBloodAdapter): GameAdapter[] => [fleshAndBlood],
-      inject: [FleshAndBloodAdapter],
+      useFactory: (
+        fleshAndBlood: FleshAndBloodAdapter,
+        riftbound: RiftboundAdapter,
+      ): GameAdapter[] => [fleshAndBlood, riftbound],
+      inject: [FleshAndBloodAdapter, RiftboundAdapter],
     },
     GameAdapterRegistry,
   ],
-  exports: [GameAdapterRegistry, FleshAndBloodAdapter],
+  exports: [GameAdapterRegistry, FleshAndBloodAdapter, RiftboundAdapter],
 })
 export class GamesModule {}
