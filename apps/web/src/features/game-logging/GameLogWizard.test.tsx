@@ -258,10 +258,9 @@ describe("GameLogWizard", () => {
     expect(created[0]?.impressiveCards).toContainEqual({ cardId: "card-cnc", side: "ours" });
   });
 
-  it("seeds from an existing log in edit mode (stored best-of and captured cards)", async () => {
-    const user = userEvent.setup();
-    mockApi();
-    const existingLog: GameLogDetail = {
+  /** A minimal edit-mode log with no notes-triggering fields (so it opens on step 1). */
+  function makeExistingLog(overrides: Partial<GameLogDetail> = {}): GameLogDetail {
+    return {
       id: "game-existing",
       loggedById: "user-me",
       formatId: "fmt-cc",
@@ -284,22 +283,25 @@ describe("GameLogWizard", () => {
       archivedAt: null,
       createdAt: "2026-07-10T00:00:00.000Z",
       updatedAt: "2026-07-10T00:00:00.000Z",
-      learnings: "Watch the on-hit triggers.",
+      learnings: "",
       confidenceFactors: {
         skillParity: "evenly_matched",
         seriousness: "tournament_serious",
         deckMaturity: "both_tuned",
         pilotFamiliarity: "knows_well",
       },
-      impressiveCards: [
-        {
-          card: { id: "card-cnc", name: "Command and Conquer", pitch: 1, imageUrl: null },
-          side: "ours",
-        },
-      ],
+      impressiveCards: [],
       underperformingCards: [],
+      ...overrides,
     };
-    renderWithClient(<GameLogWizard teamId="team-1" gameLog={existingLog} onSaved={() => {}} />);
+  }
+
+  it("seeds the stored best-of in edit mode (wins over the game-config default)", async () => {
+    const user = userEvent.setup();
+    mockApi();
+    renderWithClient(
+      <GameLogWizard teamId="team-1" gameLog={makeExistingLog()} onSaved={() => {}} />,
+    );
 
     // Step 1 → Step 2: the stored best-of wins over the game-config default (Bo1).
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -311,11 +313,25 @@ describe("GameLogWizard", () => {
       "aria-pressed",
       "false",
     );
+  });
 
-    // Step 2 → Step 3 → Step 4: the captured card is seeded and rendered by name.
-    await user.click(screen.getByRole("button", { name: /next/i }));
-    await user.click(screen.getByRole("button", { name: /add notes & cards/i }));
-    const impressiveSection = screen.getByRole("group", { name: /impressive cards/i });
+  it("expands the notes step on edit when the log already has a captured card", async () => {
+    mockApi();
+    const existingLog = makeExistingLog({
+      impressiveCards: [
+        {
+          card: { id: "card-cnc", name: "Command and Conquer", pitch: 1, imageUrl: null },
+          side: "ours",
+        },
+      ],
+    });
+    renderWithClient(<GameLogWizard teamId="team-1" gameLog={existingLog} onSaved={() => {}} />);
+
+    // The notes step is shown on the initial render — no "Add notes & cards" click —
+    // so the already-captured card is visible straight away, and the header reflects it.
+    const impressiveSection = await screen.findByRole("group", { name: /impressive cards/i });
     expect(within(impressiveSection).getByText("Command and Conquer")).toBeInTheDocument();
+    expect(screen.getByText(/notes & cards/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add notes & cards/i })).not.toBeInTheDocument();
   });
 });

@@ -433,6 +433,28 @@ describe("Game-log endpoints (integration)", () => {
       ]);
     });
 
+    it("rejects a cross-game card and does not commit the accompanying field edit (422, no partial write)", async () => {
+      const created = await asMemberA(http().post("/api/game-logs")).send({
+        ...validGame(),
+        learnings: "Original note.",
+      });
+      const riftCard = await prisma.card.create({
+        data: { gameId: "riftbound", externalId: "c-rift-patch", name: "Rift Surge", pitch: null },
+      });
+
+      // A valid field edit plus a cross-game card: the card must reject with 422
+      // before the field write, so the learnings stay at their original value.
+      const response = await asMemberA(http().patch(`/api/game-logs/${created.body.id}`)).send({
+        learnings: "Should not persist.",
+        impressiveCards: [{ cardId: riftCard.id, side: "ours" }],
+      });
+      expect(response.status).toBe(422);
+
+      const reread = await asMemberA(http().get(`/api/game-logs/${created.body.id}`));
+      expect(reread.status).toBe(200);
+      expect(reread.body.learnings).toBe("Original note.");
+    });
+
     it("does not touch captured cards a team cannot see (tenant isolation)", async () => {
       const card = await prisma.card.create({
         data: { gameId: "flesh-and-blood", externalId: "c3", name: "Card Three", pitch: 1 },

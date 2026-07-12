@@ -71,7 +71,19 @@ export function GameLogWizard({
   const initialOpponent = opponentStateFromLog(gameLog);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [showNotes, setShowNotes] = useState(false);
+  // On edit, expand the optional notes/cards step up front when the log already
+  // carries any of its fields, so nothing captured is hidden behind "Add notes &
+  // cards". In create mode it always starts collapsed for the three-tap fast path.
+  const [showNotes, setShowNotes] = useState(() =>
+    gameLog
+      ? gameLog.impressiveCards.length > 0 ||
+        gameLog.underperformingCards.length > 0 ||
+        gameLog.learnings.trim().length > 0 ||
+        Boolean(gameLog.winType) ||
+        Boolean(gameLog.lossReason) ||
+        Boolean(gameLog.eventId)
+      : false,
+  );
 
   const [formatId, setFormatId] = useState(gameLog?.formatId ?? "");
   const [deckId, setDeckId] = useState(gameLog?.sideA.deckId ?? "");
@@ -293,7 +305,11 @@ export function GameLogWizard({
 
   return (
     <div className="flex flex-col gap-5">
-      <WizardProgress step={step} {...(step > 1 || showNotes ? { onBack: goBack } : {})} />
+      <WizardProgress
+        step={step}
+        {...(showNotes ? { label: "Notes & cards" } : {})}
+        {...(step > 1 || showNotes ? { onBack: goBack } : {})}
+      />
 
       {!showNotes && step === 1 ? (
         <StepMatchup

@@ -271,6 +271,16 @@ export class GameLogsService {
       data["confidenceWeight"] = deriveConfidenceWeight(merged);
     }
 
+    // Validate any provided captured cards against the team's game BEFORE the scalar
+    // field write, so a PATCH carrying a cross-game card rejects with 422 without
+    // committing the other field edits (no partial write).
+    if (input.impressiveCards !== undefined) {
+      await this.assertCardsInGame(team.gameId, input.impressiveCards);
+    }
+    if (input.underperformingCards !== undefined) {
+      await this.assertCardsInGame(team.gameId, input.underperformingCards);
+    }
+
     await this.scoped.db.gameLog.updateMany({ where: { id: gameLogId }, data });
 
     if (input.impressiveCards !== undefined || input.underperformingCards !== undefined) {
