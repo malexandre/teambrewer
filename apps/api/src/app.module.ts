@@ -17,6 +17,7 @@ import { GamePlansModule } from "./game-plans/game-plans.module.js";
 import { GameLogsModule } from "./game-logs/game-logs.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { DecisionsModule } from "./knowledge/decisions/decisions.module.js";
+import { PollsModule } from "./knowledge/polls/polls.module.js";
 import { PrimersModule } from "./knowledge/primers/primers.module.js";
 import { MatchupsModule } from "./matchups/matchups.module.js";
 import { MeModule } from "./me/me.module.js";
@@ -48,6 +49,7 @@ import { TestingQueueModule } from "./testing-queue/testing-queue.module.js";
     GamePlansModule,
     PrimersModule,
     DecisionsModule,
+    PollsModule,
   ],
   providers: [
     // The uniform error envelope (api-conventions.md) is applied to every route.
