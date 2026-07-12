@@ -15,6 +15,9 @@ import {
   E2E_DECKS_USER,
   E2E_EVENTS_SETUP_TOKEN,
   E2E_EVENTS_USER,
+  E2E_GAMELOG_DECK_NAME,
+  E2E_GAMELOG_SETUP_TOKEN,
+  E2E_GAMELOG_USER,
   E2E_ONBOARDING_USER,
   E2E_REFERENCE,
   E2E_SETUP_TOKEN,
@@ -93,6 +96,11 @@ async function seed(databaseUrl: string): Promise<void> {
     await addMembership(E2E_TEAMS.alpha.id, E2E_EVENTS_USER.id);
     await addMembership(E2E_TEAMS.bravo.id, E2E_EVENTS_USER.id);
 
+    // The game-logging user also belongs to both teams (alpha first -> default active).
+    await insertUser(E2E_GAMELOG_USER.id, E2E_GAMELOG_USER.username, E2E_GAMELOG_USER.displayName);
+    await addMembership(E2E_TEAMS.alpha.id, E2E_GAMELOG_USER.id);
+    await addMembership(E2E_TEAMS.bravo.id, E2E_GAMELOG_USER.id);
+
     // Two collaboration teammates on alpha only (mentions resolve within a team).
     await insertUser(
       E2E_COLLAB_AUTHOR.id,
@@ -110,6 +118,7 @@ async function seed(databaseUrl: string): Promise<void> {
     await insertSetupToken(E2E_ONBOARDING_USER.id, E2E_SETUP_TOKEN);
     await insertSetupToken(E2E_DECKS_USER.id, E2E_DECKS_SETUP_TOKEN);
     await insertSetupToken(E2E_EVENTS_USER.id, E2E_EVENTS_SETUP_TOKEN);
+    await insertSetupToken(E2E_GAMELOG_USER.id, E2E_GAMELOG_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_AUTHOR.id, E2E_COLLAB_AUTHOR_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_MENTIONED.id, E2E_COLLAB_MENTIONED_SETUP_TOKEN);
   } finally {
@@ -130,6 +139,45 @@ async function seedHero(databaseUrl: string): Promise<void> {
       `INSERT INTO "hero" (id, game_id, external_id, name, classes, talents, updated_at)
        VALUES ($1,'flesh-and-blood','e2e-hero-dorinthea',$2, ARRAY['Warrior']::text[], ARRAY[]::text[], $3)`,
       [randomUUID(), E2E_REFERENCE.heroName, new Date().toISOString()],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * Seed a team deck owned by the game-logging user on the alpha team, so the
+ * game-logging journey can pick "our deck" without driving the (desktop-oriented)
+ * deck form on a phone viewport. FKs to the game + the "Classic Constructed" format
+ * the network-free `db:seed` created.
+ */
+async function seedGameLogDeck(databaseUrl: string): Promise<void> {
+  const client = new Client({ connectionString: databaseUrl });
+  await client.connect();
+  try {
+    const format = await client.query<{ id: string }>(
+      `SELECT id FROM "format" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
+      [E2E_REFERENCE.formatName],
+    );
+    const formatId = format.rows[0]?.id;
+    if (!formatId) {
+      throw new Error("Expected the seeded Classic Constructed format to exist.");
+    }
+    await client.query(
+      `INSERT INTO "deck"
+         (id, team_id, name, game_id, format_id, external_url, source, owner_id,
+          status, visibility, is_reference, tags, notes, updated_at)
+       VALUES ($1,$2,$3,'flesh-and-blood',$4,$5,'fabrary',$6,
+          'testing','team',false, ARRAY[]::text[], '', $7)`,
+      [
+        randomUUID(),
+        E2E_TEAMS.alpha.id,
+        E2E_GAMELOG_DECK_NAME,
+        formatId,
+        "https://fabrary.net/decks/e2e-gamelog",
+        E2E_GAMELOG_USER.id,
+        new Date().toISOString(),
+      ],
     );
   } finally {
     await client.end();
@@ -187,6 +235,9 @@ export default async function globalSetup(): Promise<void> {
 
   // A hero for the events journey's gauntlet (FKs to the game the seed just created).
   await seedHero(databaseUrl);
+
+  // A team deck for the game-logging journey (FKs to the game + format from the seed).
+  await seedGameLogDeck(databaseUrl);
 
   const apiProcess = spawn(process.execPath, ["dist/main.js"], {
     cwd: apiDir,

@@ -59,6 +59,21 @@ export const E2E_EVENTS_USER = {
 export const E2E_EVENTS_SETUP_TOKEN = "e2e-events-setup-token";
 
 /**
+ * A dedicated onboardable user for the game-logging journey — independent of the
+ * other specs so they can run in parallel (each consumes its own single-use token).
+ * Belongs to both teams (alpha first → default active) to exercise game-log
+ * isolation across a team switch.
+ */
+export const E2E_GAMELOG_USER = {
+  id: "e2e-user-gamelog",
+  username: "gamelog_user",
+  displayName: "Gamelog User",
+};
+export const E2E_GAMELOG_SETUP_TOKEN = "e2e-gamelog-setup-token";
+/** A team deck seeded on alpha for the game-logging user to log games with. */
+export const E2E_GAMELOG_DECK_NAME = "E2E Rhinar Aggro";
+
+/**
  * Reference data for the specs. `formatName` comes from the network-free `db:seed`
  * (games + formats); `heroName` is a single hero the events e2e global-setup inserts
  * after the seed (heroes normally come from the network card sync, skipped in e2e).

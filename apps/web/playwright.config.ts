@@ -18,7 +18,22 @@ export default defineConfig({
     baseURL: `http://localhost:${webPort}`,
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      // Every journey except game logging runs on desktop Chrome.
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+      testIgnore: /game-logging\.spec\.ts/,
+    },
+    {
+      // The signature game-logging flow is a phone-first experience, so it runs on
+      // a mobile viewport — narrow phone width + touch (the real "log a game on your
+      // phone"), with extra height so the tall logging form scrolls cleanly.
+      name: "mobile",
+      use: { ...devices["Pixel 5"], viewport: { width: 393, height: 1200 } },
+      testMatch: /game-logging\.spec\.ts/,
+    },
+  ],
   webServer: [
     {
       command: "pnpm --filter @teambrewer/web dev",
