@@ -7,7 +7,7 @@ import { subjectTypeSchema } from "./collaboration.js";
  * activity feed is an append-only, team-scoped timeline addressed polymorphically
  * by `(subjectType, subjectId)`. Verbs are an enum extended as modules adopt the
  * subsystem; phase-04 emits the deck lifecycle verbs plus the generic `commented`,
- * and events add their own lifecycle verbs.
+ * events add their own lifecycle verbs, and game logs add theirs (phase-06).
  */
 
 export const activityVerbSchema = z.enum([
@@ -17,6 +17,8 @@ export const activityVerbSchema = z.enum([
   "event_created",
   "event_updated",
   "event_status_changed",
+  "game_log_created",
+  "game_log_updated",
   "commented",
 ]);
 export type ActivityVerb = z.infer<typeof activityVerbSchema>;

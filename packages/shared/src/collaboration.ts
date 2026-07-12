@@ -12,11 +12,11 @@ import { z } from "zod";
 /**
  * The set of subjects the collaboration subsystem may attach to, validated at the
  * HTTP boundary. It is **extended as modules adopt** the subsystem — decks were the
- * first adopter (phase-04); events joined next. The runtime resolver registry is
- * keyed by arbitrary string, so tests can exercise the polymorphic code path with a
- * subject type that is not (yet) in this enum.
+ * first adopter (phase-04); events joined next; game logs joined in phase-06. The
+ * runtime resolver registry is keyed by arbitrary string, so tests can exercise the
+ * polymorphic code path with a subject type that is not (yet) in this enum.
  */
-export const subjectTypeSchema = z.enum(["deck", "event"]);
+export const subjectTypeSchema = z.enum(["deck", "event", "game_log"]);
 export type SubjectType = z.infer<typeof subjectTypeSchema>;
 
 /**
