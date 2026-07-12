@@ -26,4 +26,15 @@ export const queryKeys = {
   formats: (teamId: string) => [teamId, "formats"] as const,
   heroes: (teamId: string) => [teamId, "heroes"] as const,
   cardDataVersion: (teamId: string) => [teamId, "card-data-version"] as const,
+
+  /**
+   * Decks, keyed by the active team first so switching teams yields a different
+   * cache entry and one team's decks never bleed into another's. `filters` keys
+   * the list variant so each filter combination caches independently.
+   */
+  decks: (teamId: string, filters: Record<string, string | boolean>) =>
+    [teamId, "decks", filters] as const,
+  deck: (teamId: string, deckId: string) => [teamId, "deck", deckId] as const,
+  deckIterations: (teamId: string, deckId: string) =>
+    [teamId, "deck", deckId, "iterations"] as const,
 } as const;

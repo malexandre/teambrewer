@@ -5,6 +5,8 @@ import { AdminPage } from "@/features/admin/AdminPage";
 import { AppChrome } from "@/features/app/AppChrome";
 import { HomePage } from "@/features/app/HomePage";
 import { CardsPage } from "@/features/cards/CardsPage";
+import { DeckDetailPage } from "@/features/decks/DeckDetailPage";
+import { DecksPage } from "@/features/decks/DecksPage";
 import { ClaimPage } from "@/features/auth/ClaimPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RequireAuth } from "@/features/auth/RequireAuth";
@@ -70,6 +72,21 @@ const cardsRoute = createRoute({
   component: CardsPage,
 });
 
+const decksRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/decks",
+  component: DecksPage,
+});
+
+const deckDetailRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/decks/$deckId",
+  component: function DeckDetailRoute() {
+    const { deckId } = deckDetailRoute.useParams();
+    return <DeckDetailPage deckId={deckId} />;
+  },
+});
+
 const adminRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/admin",
@@ -86,7 +103,14 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   setupRoute,
   claimRoute,
-  authenticatedLayout.addChildren([homeRoute, cardsRoute, adminRoute, settingsRoute]),
+  authenticatedLayout.addChildren([
+    homeRoute,
+    cardsRoute,
+    decksRoute,
+    deckDetailRoute,
+    adminRoute,
+    settingsRoute,
+  ]),
 ]);
 
 export const router = createRouter({ routeTree });
