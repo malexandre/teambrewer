@@ -20,6 +20,7 @@ import { MeModule } from "./me/me.module.js";
 import { OnboardingModule } from "./onboarding/onboarding.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { TenancyModule } from "./tenancy/tenancy.module.js";
+import { TestingQueueModule } from "./testing-queue/testing-queue.module.js";
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { TenancyModule } from "./tenancy/tenancy.module.js";
     GameLogsModule,
     MatchupsModule,
     CollaborationModule,
+    TestingQueueModule,
   ],
   providers: [
     // The uniform error envelope (api-conventions.md) is applied to every route.
