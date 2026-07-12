@@ -14,6 +14,7 @@ import {
   type UpdateDeckInput,
 } from "@teambrewer/shared";
 
+import { CollaborationActivityService } from "../collaboration/activity.service.js";
 import { GAME_CATALOG } from "../games/game-catalog.js";
 import { GameAdapterRegistry } from "../games/game-adapter.registry.js";
 import type { TeamContext } from "../tenancy/team-context.js";
@@ -58,6 +59,7 @@ export class DecksService {
   constructor(
     private readonly scoped: TeamScopedPrisma,
     private readonly gameAdapters: GameAdapterRegistry,
+    private readonly activity: CollaborationActivityService,
   ) {}
 
   /** List the team's decks with filters + keyset pagination (newest first). */
@@ -135,6 +137,7 @@ export class DecksService {
         notes: input.notes,
       },
     })) as DeckRow;
+    await this.recordDeckActivity(team, created, "deck_created");
     return toDeckDetail(created);
   }
 
@@ -164,7 +167,9 @@ export class DecksService {
     }
 
     await this.scoped.db.deck.updateMany({ where: { id: deckId }, data });
-    return this.getDeck(team, deckId);
+    const updated = await this.getDeck(team, deckId);
+    await this.recordDeckActivity(team, updated, "deck_updated");
+    return updated;
   }
 
   /** Move a deck through its status lifecycle (validated transition; owner or team-admin). */
@@ -172,7 +177,9 @@ export class DecksService {
     const deck = await this.loadModifiableDeck(team, deckId);
     assertDeckStatusTransition(deck.status, status);
     await this.scoped.db.deck.updateMany({ where: { id: deckId }, data: { status } });
-    return this.getDeck(team, deckId);
+    const updated = await this.getDeck(team, deckId);
+    await this.recordDeckActivity(team, updated, "deck_status_changed");
+    return updated;
   }
 
   /** Soft-delete (archive) a deck (owner or team-admin); history survives. */
@@ -210,6 +217,26 @@ export class DecksService {
       return null;
     }
     return this.gameAdapters.get(entry.key).recognizeDeckUrl?.(url) ?? null;
+  }
+
+  /**
+   * Record a deck lifecycle event on the team activity feed. Private drafts are
+   * skipped so the team-wide feed never leaks a personal draft's existence
+   * (multi-tenancy.md; mirrors DeckSubjectResolver's `isTeamVisible`).
+   */
+  private async recordDeckActivity(
+    team: TeamContext,
+    deck: { id: string; visibility: string },
+    verb: "deck_created" | "deck_updated" | "deck_status_changed",
+  ): Promise<void> {
+    if (deck.visibility !== "team") {
+      return;
+    }
+    await this.activity.recordActivity(team, {
+      verb,
+      subjectType: "deck",
+      subjectId: deck.id,
+    });
   }
 
   /** Load a deck the caller may see, or throw 404 (also hides private drafts). */
