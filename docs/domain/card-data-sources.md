@@ -1,7 +1,7 @@
 # Domain: Card Data Sources
 
 How TeamBrewer obtains **card reference data** (global per game). Card data powers autocomplete,
-hover-preview, card detail, and card references inside suggestions, game-plans, and primers. It is **not**
+image hover-preview, and card references inside suggestions, game-plans, and primers. It is **not**
 deck contents — decks are links (see [ADR-0002](../decisions/0002-decks-as-links.md)).
 
 ## Principles

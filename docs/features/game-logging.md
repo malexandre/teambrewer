@@ -105,7 +105,7 @@ in responses.
   - Optional fields (`learnings`, `winType`/`lossReason`, `eventId`) collapsed behind a "more details"
     disclosure so the fast path stays short.
   - First/second player toggle; best-of selector.
-- Minimal free typing overall; card/hero references support **hover/press preview** of card details.
+- Minimal free typing overall; card/hero references support a **hover/press image preview** of the card.
 - Show the **derived confidence weight** back to the logger after save (a small "this game counts as ~0.7"
   hint), reinforcing the model without asking them to compute it.
 

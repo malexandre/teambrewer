@@ -5,7 +5,7 @@ that isolates all game-specific knowledge. This phase finalizes the `GameAdapter
 and Blood adapter as its reference implementation, models `Game`/`Format`/`Hero`/`Card` global reference
 data, imports the-fab-cube open dataset via an idempotent sync command + scheduled job, seeds FaB formats
 and heroes, exposes a game-filtered card search endpoint, and ships the frontend card picker with
-hover/press preview and card detail. Cards are reference data only — decks remain links ([ADR-0002](../decisions/0002-decks-as-links.md)).
+hover/press image preview. Cards are reference data only — decks remain links ([ADR-0002](../decisions/0002-decks-as-links.md)).
 
 **Depends on** — [phase-01 Auth & Tenancy](phase-01-auth-and-tenancy.md) (a team is bound to a `gameId`;
 card reads are filtered by the active team's game).
@@ -27,8 +27,8 @@ card reads are filtered by the active team's game).
 - **Seed** the `Game` catalog (FaB), FaB `Format`s, and FaB `Hero`s (from the adapter/dataset).
 - **Search endpoint**: indexed card search filtered by the active team's `gameId`; for FaB, identity is
   **name + pitch** (a named card exists at multiple pitch values).
-- **Frontend**: autocomplete card picker (name + pitch for FaB), hover/press card preview anywhere a card is
-  referenced, and a card detail view. PWA-friendly caching of card data.
+- **Frontend**: autocomplete card picker (name + pitch for FaB), hover/press card **image** preview anywhere a
+  card is referenced (the image doubles as the detail — no separate detail view). PWA caching of card images.
 
 **Deliverables**
 - **Backend**
@@ -39,22 +39,26 @@ card reads are filtered by the active team's game).
     content scraping).
   - `apps/api/src/games/game-adapter.registry.ts` — resolves an adapter by a team's `gameId` (core never
     imports a game adapter directly).
-  - Prisma models + migration: `Game`, `Format`, `Hero`, `Card` (`Card` unique on `(gameId, externalId)`,
-    searchable index on `(gameId, name)`; store `sourceVersion`/`sourceName`, `formatLegality`, and FaB
-    fields such as `pitch`, `cost`, `power`, `defense`, `types`, `subtypes`, `keywords`, `text`, `rarity`, `imageUrl`).
+  - Prisma models + migration: `Game`, `Format`, `Hero`, **lean** `Card`, `CardDataVersion` (`Card` unique on
+    `(gameId, externalId)`, searchable index on `(gameId, name)`). *(As built: the `Card` is lean — `name`,
+    `pitch`, `imageUrl` only; provenance lives in `CardDataVersion`. No combat stats / `formatLegality` /
+    printings — decks are links and the image conveys the rest.)*
   - `CardSyncService` + a CLI/Nest command (`pnpm --filter api card:sync`) and a scheduled job; idempotent
     upsert; records data version.
-  - `CardsModule`: `GET /api/cards?query=&formatId=&limit=&cursor=` (cursor pagination, filtered by the
-    active team's game), `GET /api/cards/:cardId`, and reference endpoints
-    `GET /api/formats`, `GET /api/heroes` (game-filtered). Card/format/hero reads are **global reference data
-    filtered by `gameId`** — not `teamId`-scoped, but only the active team's game is returned.
-  - Seed script for the `Game` catalog + FaB formats + heroes.
+  - `CardsModule`: `GET /api/cards?query=&pitch=&limit=&cursor=` (keyset/cursor pagination, filtered by the
+    active team's game), `GET /api/cards/:cardId`, `GET /api/card-data/version`, the instance-admin
+    `POST /api/admin/card-data/sync`, and reference endpoints `GET /api/formats`, `GET /api/heroes`
+    (game-filtered). Card/format/hero reads are **global reference data filtered by `gameId`** — not
+    `teamId`-scoped, but only the active team's game is returned. *(No `formatId` filter — dropped with the
+    lean model.)*
+  - Seed script for the `Game` catalog + FaB formats. *(Heroes are derived by the sync, not seeded.)*
 - **Shared** (`packages/shared`): Zod schemas for the normalized card, format, hero, and the search
   request/response.
 - **Frontend** (`apps/web/src/features/cards`)
-  - `CardPicker` autocomplete (debounced; shows name + pitch for FaB), `CardPreview` (hover on desktop,
-    press on mobile), `CardDetail` view. TanStack Query hooks (`useCardSearch`, `useCard`, `useFormats`,
-    `useHeroes`) with query keys that include the active `teamId` (so the correct game's data is fetched).
+  - `CardPicker` autocomplete (debounced; shows name + pitch for FaB), `CardPreview` (image on hover on
+    desktop, press on mobile — the image is the detail; no separate `CardDetail` view in the lean model),
+    a `CardDataVersionBadge`. TanStack Query hooks (`useCardSearch`, `useCard`, `useFormats`, `useHeroes`,
+    `useCardDataVersion`) with query keys that include the active `teamId` (so the correct game's data is fetched).
 
 **Task checklist**
 - [x] Read [card-database](../features/card-database.md), [game-abstraction](../architecture/game-abstraction.md), [ADR-0006](../decisions/0006-game-agnostic-core.md), [ADR-0007](../decisions/0007-external-data-approach.md), [card-data-sources](../domain/card-data-sources.md), [flesh-and-blood](../domain/flesh-and-blood.md), and the [working-with-card-data](../../.claude/skills/working-with-card-data/SKILL.md) skill.
@@ -84,7 +88,7 @@ card reads are filtered by the active team's game).
   - Reference endpoints return only the active team's game's formats/heroes.
 - **Determinism:** all tests use fixtures — **no live network** to the-fab-cube or any external endpoint.
 - **Component (Vitest + Testing Library):** `CardPicker` autocompletes and shows name + pitch; `CardPreview`
-  renders on hover/press; `CardDetail` shows mapped fields.
+  renders the card image on hover/press.
 - **Manual proof (run and observe):** run `pnpm --filter api card:sync` against the dataset (or a local
   fixture) → cards populate; open the web app on a FaB team → the card picker autocompletes real FaB cards,
   preview/detail render, and the UI shows the card-data version/source. Confirm `pnpm test` passes locally (CI runs on push once a remote is configured).

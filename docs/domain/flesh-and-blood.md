@@ -29,7 +29,8 @@ the concepts the data model and features depend on. For exact card-schema fields
 - **Keywords** — e.g. Go again, Dominate, Overpower, Reprise, Fusion, Arcane, etc.
 - **Text / abilities**, **rarity**, **artist**, **sets/printings** (including foil variants).
 - **Legality per format** — the dataset tracks per-format legality flags (e.g. Classic Constructed,
-  Blitz, Commoner, etc.), which we surface as `format legality` on cards.
+  Blitz, Commoner, etc.). *(TeamBrewer's lean `Card` model does not store these — see
+  [card-database](../features/card-database.md); the card image conveys them.)*
 
 TeamBrewer stores **card reference data** (global per game) — it does not store deck card-lists (decks are
 links). Cards power autocomplete, hover-preview, and references inside suggestions, game-plans, and

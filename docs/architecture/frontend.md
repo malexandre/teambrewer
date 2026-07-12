@@ -58,8 +58,8 @@ when they grow. Mirror the backend module names and the [feature specs](../featu
 ## Card UX
 
 - **Autocomplete** card pickers (name + pitch for FaB) backed by the card DB.
-- **Hover/press preview** of card details/images anywhere a card is referenced (suggestions, game-plans,
-  primers). See [card-database](../features/card-database.md).
+- **Hover/press preview** of a card's image anywhere a card is referenced (suggestions, game-plans,
+  primers); the image is the detail (lean card model). See [card-database](../features/card-database.md).
 
 ## Accessibility & theming
 

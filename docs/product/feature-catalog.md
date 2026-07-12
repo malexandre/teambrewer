@@ -27,7 +27,7 @@ recommended and included; **Included** = optional in discovery, user chose to in
 |---|---|---|---|---|
 | 1 | Accounts & Auth | [accounts-and-auth](../features/accounts-and-auth.md) | Invite-only, no-email links; one login method per account: password + mandatory TOTP 2FA + backup codes, or Discord SSO | Locked |
 | 2 | Teams & Membership | [teams-and-membership](../features/teams-and-membership.md) | Isolated workspaces, per-team roles, active-team switching | Locked |
-| 3 | Card Database | [card-database](../features/card-database.md) | Search, autocomplete, hover-preview, card detail (global per game) | Locked |
+| 3 | Card Database | [card-database](../features/card-database.md) | Search, autocomplete, image hover-preview (global per game; lean card = name + pitch + image) | Locked |
 | 4 | Decks | [decks](../features/decks.md) | Link-only decks; hero/format/metadata; status lifecycle; iteration log | Locked + Included |
 | 5 | Events & Gauntlets | [events-and-gauntlets](../features/events-and-gauntlets.md) | Events hub; gauntlet; expected-metagame weighting; attendance/RSVP | Locked + Core + Included |
 | 6 | Game Logging | [game-logging](../features/game-logging.md) | Match logging; confidence factors; first/second player; win-type/loss-reason tags | Locked + Included |
