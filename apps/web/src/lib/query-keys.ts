@@ -87,4 +87,15 @@ export const queryKeys = {
     [teamId, "matchup-matrix", filters] as const,
   matchupCoverage: (teamId: string, filters: Record<string, string>) =>
     [teamId, "matchup-coverage", filters] as const,
+
+  /**
+   * Testing queue, keyed by the active team first (teamId) so switching teams yields
+   * a different cache entry and one team's suggestions/assignments never bleed into
+   * another's. `filters` keys each list variant (suggestions by deck/status,
+   * assignments by event/assignee/deck/status).
+   */
+  cardTestSuggestions: (teamId: string, filters: Record<string, string>) =>
+    [teamId, "card-test-suggestions", filters] as const,
+  testAssignments: (teamId: string, filters: Record<string, string>) =>
+    [teamId, "test-assignments", filters] as const,
 } as const;
