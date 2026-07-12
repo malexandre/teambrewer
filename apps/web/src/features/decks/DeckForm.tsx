@@ -9,6 +9,7 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { ApiError } from "@/lib/api-client";
 
 import { DeckVisibilityControl } from "./DeckVisibilityControl";
@@ -43,6 +44,7 @@ export function DeckForm({
   onCancel?: () => void;
 }) {
   const isEditing = Boolean(deck);
+  const identityLabel = useIdentityLabel(teamId);
   const [name, setName] = useState(deck?.name ?? "");
   const [formatId, setFormatId] = useState(deck?.formatId ?? "");
   const [heroId, setHeroId] = useState(deck?.heroId ?? "");
@@ -138,7 +140,7 @@ export function DeckForm({
           <FormatPicker id="deck-format" teamId={teamId} value={formatId} onChange={setFormatId} />
         </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor="deck-hero">Hero</Label>
+          <Label htmlFor="deck-hero">{identityLabel}</Label>
           <HeroPicker id="deck-hero" teamId={teamId} value={heroId} onChange={setHeroId} />
         </div>
       </div>

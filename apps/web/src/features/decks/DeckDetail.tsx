@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useFormats } from "@/features/cards/use-formats";
 import { useHeroes } from "@/features/cards/use-heroes";
+import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
@@ -37,6 +38,7 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
   const archiveDeck = useArchiveDeck(teamId, deck.id);
   const { data: formatData } = useFormats(teamId);
   const { data: heroData } = useHeroes(teamId);
+  const identityLabel = useIdentityLabel(teamId);
 
   const formatName = formatData?.data.find((format) => format.id === deck.formatId)?.name;
   const heroName = deck.heroId
@@ -91,7 +93,7 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
           <dd>{formatName ?? "—"}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Hero</dt>
+          <dt className="text-muted-foreground">{identityLabel}</dt>
           <dd>{heroName ?? "—"}</dd>
         </div>
         <div>

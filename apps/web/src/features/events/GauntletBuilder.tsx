@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useHeroes } from "@/features/cards/use-heroes";
+import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { HeroPicker } from "@/features/decks/HeroPicker";
 import { useDecks } from "@/features/decks/use-decks";
 import { ApiError } from "@/lib/api-client";
@@ -51,6 +52,7 @@ export function GauntletBuilder({
   const updateEntry = useUpdateGauntletEntry(teamId, eventId);
 
   const { data: heroData } = useHeroes(teamId);
+  const identityLabel = useIdentityLabel(teamId);
   const { data: referenceDeckData } = useDecks(teamId, { isReference: true });
   const heroNames = useMemo(
     () => new Map((heroData?.data ?? []).map((hero) => [hero.id, hero.name])),
@@ -69,7 +71,7 @@ export function GauntletBuilder({
       return deckNames.get(entry.referenceDeckId) ?? "Reference deck";
     }
     if (entry.heroId) {
-      return heroNames.get(entry.heroId) ?? "Hero";
+      return heroNames.get(entry.heroId) ?? identityLabel;
     }
     return entry.archetypeLabel ?? "Archetype";
   }
@@ -239,7 +241,7 @@ export function GauntletBuilder({
                 onChange={(event) => setTargetKind(event.target.value as TargetKind)}
                 aria-label="Target kind"
               >
-                <option value="hero">Hero</option>
+                <option value="hero">{identityLabel}</option>
                 <option value="deck">Reference deck</option>
                 <option value="archetype">Archetype label</option>
               </select>
@@ -247,7 +249,7 @@ export function GauntletBuilder({
 
             {targetKind === "hero" ? (
               <div className="flex flex-col gap-1">
-                <Label htmlFor="gauntlet-hero">Hero</Label>
+                <Label htmlFor="gauntlet-hero">{identityLabel}</Label>
                 <HeroPicker
                   id="gauntlet-hero"
                   teamId={teamId}

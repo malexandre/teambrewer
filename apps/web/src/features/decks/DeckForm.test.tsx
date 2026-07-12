@@ -12,11 +12,18 @@ function renderWithClient(ui: ReactNode) {
 }
 
 /** Mock the reference-data reads (and optionally deck create) the form depends on. */
-function mockApi(options: { onCreate?: (body: unknown) => void } = {}) {
+function mockApi(
+  options: { onCreate?: (body: unknown) => void; identityLabel?: string; gameId?: string } = {},
+) {
+  const gameId = options.gameId ?? "flesh-and-blood";
+  const identityLabel = options.identityLabel ?? "Hero";
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = typeof input === "string" ? input : input.toString();
     const method = init?.method ?? "GET";
 
+    if (url.includes("/api/game-config")) {
+      return json({ gameId, identityLabel, defaultBestOf: 1 });
+    }
     if (url.includes("/api/formats")) {
       return json({
         data: [
@@ -110,6 +117,22 @@ describe("DeckForm", () => {
 
     expect(await screen.findByRole("option", { name: "Classic Constructed" })).toBeInTheDocument();
     expect(await screen.findByRole("option", { name: "Dorinthea" })).toBeInTheDocument();
+  });
+
+  it("labels the identity picker with the game's term — 'Hero' for Flesh and Blood", async () => {
+    mockApi({ identityLabel: "Hero", gameId: "flesh-and-blood" });
+    renderWithClient(<DeckForm teamId="team-1" onSaved={vi.fn()} />);
+
+    expect(await screen.findByRole("combobox", { name: "Hero" })).toBeInTheDocument();
+  });
+
+  it("labels the identity picker with the game's term — 'Legend' for Riftbound", async () => {
+    mockApi({ identityLabel: "Legend", gameId: "riftbound" });
+    renderWithClient(<DeckForm teamId="team-1" onSaved={vi.fn()} />);
+
+    // The label follows game-config, with no game-specific branching in the UI.
+    expect(await screen.findByRole("combobox", { name: "Legend" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Hero" })).not.toBeInTheDocument();
   });
 
   it("creates a deck from valid input and reports the saved deck", async () => {

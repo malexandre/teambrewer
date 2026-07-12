@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormatPicker } from "@/features/decks/FormatPicker";
 import { HeroPicker } from "@/features/decks/HeroPicker";
+import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 
 import { SELECT_CLASS } from "../game-display";
 import { OPPONENT_KIND_LABELS, type OpponentKind } from "./opponent";
@@ -52,6 +53,13 @@ export function StepMatchup({
   archetypeLabel: string;
   setArchetypeLabel: (label: string) => void;
 }) {
+  const identityLabel = useIdentityLabel(teamId);
+  // Only the identity-kind label is game-specific ("Opponent hero"/"Opponent
+  // legend"); the rest are generic.
+  const opponentKindLabels: Record<OpponentKind, string> = {
+    ...OPPONENT_KIND_LABELS,
+    hero: `Opponent ${identityLabel.toLowerCase()}`,
+  };
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
@@ -85,9 +93,9 @@ export function StepMatchup({
           onChange={(event) => setOpponentKind(event.target.value as OpponentKind)}
           aria-label="Opponent kind"
         >
-          {(Object.keys(OPPONENT_KIND_LABELS) as OpponentKind[]).map((kind) => (
+          {(Object.keys(opponentKindLabels) as OpponentKind[]).map((kind) => (
             <option key={kind} value={kind}>
-              {OPPONENT_KIND_LABELS[kind]}
+              {opponentKindLabels[kind]}
             </option>
           ))}
         </select>

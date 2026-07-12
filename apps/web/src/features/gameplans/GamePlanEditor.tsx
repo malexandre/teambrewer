@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { CardPicker } from "@/features/cards/CardPicker";
 import { HeroPicker } from "@/features/decks/HeroPicker";
+import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { ApiError } from "@/lib/api-client";
 
 import { useCreateGamePlan, useUpdateGamePlan } from "./use-game-plan-mutations";
@@ -32,6 +33,7 @@ export function GamePlanEditor({
   onDone: () => void;
 }) {
   const isEdit = existing !== undefined;
+  const identityLabel = useIdentityLabel(teamId);
   const [opponentKind, setOpponentKind] = useState<OpponentKind>("hero");
   const [heroId, setHeroId] = useState("");
   const [archetypeLabel, setArchetypeLabel] = useState("");
@@ -110,7 +112,7 @@ export function GamePlanEditor({
                 aria-pressed={opponentKind === kind}
                 onClick={() => setOpponentKind(kind)}
               >
-                {kind === "hero" ? "Hero" : "Archetype label"}
+                {kind === "hero" ? identityLabel : "Archetype label"}
               </Button>
             ))}
           </div>
