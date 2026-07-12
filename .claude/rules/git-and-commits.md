@@ -19,6 +19,9 @@ Hooks are managed by **lefthook** (`lefthook.yml`); `pnpm install` wires them vi
 Each step reports pass/fail **by name**, and the `pre-commit` runs them in order and **stops at the first
 failure** (`piped: true`), so the culprit is obvious.
 
+> **lefthook is the chosen hook manager.** The project deliberately migrated off Husky + lint-staged — do
+> **not** reintroduce them or swap the manager without the user's say-so; change `lefthook.yml` instead.
+
 `pre-commit` steps, in order:
 
 1. **format** — auto-formats the **staged files** (`prettier --write`, `stage_fixed: true` re-stages the
