@@ -76,7 +76,7 @@ Update as phases complete.
 | 05 | Events & Gauntlets | ✅ done |
 | 06 | Game Logging | ✅ done |
 | 07 | Matchups & Coverage | ✅ done |
-| 08 | Testing Queue | ⛔ not started |
+| 08 | Testing Queue | ✅ done |
 | 09 | Game-Plans & Deck Selection | ⛔ not started |
 | 10 | Team Knowledge | ⛔ not started |
 | 11 | Dashboard | ⛔ not started |

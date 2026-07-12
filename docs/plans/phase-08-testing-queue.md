@@ -34,12 +34,14 @@ collaboration core built in phase-04.
   reasoning, status: proposed | testing | adopted | rejected, resolutionNote }` — one suggestion per tech
   idea for a specific deck. Guarded status lifecycle: `proposed → testing → adopted | rejected`, with a
   `resolutionNote` required when resolving to `adopted`/`rejected`.
-- **`SuggestionVote`** `{ id, suggestionId, userId, value }` — one vote per user per suggestion (idempotent
-  upsert; changing a vote updates the existing row).
+- **`SuggestionVote`** `{ id, suggestionId, userId }` — one **upvote** per user per suggestion (idempotent
+  upsert; the row's existence is the upvote — **upvote-only**, no `value` column; decided with the user).
 - **`TestAssignment`** `{ id, teamId, eventId?, assigneeId, assignedById, deckId (ours),
-  opponentRef (gauntletEntryId | heroId | archetypeLabel), targetGames?, status, notes }` — a matchup handed
-  to a member to test, with an optional target game count and a status lifecycle
-  (e.g. `assigned → in_progress → completed`, plus a `cancelled` terminal).
+  opponentRef (gauntletEntryId | heroId | archetypeLabel), opponentSnapshotLabel, targetGames?, status,
+  notes }` — a matchup handed to a member to test, with an optional target game count and the status
+  lifecycle `open → in_progress → done`, plus a `cancelled` terminal (the feature-spec vocabulary, decided
+  with the user). `opponentSnapshotLabel` is a server-derived human label that survives deletion of the
+  referenced gauntlet entry/hero.
 - Team-scoped CRUD for all three; card references validated against the team's `gameId`; cross-team FK
   rejection (deck, event, gauntlet-entry, cards all share `teamId`/game).
 - Discussion via collaboration-core: suggestions and assignments are comment subjects
@@ -63,25 +65,25 @@ collaboration core built in phase-04.
 
 ## Task checklist (test-first, ordered)
 
-- [ ] Write failing Zod schema tests for the three entities (valid + invalid, incl. resolution requiring a
+- [x] Write failing Zod schema tests for the three entities (valid + invalid, incl. resolution requiring a
       `resolutionNote`), then add the schemas.
-- [ ] Write failing unit tests for the suggestion status-transition helper (legal vs illegal;
+- [x] Write failing unit tests for the suggestion status-transition helper (legal vs illegal;
       resolution-note requirement), then implement.
-- [ ] Write failing unit tests for the assignment status-transition helper, then implement.
-- [ ] Add the Prisma models + migration; run `pnpm --filter api prisma migrate dev`.
-- [ ] Write failing integration tests for `CardTestSuggestion` CRUD + status transitions scoped to a team,
+- [x] Write failing unit tests for the assignment status-transition helper, then implement.
+- [x] Add the Prisma models + migration; run `pnpm --filter api prisma migrate dev`.
+- [x] Write failing integration tests for `CardTestSuggestion` CRUD + status transitions scoped to a team,
       then implement.
-- [ ] Write failing integration tests for `SuggestionVote` idempotency (one row per user; changing a vote
+- [x] Write failing integration tests for `SuggestionVote` idempotency (one row per user; changing a vote
       updates it), then implement.
-- [ ] Write failing integration tests for `TestAssignment` lifecycle (assign → in_progress → completed;
+- [x] Write failing integration tests for `TestAssignment` lifecycle (assign → in_progress → done;
       cancel), then implement.
-- [ ] Write failing **cross-team FK** tests (suggestion/assignment referencing a team-B deck, event,
+- [x] Write failing **cross-team FK** tests (suggestion/assignment referencing a team-B deck, event,
       gauntlet-entry, or card is rejected) and **tenant-isolation** tests (cross-tenant read → `404`;
       forged `teamId` → `403`), then confirm.
-- [ ] Wire collaboration-core comment subjects onto suggestions and assignments.
-- [ ] Write failing component tests for the suggestion board (grouped by status), vote control, and
+- [x] Wire collaboration-core comment subjects onto suggestions and assignments.
+- [x] Write failing component tests for the suggestion board (grouped by status), vote control, and
       assignment management, then build the UI with team-scoped TanStack Query keys.
-- [ ] Update [README.md](README.md) status table and cross-links.
+- [x] Update [README.md](README.md) status table and cross-links.
 
 ## Tests & verification
 
@@ -93,10 +95,10 @@ collaboration core built in phase-04.
 
 **Integration (Vitest + test Postgres)**
 - Suggestion/vote/assignment CRUD happy paths with correct status codes and envelopes.
-- **Voting:** repeated votes by one user → a single row; switching up/down updates in place; vote tallies
-  reflect distinct users.
-- **Assignment lifecycle:** status advances correctly; `targetGames` optional; completing sets terminal
-  state.
+- **Voting (upvote-only):** repeated `PUT` by one user → a single row (idempotent); retract removes it;
+  vote tallies reflect distinct upvoters.
+- **Assignment lifecycle:** status advances correctly (`open → in_progress → done`); `targetGames`
+  optional; `done`/`cancelled` are terminal.
 - **Tenant isolation (mandatory):** team A cannot read/write team B's suggestions, votes, or assignments
   (cross-tenant → `404`); forged `X-Team-Id` → `403`; cross-team deck/event/gauntlet-entry/card references
   rejected.

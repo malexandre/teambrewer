@@ -99,9 +99,14 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
 ### Testing queue
 - **CardTestSuggestion** `{ id, teamId, deckId, authorId, cardInId (→ Card), cardOutId? (→ Card),
   reasoning, status: 'proposed' | 'testing' | 'adopted' | 'rejected', resolutionNote }`
-- **SuggestionVote** `{ id, suggestionId, userId, value (up/down or reaction) }`
+- **SuggestionVote** `{ id, suggestionId, userId }` — **upvote-only** (phase-08, with the user): one row per
+  `(suggestionId, userId)` and the row's existence is the upvote, so there is no `value`. No `teamId` — it
+  is scoped transitively through its parent suggestion (like `Attendance`/`GameLogCard`).
 - **TestAssignment** `{ id, teamId, eventId?, assigneeId, assignedById, deckId (ours),
-  opponentRef (gauntletEntryId | heroId | archetypeLabel), targetGames?, status, notes }`
+  opponentRef (gauntletEntryId | heroId | archetypeLabel), opponentSnapshotLabel, targetGames?,
+  status: 'open' | 'in_progress' | 'done' | 'cancelled', notes }` — `opponentSnapshotLabel` (phase-08, with
+  the user) is a server-derived human label resolved at write time so a later-deleted gauntlet entry/hero
+  still reads meaningfully.
 
 ### Game-plans
 - **MatchupGamePlan** `{ id, teamId, ourDeckId, opponentRef (gauntletEntryId | heroId | archetypeLabel),

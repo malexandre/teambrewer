@@ -143,8 +143,30 @@ normalized field share, with a threshold control), and scope selectors + a by-de
 weighted win rate and the effective sample; **trust thresholds** are `low <5 · medium 5–<15 · high ≥15`;
 coverage aggregates all relevant reps in the event's **format** against each target, flagging effective
 sample below a configurable threshold (default the `high` boundary). `firstPlayerSide` is data, not an
-aggregation axis (v1). Test assignments (`assignments: []`) arrive with phase-08. Next: **phase-08 (testing
-queue)** — pick it up per [`docs/plans/`](docs/plans/README.md).
+aggregation axis (v1). Test assignments (`assignments: []`) arrive with phase-08.
+
+**Phase-08 (testing queue) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 361 API +
+243 shared + 53 web unit/integration tests + 7 e2e journeys): the deliberate-testing subsystem — per-deck
+**card-test suggestions** with **upvotes**, and **test assignments** that hand a specific matchup to a
+member. Backend **`TestingQueueModule`** (team-scoped via `TeamScopedPrisma`): **`CardTestSuggestion`** CRUD
+(`GET/POST /api/card-test-suggestions`, `PATCH/DELETE /:suggestionId`) with a guarded lifecycle
+`proposed → testing → adopted | rejected` (illegal → 422; resolving to adopted/rejected requires a
+`resolutionNote`), author/team-admin ownership (404-before-403), archived-deck-blocks-create, and
+cross-team/cross-game FK rejection; **upvote-only voting** (`PUT/DELETE /:suggestionId/votes/me`, idempotent
+upsert on `(suggestionId, userId)`, voter from context — `SuggestionVote` has no `value` and no `teamId`,
+scoped transitively like `Attendance`); and **`TestAssignment`** CRUD (`GET/POST /api/test-assignments`,
+`PATCH/DELETE /:assignmentId`) with an exactly-one-of opponent (gauntlet entry / hero / archetype label; the
+structural rule → 400), a guarded lifecycle `open → in_progress → done` (+`cancelled`), creator/assignee/
+admin ownership, and a server-derived **`opponentSnapshotLabel`** that survives deletion of the referenced
+gauntlet entry/hero. Both are collaboration subjects (`card_test_suggestion`/`test_assignment`) emitting
+created/updated/status_changed activity. Models `CardTestSuggestion`/`SuggestionVote`/`TestAssignment` +
+migration; `cardTestSuggestion`/`testAssignment` added to `TEAM_OWNED_MODELS`. Frontend **`testing-queue`**
+feature: a per-deck **`SuggestionBoard`** (grouped by status, one-tap voting, status control with the
+required resolution note, on-demand discussion) embedded on `DeckDetail`, and an **`/assignments`** page
+(assign a matchup, "All / Assigned to me" scope, status control, discussion). **Decisions (with the user):**
+votes are **upvote-only** (no `value`); assignment statuses use the feature-spec vocabulary
+**`open/in_progress/done`** (+`cancelled`); the opponent snapshot is implemented now (not deferred).
+Next: **phase-09 (game-plans & deck selection)** — pick it up per [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 

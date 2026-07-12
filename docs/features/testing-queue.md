@@ -45,12 +45,16 @@ Uses these entities from [data-model.md](../architecture/data-model.md#testing-q
   reasoning, status: 'proposed' | 'testing' | 'adopted' | 'rejected', resolutionNote }`
   - Per-deck; `cardInId` required, `cardOutId` optional (a straight add vs a swap). Cards come from the
     card DB (autocomplete / hover), not from a stored deck list ([ADR-0002](../decisions/0002-decks-as-links.md)).
-- **SuggestionVote** `{ id, suggestionId, userId, value (up/down or reaction) }` — one vote per user per
-  suggestion.
+- **SuggestionVote** `{ id, suggestionId, userId }` — one **upvote** per user per suggestion. Decided with
+  the user in phase-08: voting is **upvote-only** (a single tap; the row's existence is the upvote, so
+  there is no stored `value`), matching the "single tap" + "sort by votes" UI.
 - **TestAssignment** `{ id, teamId, eventId?, assigneeId, assignedById, deckId (ours),
-  opponentRef (gauntletEntryId | heroId | archetypeLabel), targetGames?, status, notes }`
+  opponentRef (gauntletEntryId | heroId | archetypeLabel), opponentSnapshotLabel, targetGames?, status, notes }`
   - Ties our deck to an opponent target; `opponentRef` can point at a gauntlet entry, a hero, or an
     archetype label. Optional `eventId` scopes it to an event's prep; optional `targetGames` sets a goal.
+  - **`opponentSnapshotLabel`** (phase-08, with the user) is a server-derived human label resolved at write
+    time (the gauntlet entry's target, the hero name, or the archetype label) so a later-deleted gauntlet
+    entry/hero keeps the assignment meaningful — see the edge case below.
 
 ## Behavior & rules
 
@@ -91,7 +95,7 @@ stateDiagram-v2
 - **Suggestions:** any member may create a suggestion and vote. The author or a team-admin may edit; status
   transitions to `adopted`/`rejected` are typically team-admin (or author) actions per
   [multi-tenancy §Roles](../architecture/multi-tenancy.md#roles--capabilities).
-- **Votes:** one per user per suggestion; changing a vote upserts.
+- **Votes:** one upvote per user per suggestion; a repeated `PUT` is idempotent and `DELETE` retracts.
 - **Assignments:** team-admins create and assign; assignees update their own assignment status. Members may
   self-assign where the team allows.
 
@@ -114,7 +118,7 @@ context.
 | `POST` | `/api/card-test-suggestions` | Create a suggestion |
 | `PATCH` | `/api/card-test-suggestions/:suggestionId` | Edit / transition status (resolution note required for adopted/rejected) |
 | `DELETE` | `/api/card-test-suggestions/:suggestionId` | Archive (soft-delete) |
-| `PUT` | `/api/card-test-suggestions/:suggestionId/votes/me` | Cast/change my vote (idempotent upsert) |
+| `PUT` | `/api/card-test-suggestions/:suggestionId/votes/me` | Cast my upvote (idempotent upsert) |
 | `DELETE` | `/api/card-test-suggestions/:suggestionId/votes/me` | Retract my vote |
 | `GET` | `/api/test-assignments` | List (filter `?eventId=&assigneeId=&status=&deckId=`) |
 | `POST` | `/api/test-assignments` | Create/assign a test |
