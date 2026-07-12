@@ -16,12 +16,13 @@ import {
   formatConfidenceWeight,
   formatPlayedAt,
   formatResult,
+  GAME_LOG_CARD_SIDE_LABELS,
   type GameLogLabelMaps,
   PILOT_FAMILIARITY_FIELD,
   SERIOUSNESS_FIELD,
   SKILL_PARITY_FIELD,
 } from "./game-display";
-import { GameLogForm } from "./GameLogForm";
+import { GameLogWizard } from "./GameLogWizard";
 import { useArchiveGame } from "./use-game-mutations";
 
 function optionLabel<Value extends string>(
@@ -62,7 +63,7 @@ export function GameDetail({
 
   if (editing) {
     return (
-      <GameLogForm
+      <GameLogWizard
         teamId={teamId}
         gameLog={game}
         onSaved={() => setEditing(false)}
@@ -146,6 +147,38 @@ export function GameDetail({
         <section className="flex flex-col gap-1">
           <h3 className="text-sm font-semibold">Learnings</h3>
           <p className="whitespace-pre-wrap text-sm">{game.learnings}</p>
+        </section>
+      ) : null}
+
+      {game.impressiveCards.length > 0 ? (
+        <section className="flex flex-col gap-1">
+          <h3 className="text-sm font-semibold">Impressive cards</h3>
+          <ul className="flex flex-col gap-1 text-sm">
+            {game.impressiveCards.map((entry) => (
+              <li key={entry.card.id} className="flex justify-between gap-2">
+                <span>{entry.card.name}</span>
+                <span className="text-muted-foreground">
+                  {GAME_LOG_CARD_SIDE_LABELS[entry.side]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {game.underperformingCards.length > 0 ? (
+        <section className="flex flex-col gap-1">
+          <h3 className="text-sm font-semibold">Underperforming cards</h3>
+          <ul className="flex flex-col gap-1 text-sm">
+            {game.underperformingCards.map((entry) => (
+              <li key={entry.card.id} className="flex justify-between gap-2">
+                <span>{entry.card.name}</span>
+                <span className="text-muted-foreground">
+                  {GAME_LOG_CARD_SIDE_LABELS[entry.side]}
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 
