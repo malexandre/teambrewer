@@ -6,10 +6,12 @@ describe("subjectTypeSchema", () => {
   it("accepts the adopted subject types", () => {
     expect(subjectTypeSchema.parse("deck")).toBe("deck");
     expect(subjectTypeSchema.parse("event")).toBe("event");
+    expect(subjectTypeSchema.parse("card_test_suggestion")).toBe("card_test_suggestion");
+    expect(subjectTypeSchema.parse("test_assignment")).toBe("test_assignment");
   });
 
   it("rejects an unknown subject type at the boundary", () => {
-    expect(subjectTypeSchema.safeParse("card_test_suggestion").success).toBe(false);
+    expect(subjectTypeSchema.safeParse("primer").success).toBe(false);
     expect(subjectTypeSchema.safeParse("").success).toBe(false);
   });
 });

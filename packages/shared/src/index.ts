@@ -279,6 +279,46 @@ export {
   type MatchupCoverageResponse,
 } from "./matchups.js";
 
+export {
+  cardTestSuggestionStatusSchema,
+  testAssignmentStatusSchema,
+  cardTestSuggestionStatusTransitions,
+  allowedNextCardTestSuggestionStatuses,
+  isCardTestSuggestionStatusTransitionAllowed,
+  cardTestSuggestionStatusRequiresResolutionNote,
+  testAssignmentStatusTransitions,
+  allowedNextTestAssignmentStatuses,
+  isTestAssignmentStatusTransitionAllowed,
+  suggestionReasoningSchema,
+  resolutionNoteSchema,
+  assignmentNotesSchema,
+  targetGamesSchema,
+  createCardTestSuggestionSchema,
+  updateCardTestSuggestionSchema,
+  cardTestSuggestionListQuerySchema,
+  createTestAssignmentSchema,
+  updateTestAssignmentSchema,
+  testAssignmentListQuerySchema,
+  testingQueueUserSchema,
+  cardTestSuggestionSchema,
+  cardTestSuggestionListResponseSchema,
+  testAssignmentSchema,
+  testAssignmentListResponseSchema,
+  type CardTestSuggestionStatus,
+  type TestAssignmentStatus,
+  type CreateCardTestSuggestionInput,
+  type UpdateCardTestSuggestionInput,
+  type CardTestSuggestionListQuery,
+  type CreateTestAssignmentInput,
+  type UpdateTestAssignmentInput,
+  type TestAssignmentListQuery,
+  type TestingQueueUser,
+  type CardTestSuggestion,
+  type CardTestSuggestionListResponse,
+  type TestAssignment,
+  type TestAssignmentListResponse,
+} from "./testing-queue.js";
+
 export { subjectTypeSchema, parseMentionHandles, type SubjectType } from "./collaboration.js";
 
 export {

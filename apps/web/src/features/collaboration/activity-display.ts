@@ -10,5 +10,11 @@ export const ACTIVITY_VERB_LABELS: Record<ActivityVerb, string> = {
   event_status_changed: "changed an event's status",
   game_log_created: "logged a game",
   game_log_updated: "updated a game log",
+  card_test_suggestion_created: "suggested a card test",
+  card_test_suggestion_updated: "updated a card-test suggestion",
+  card_test_suggestion_status_changed: "changed a suggestion's status",
+  test_assignment_created: "created a test assignment",
+  test_assignment_updated: "updated a test assignment",
+  test_assignment_status_changed: "changed an assignment's status",
   commented: "commented",
 };
