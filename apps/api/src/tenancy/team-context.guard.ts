@@ -53,7 +53,9 @@ export class TeamContextGuard implements CanActivate {
 
     const membership = await this.prisma.teamMembership.findUnique({
       where: { teamId_userId: { teamId, userId } },
-      select: { role: true },
+      // The team's game comes along for free here, so game-filtered reference
+      // reads (cards/formats/heroes) never need a second query or a client value.
+      select: { role: true, team: { select: { gameId: true } } },
     });
 
     if (!membership) {
@@ -67,7 +69,7 @@ export class TeamContextGuard implements CanActivate {
       });
     }
 
-    request.teamContext = { userId, teamId, role: membership.role };
+    request.teamContext = { userId, teamId, role: membership.role, gameId: membership.team.gameId };
     return true;
   }
 }

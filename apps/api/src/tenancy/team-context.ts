@@ -13,6 +13,12 @@ export interface TeamContext {
   userId: string;
   teamId: string;
   role: TeamRole;
+  /**
+   * The team's game (`Game.id` slug). Global reference reads (cards, formats,
+   * heroes) are filtered by this — resolved server-side from the verified team,
+   * never from a client-supplied value.
+   */
+  gameId: string;
 }
 
 /**
