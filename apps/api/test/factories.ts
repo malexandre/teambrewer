@@ -114,6 +114,134 @@ export async function addMembership(
 }
 
 /**
+ * Game reference-data fixtures (phase-02). Global, per-game, no `teamId` — reads
+ * are filtered by the active team's game. `Game.id` is the slug that `Team.gameId`
+ * holds (default "flesh-and-blood"); cards/heroes/formats FK to it.
+ */
+
+export interface CreateGameOptions {
+  id?: string;
+  key?: string;
+  name?: string;
+}
+
+export interface TestGame {
+  id: string;
+  key: string;
+  name: string;
+}
+
+export async function createGame(
+  prisma: PrismaClient,
+  options: CreateGameOptions = {},
+): Promise<TestGame> {
+  const id = options.id ?? "flesh-and-blood";
+  const created = await prisma.game.upsert({
+    where: { id },
+    update: {},
+    create: {
+      id,
+      key: options.key ?? "flesh_and_blood",
+      name: options.name ?? "Flesh and Blood",
+    },
+  });
+  return { id: created.id, key: created.key, name: created.name };
+}
+
+export interface CreateCardOptions {
+  gameId?: string;
+  externalId?: string;
+  name?: string;
+  pitch?: number | null;
+  imageUrl?: string | null;
+  archivedAt?: Date | null;
+}
+
+export interface TestCard {
+  id: string;
+  gameId: string;
+  externalId: string;
+  name: string;
+  pitch: number | null;
+}
+
+export async function createCard(
+  prisma: PrismaClient,
+  options: CreateCardOptions = {},
+): Promise<TestCard> {
+  const suffix = randomUUID().slice(0, 8);
+  const created = await prisma.card.create({
+    data: {
+      gameId: options.gameId ?? "flesh-and-blood",
+      externalId: options.externalId ?? `card-${suffix}`,
+      name: options.name ?? `Card ${suffix}`,
+      pitch: options.pitch ?? null,
+      imageUrl: options.imageUrl ?? null,
+      archivedAt: options.archivedAt ?? null,
+    },
+  });
+  return {
+    id: created.id,
+    gameId: created.gameId,
+    externalId: created.externalId,
+    name: created.name,
+    pitch: created.pitch,
+  };
+}
+
+export interface CreateHeroOptions {
+  gameId?: string;
+  externalId?: string;
+  name?: string;
+  classes?: string[];
+  talents?: string[];
+  startingLife?: number | null;
+  imageUrl?: string | null;
+}
+
+export async function createHero(
+  prisma: PrismaClient,
+  options: CreateHeroOptions = {},
+): Promise<{ id: string; name: string; gameId: string }> {
+  const suffix = randomUUID().slice(0, 8);
+  const created = await prisma.hero.create({
+    data: {
+      gameId: options.gameId ?? "flesh-and-blood",
+      externalId: options.externalId ?? `hero-${suffix}`,
+      name: options.name ?? `Hero ${suffix}`,
+      classes: options.classes ?? [],
+      talents: options.talents ?? [],
+      startingLife: options.startingLife ?? null,
+      imageUrl: options.imageUrl ?? null,
+    },
+  });
+  return { id: created.id, name: created.name, gameId: created.gameId };
+}
+
+export async function createFormat(
+  prisma: PrismaClient,
+  options: {
+    gameId?: string;
+    key?: string;
+    name?: string;
+    isConstructed?: boolean;
+    sortOrder?: number;
+  } = {},
+): Promise<{ id: string; key: string; name: string; gameId: string }> {
+  const suffix = randomUUID().slice(0, 8);
+  const created = await prisma.format.create({
+    data: {
+      gameId: options.gameId ?? "flesh-and-blood",
+      key: options.key ?? `format-${suffix}`,
+      name: options.name ?? `Format ${suffix}`,
+      isConstructed: options.isConstructed ?? true,
+      sortOrder: options.sortOrder ?? 0,
+    },
+  });
+  return { id: created.id, key: created.key, name: created.name, gameId: created.gameId };
+}
+
+/**
  * The canonical two-team world for isolation tests: an instance-admin, plus
  * team A (with a team-admin and a member) and team B (with its own member).
  * `memberA` belongs only to team A and must never be able to reach team B.
