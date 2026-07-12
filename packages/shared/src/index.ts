@@ -362,3 +362,46 @@ export {
   type ActivityEvent,
   type ActivityListResponse,
 } from "./activity.js";
+
+export {
+  gamePlanBodySchema,
+  keyCardIdsSchema,
+  createMatchupGamePlanSchema,
+  updateMatchupGamePlanSchema,
+  matchupGamePlanListQuerySchema,
+  gamePlanUserSchema,
+  matchupGamePlanSchema,
+  matchupGamePlanListResponseSchema,
+  type CreateMatchupGamePlanInput,
+  type UpdateMatchupGamePlanInput,
+  type MatchupGamePlanListQuery,
+  type GamePlanUser,
+  type MatchupGamePlan,
+  type MatchupGamePlanListResponse,
+} from "./game-plans.js";
+
+export {
+  deckSelectionReasoningSchema,
+  setDeckSelectionSchema,
+  deckSelectionUserSchema,
+  deckSelectionSchema,
+  deckSelectionListSchema,
+  type SetDeckSelectionInput,
+  type DeckSelectionUser,
+  type DeckSelection,
+  type DeckSelectionList,
+} from "./deck-selections.js";
+
+export {
+  retrospectiveBodySchema,
+  retrospectiveResultsSummarySchema,
+  retrospectiveLearningsSchema,
+  createRetrospectiveSchema,
+  updateRetrospectiveSchema,
+  retrospectiveAuthorSchema,
+  retrospectiveSchema,
+  type CreateRetrospectiveInput,
+  type UpdateRetrospectiveInput,
+  type RetrospectiveAuthor,
+  type Retrospective,
+} from "./retrospectives.js";
