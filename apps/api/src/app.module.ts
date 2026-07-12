@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AdminModule } from "./admin/admin.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { CardsModule } from "./cards/cards.module.js";
+import { DecksModule } from "./decks/decks.module.js";
 import { DomainExceptionFilter } from "./common/domain-exception.filter.js";
 import { THROTTLER_OPTIONS } from "./common/throttling.js";
 import { DiscordModule } from "./discord/discord.module.js";
@@ -26,6 +27,7 @@ import { TenancyModule } from "./tenancy/tenancy.module.js";
     DiscordModule,
     HealthModule,
     CardsModule,
+    DecksModule,
   ],
   providers: [
     // The uniform error envelope (api-conventions.md) is applied to every route.
