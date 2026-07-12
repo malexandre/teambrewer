@@ -8,8 +8,8 @@ import { subjectTypeSchema } from "./collaboration.js";
  * by `(subjectType, subjectId)`. Verbs are an enum extended as modules adopt the
  * subsystem; phase-04 emits the deck lifecycle verbs plus the generic `commented`,
  * events add their own lifecycle verbs, game logs add theirs (phase-06), the testing
- * queue adds the suggestion/assignment lifecycle verbs (phase-08), and game-plans add
- * theirs (phase-09).
+ * queue adds the suggestion/assignment lifecycle verbs (phase-08), game-plans add
+ * theirs (phase-09), and team-knowledge adds the primer/decision/poll verbs (phase-10).
  */
 
 export const activityVerbSchema = z.enum([
@@ -29,6 +29,12 @@ export const activityVerbSchema = z.enum([
   "test_assignment_status_changed",
   "matchup_game_plan_created",
   "matchup_game_plan_updated",
+  "primer_created",
+  "primer_updated",
+  "decision_recorded",
+  "decision_updated",
+  "poll_created",
+  "poll_closed",
   "commented",
 ]);
 export type ActivityVerb = z.infer<typeof activityVerbSchema>;

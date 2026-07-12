@@ -8,10 +8,12 @@ describe("subjectTypeSchema", () => {
     expect(subjectTypeSchema.parse("event")).toBe("event");
     expect(subjectTypeSchema.parse("card_test_suggestion")).toBe("card_test_suggestion");
     expect(subjectTypeSchema.parse("test_assignment")).toBe("test_assignment");
+    expect(subjectTypeSchema.parse("primer")).toBe("primer");
+    expect(subjectTypeSchema.parse("decision")).toBe("decision");
   });
 
   it("rejects an unknown subject type at the boundary", () => {
-    expect(subjectTypeSchema.safeParse("primer").success).toBe(false);
+    expect(subjectTypeSchema.safeParse("spreadsheet").success).toBe(false);
     expect(subjectTypeSchema.safeParse("").success).toBe(false);
   });
 });

@@ -14,9 +14,12 @@ import { z } from "zod";
  * HTTP boundary. It is **extended as modules adopt** the subsystem — decks were the
  * first adopter (phase-04); events joined next; game logs joined in phase-06; the
  * testing queue's card-test suggestions and test assignments joined in phase-08;
- * matchup game-plans joined in phase-09. The runtime resolver registry is keyed by
- * arbitrary string, so tests can exercise the polymorphic code path with a subject
- * type that is not (yet) in this enum.
+ * matchup game-plans joined in phase-09; team-knowledge primers and decisions joined
+ * in phase-10. `poll` is also listed so poll lifecycle activity validates against the
+ * shared activity contract, even though polls are activity-tracked but **not**
+ * commentable (no resolver is registered for them). The runtime resolver registry is
+ * keyed by arbitrary string, so tests can exercise the polymorphic code path with a
+ * subject type that is not (yet) in this enum.
  */
 export const subjectTypeSchema = z.enum([
   "deck",
@@ -25,6 +28,9 @@ export const subjectTypeSchema = z.enum([
   "card_test_suggestion",
   "test_assignment",
   "matchup_game_plan",
+  "primer",
+  "decision",
+  "poll",
 ]);
 export type SubjectType = z.infer<typeof subjectTypeSchema>;
 
