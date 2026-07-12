@@ -9,6 +9,9 @@ import { useCurrentUser } from "@/features/auth/use-current-user";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
 
+import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
+import { CommentThread } from "@/features/collaboration/CommentThread";
+
 import { DECK_VISIBILITY_LABELS } from "./deck-display";
 import { DeckForm } from "./DeckForm";
 import { DeckStatusControl } from "./DeckStatusControl";
@@ -139,6 +142,14 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
       ) : null}
 
       <IterationLog teamId={teamId} deckId={deck.id} canAddEntry={canModify} />
+
+      <CommentThread teamId={teamId} subjectType="deck" subjectId={deck.id} canComment />
+
+      <ActivityFeed
+        teamId={teamId}
+        filters={{ subjectType: "deck", subjectId: deck.id }}
+        title="Deck activity"
+      />
     </div>
   );
 }

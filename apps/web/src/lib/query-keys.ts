@@ -37,4 +37,18 @@ export const queryKeys = {
   deck: (teamId: string, deckId: string) => [teamId, "deck", deckId] as const,
   deckIterations: (teamId: string, deckId: string) =>
     [teamId, "deck", deckId, "iterations"] as const,
+
+  /**
+   * Collaboration keys, all team-scoped (teamId first) so switching teams yields
+   * a different cache entry and one team's discussion/awareness never bleeds into
+   * another's. Comments are keyed by their polymorphic subject; notifications are
+   * the caller's own within the active team; activity is the team feed (an
+   * optional subject filter keys its own variant).
+   */
+  comments: (teamId: string, subjectType: string, subjectId: string) =>
+    [teamId, "comments", subjectType, subjectId] as const,
+  notifications: (teamId: string, params: { unreadOnly?: boolean }) =>
+    [teamId, "notifications", params] as const,
+  activity: (teamId: string, filters: Record<string, string>) =>
+    [teamId, "activity", filters] as const,
 } as const;

@@ -5,6 +5,7 @@ import { AdminPage } from "@/features/admin/AdminPage";
 import { AppChrome } from "@/features/app/AppChrome";
 import { HomePage } from "@/features/app/HomePage";
 import { CardsPage } from "@/features/cards/CardsPage";
+import { ActivityPage } from "@/features/collaboration/ActivityPage";
 import { DeckDetailPage } from "@/features/decks/DeckDetailPage";
 import { DecksPage } from "@/features/decks/DecksPage";
 import { ClaimPage } from "@/features/auth/ClaimPage";
@@ -87,6 +88,12 @@ const deckDetailRoute = createRoute({
   },
 });
 
+const activityRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/activity",
+  component: ActivityPage,
+});
+
 const adminRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/admin",
@@ -108,6 +115,7 @@ const routeTree = rootRoute.addChildren([
     cardsRoute,
     decksRoute,
     deckDetailRoute,
+    activityRoute,
     adminRoute,
     settingsRoute,
   ]),

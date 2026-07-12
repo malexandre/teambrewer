@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth/use-current-user";
+import { NotificationCenter } from "@/features/collaboration/NotificationCenter";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { TeamSelector } from "@/features/teams/TeamSelector";
 import { authClient } from "@/lib/auth-client";
@@ -44,6 +45,9 @@ export function AppChrome({ children }: { children: ReactNode }) {
             <Link to="/cards" className="px-2 py-1 hover:underline">
               Cards
             </Link>
+            <Link to="/activity" className="px-2 py-1 hover:underline">
+              Activity
+            </Link>
             {canAdminister ? (
               <Link to="/admin" className="px-2 py-1 hover:underline">
                 Admin
@@ -52,6 +56,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
             <Link to="/settings" className="px-2 py-1 hover:underline">
               Settings
             </Link>
+            <NotificationCenter />
             <Button type="button" variant="ghost" size="sm" onClick={signOut}>
               Sign out
             </Button>
