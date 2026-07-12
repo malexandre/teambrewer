@@ -10,7 +10,7 @@ import type { RequestWithTenantContext } from "./team-context.js";
  * feature phases add team-owned models (decks, game logs, events, …), add their
  * delegate names here so they are scoped by construction.
  */
-export const TEAM_OWNED_MODELS = new Set<string>(["teamMembership"]);
+export const TEAM_OWNED_MODELS = new Set<string>(["teamMembership", "deck"]);
 
 /** Read/aggregate methods whose `where` must include the active `teamId`. */
 const WHERE_SCOPED_METHODS = new Set<string>([
@@ -88,21 +88,31 @@ export function createTeamScopedClient(prisma: PrismaService, teamId: string): P
  * services inject this instead of the raw `PrismaService`, so they cannot forget
  * to scope by `teamId`. It reads the verified team from the request context set
  * by {@link TeamContextGuard}.
+ *
+ * The context is read **lazily on first `.db` access**, not in the constructor:
+ * when a controller (or its service) is request-scoped, Nest instantiates the
+ * whole dependency tree *before* the route's guards run, so the team context is
+ * not yet set at construction time. By the time a handler actually touches `.db`,
+ * `TeamContextGuard` has run and populated it.
  */
 @Injectable({ scope: Scope.REQUEST })
 export class TeamScopedPrisma {
-  private readonly client: PrismaService;
+  private client: PrismaService | null = null;
 
-  constructor(prisma: PrismaService, @Inject(REQUEST) request: RequestWithTenantContext) {
-    const teamContext = request.teamContext;
-    if (!teamContext) {
-      throw new Error("TeamScopedPrisma requires TeamContextGuard to have set the team context.");
-    }
-    this.client = createTeamScopedClient(prisma, teamContext.teamId);
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(REQUEST) private readonly request: RequestWithTenantContext,
+  ) {}
 
   /** The team-scoped Prisma client. Every team-owned query it runs is filtered by teamId. */
   get db(): PrismaService {
+    if (!this.client) {
+      const teamContext = this.request.teamContext;
+      if (!teamContext) {
+        throw new Error("TeamScopedPrisma requires TeamContextGuard to have set the team context.");
+      }
+      this.client = createTeamScopedClient(this.prisma, teamContext.teamId);
+    }
     return this.client;
   }
 }
