@@ -58,17 +58,17 @@ consumer.
   + a deck activity feed into the phase-03 `DeckDetail`.
 
 **Task checklist**
-- [ ] Read [collaboration-core](../features/collaboration-core.md), [playtesting-methodology §5](../domain/playtesting-methodology.md), [data-model](../architecture/data-model.md#collaboration-polymorphic--see-collaboration-core-spec), [multi-tenancy](../architecture/multi-tenancy.md).
-- [ ] Write Zod schemas + the `SubjectType` enum in `packages/shared` (comment, notification, activity, mention) — test-first.
-- [ ] Add Prisma models + migration for `Comment`, `Mention`, `Notification`, `ActivityEvent` with the required indexes; add factories to the two-team harness.
-- [ ] Design the **attach pattern**: `AttachableSubjectResolver` interface + registry; `recordActivity()` and `emitMention()` helpers. Write a unit test proving an unregistered/foreign-team subject is rejected.
-- [ ] Implement `CollaborationModule` via the phase-01 team-scoped data-access helper. **Write the tenant-isolation test first** (a user in team A cannot read/post comments, see notifications, or read activity for team B; forged ids → 404).
-- [ ] Implement comment CRUD + threading (`parentCommentId`), with subject resolution + authorization through the registry; ownership/moderation (author edits own; team-admin moderates). Tests first.
-- [ ] Implement mention parsing → `Mention` + `Notification`; test that mentioning an in-team user notifies them and mentioning a non-member/out-of-team user creates **no** notification and leaks nothing.
-- [ ] Implement the notification center endpoints (list, mark read, read-all) and per-subject + team activity feeds. Tests first.
-- [ ] Retrofit decks: register `deck` as an attachable subject; emit activity on deck create/update/status-change; expose deck comments + activity. Integration test the full attach on a real deck.
-- [ ] Build the frontend `CommentThread`, `NotificationCenter`, `ActivityFeed` + hooks; wire into `DeckDetail`; component tests for the thread and mention autocomplete.
-- [ ] Update [README.md](README.md) status.
+- [x] Read [collaboration-core](../features/collaboration-core.md), [playtesting-methodology §5](../domain/playtesting-methodology.md), [data-model](../architecture/data-model.md#collaboration-polymorphic--see-collaboration-core-spec), [multi-tenancy](../architecture/multi-tenancy.md).
+- [x] Write Zod schemas + the `SubjectType` enum in `packages/shared` (comment, notification, activity, mention) — test-first.
+- [x] Add Prisma models + migration for `Comment`, `Mention`, `Notification`, `ActivityEvent` with the required indexes; add factories to the two-team harness.
+- [x] Design the **attach pattern**: `AttachableSubjectResolver` interface + registry; `recordActivity()` and `emitMention()` helpers. Write a unit test proving an unregistered/foreign-team subject is rejected.
+- [x] Implement `CollaborationModule` via the phase-01 team-scoped data-access helper. **Write the tenant-isolation test first** (a user in team A cannot read/post comments, see notifications, or read activity for team B; forged ids → 404).
+- [x] Implement comment CRUD + threading (`parentCommentId`), with subject resolution + authorization through the registry; ownership/moderation (author edits own; team-admin moderates). Tests first.
+- [x] Implement mention parsing → `Mention` + `Notification`; test that mentioning an in-team user notifies them and mentioning a non-member/out-of-team user creates **no** notification and leaks nothing.
+- [x] Implement the notification center endpoints (list, mark read, read-all) and per-subject + team activity feeds. Tests first.
+- [x] Retrofit decks: register `deck` as an attachable subject; emit activity on deck create/update/status-change; expose deck comments + activity. Integration test the full attach on a real deck.
+- [x] Build the frontend `CommentThread`, `NotificationCenter`, `ActivityFeed` + hooks; wire into `DeckDetail`; component tests for the thread and mention autocomplete.
+- [x] Update [README.md](README.md) status.
 
 **Tests & verification**
 - **Unit (Vitest):** comment/notification/activity Zod schemas; mention parser (extracts handles, ignores

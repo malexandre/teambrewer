@@ -49,8 +49,28 @@ rejection, the append-only iteration log, and best-effort **Fabrary URL recognit
 `POST /api/decks/recognize-url`; and the mobile-first **frontend** decks feature (list/detail/form, status
 + visibility controls, iteration log, hero/format pickers, team-scoped hooks). **Fix:** `TeamScopedPrisma`
 now resolves the team context **lazily** (a request-scoped controller is instantiated before its guards
-run). **Doc updated:** the `decks.md` status mermaid now matches the permissive prose. Next: **phase-04
-(collaboration core)** — pick it up per [`docs/plans/`](docs/plans/README.md).
+run). **Doc updated:** the `decks.md` status mermaid now matches the permissive prose.
+
+**Phase-04 (collaboration core) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 201
+API + 110 shared + 23 web unit/integration tests + 3 e2e journeys): the shared, **polymorphic**
+collaboration subsystem — threaded **comments**, **@mentions → notifications**, an **activity feed**, and an
+in-app **notification center** (no email/push — ADR-0003) — plus a reusable **attach pattern** so any module
+becomes commentable + activity-tracked by declaring a `subjectType`. Backend: `Comment`/`Mention`/
+`Notification`/`ActivityEvent` models + migration (subject_type/type/verb are plain strings, extended as
+modules adopt); the **`AttachableSubjectResolver` + `SubjectResolverRegistry`** contract (collaboration never
+depends on the modules it serves); `CollaborationModule` (comments CRUD + single-level threading +
+author/team-admin moderation, mention parsing → in-team `Mention` + `Notification`, the notification center,
+and the per-subject/team activity feed) — all team-scoped via `TeamScopedPrisma` (`comment`/`notification`/
+`activityEvent` added to `TEAM_OWNED_MODELS`); and the **decks retrofit** (deck registered as the first
+subject; `deck_created`/`deck_updated`/`deck_status_changed` + `commented` activity). **Privacy decision:**
+private-deck activity is never recorded to the team-wide feed (the resolver's `isTeamVisible`), so a personal
+draft's existence can't leak. **Scope decision (with the user):** notifications are **mentions-only** this
+phase; the `type` enum stays open for reply/authored notifications later. Endpoints `GET/POST /api/comments`,
+`PATCH/DELETE /api/comments/:commentId`, `GET /api/notifications`, `PATCH /api/notifications/:id/read`,
+`POST /api/notifications/read-all`, `GET /api/activity`. Frontend: `CommentThread` (nested replies,
+in-team-only @-autocomplete, inline edit/remove), `NotificationCenter` (header bell + unread badge), and
+`ActivityFeed` (a `/activity` route + a per-deck section on `DeckDetail`). Next: **phase-05 (events &
+gauntlets)** — pick it up per [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 
