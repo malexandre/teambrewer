@@ -15,6 +15,7 @@ export const TEAM_OWNED_MODELS = new Set<string>([
   "deck",
   "event",
   "gauntletEntry",
+  "gameLog",
   "comment",
   "notification",
   "activityEvent",
