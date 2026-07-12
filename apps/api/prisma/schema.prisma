@@ -73,6 +73,10 @@ model User {
   inviteTokens         InviteToken[]
   ownedDecks           Deck[]
   deckIterationEntries DeckIterationEntry[]
+  authoredComments     Comment[]
+  mentions             Mention[]
+  notifications        Notification[]
+  activityEvents       ActivityEvent[]
 
   @@map("user")
 }
@@ -158,8 +162,11 @@ model Team {
   updatedAt  DateTime  @updatedAt @map("updated_at")
   archivedAt DateTime? @map("archived_at")
 
-  memberships TeamMembership[]
-  decks       Deck[]
+  memberships    TeamMembership[]
+  decks          Deck[]
+  comments       Comment[]
+  notifications  Notification[]
+  activityEvents ActivityEvent[]
 
   @@index([gameId])
   @@map("team")
@@ -388,4 +395,103 @@ model DeckIterationEntry {
 
   @@index([deckId, createdAt])
   @@map("deck_iteration_entry")
+}
+
+// ---------------------------------------------------------------------------
+// Collaboration core (phase-04). A polymorphic, team-scoped subsystem any module
+// attaches to by addressing a subject as (subject_type, subject_id). See
+// docs/features/collaboration-core.md and docs/architecture/data-model.md.
+//
+// `subject_type`, notification `type`, and activity `verb` are stored as plain
+// strings (not Postgres enums) so the set can be extended as modules adopt the
+// subsystem without a DB migration; the shared Zod enums validate the values at
+// the HTTP boundary.
+// ---------------------------------------------------------------------------
+
+/// A polymorphic, threaded comment on any subject. Single-level threading:
+/// `parentCommentId` points at a top-level comment (a reply to a reply is
+/// flattened onto the same parent server-side). Soft-deleted via `archivedAt` so
+/// the thread structure survives (rendered as "removed").
+model Comment {
+  id              String    @id @default(cuid())
+  teamId          String    @map("team_id")
+  authorId        String    @map("author_id")
+  subjectType     String    @map("subject_type")
+  subjectId       String    @map("subject_id")
+  body            String
+  parentCommentId String?   @map("parent_comment_id")
+  archivedAt      DateTime? @map("archived_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  team          Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentComment Comment?       @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies       Comment[]      @relation("CommentReplies")
+  mentions      Mention[]
+  notifications Notification[]
+
+  @@index([teamId, subjectType, subjectId, createdAt])
+  @@index([parentCommentId])
+  @@map("comment")
+}
+
+/// An `@handle` mention parsed from a comment body, resolved to an in-team member.
+/// Not team-scoped directly — it is reached only through its comment. Each mention
+/// of a distinct member produces one Notification.
+model Mention {
+  id              String   @id @default(cuid())
+  commentId       String   @map("comment_id")
+  mentionedUserId String   @map("mentioned_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  comment       Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  mentionedUser User    @relation(fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, mentionedUserId])
+  @@index([mentionedUserId])
+  @@map("mention")
+}
+
+/// The recipient's in-app inbox item (there is no email/push — ADR-0003). Scoped
+/// to a team and to a single `userId`; `readAt` null means unread. Links back to
+/// its subject and (for mention notifications) the originating comment.
+model Notification {
+  id          String    @id @default(cuid())
+  teamId      String    @map("team_id")
+  userId      String    @map("user_id")
+  type        String
+  subjectType String    @map("subject_type")
+  subjectId   String    @map("subject_id")
+  commentId   String?   @map("comment_id")
+  readAt      DateTime? @map("read_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  team    Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, userId, readAt])
+  @@index([teamId, userId, createdAt])
+  @@map("notification")
+}
+
+/// An append-only entry in the team activity feed, addressed polymorphically.
+/// Produced by modules as meaningful things happen (e.g. a deck was created, a
+/// teammate commented).
+model ActivityEvent {
+  id          String   @id @default(cuid())
+  teamId      String   @map("team_id")
+  actorId     String   @map("actor_id")
+  verb        String
+  subjectType String   @map("subject_type")
+  subjectId   String   @map("subject_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  team  Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, createdAt])
+  @@index([teamId, subjectType, subjectId, createdAt])
+  @@map("activity_event")
 }

@@ -10,7 +10,13 @@ import type { RequestWithTenantContext } from "./team-context.js";
  * feature phases add team-owned models (decks, game logs, events, …), add their
  * delegate names here so they are scoped by construction.
  */
-export const TEAM_OWNED_MODELS = new Set<string>(["teamMembership", "deck"]);
+export const TEAM_OWNED_MODELS = new Set<string>([
+  "teamMembership",
+  "deck",
+  "comment",
+  "notification",
+  "activityEvent",
+]);
 
 /** Read/aggregate methods whose `where` must include the active `teamId`. */
 const WHERE_SCOPED_METHODS = new Set<string>([
