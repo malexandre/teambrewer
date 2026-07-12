@@ -3,8 +3,16 @@ import { describe, expect, it } from "vitest";
 import { activityEventSchema, activityQuerySchema, activityVerbSchema } from "./activity.js";
 
 describe("activityVerbSchema", () => {
-  it("accepts the deck verbs and the generic commented verb", () => {
-    for (const verb of ["deck_created", "deck_updated", "deck_status_changed", "commented"]) {
+  it("accepts the deck + event lifecycle verbs and the generic commented verb", () => {
+    for (const verb of [
+      "deck_created",
+      "deck_updated",
+      "deck_status_changed",
+      "event_created",
+      "event_updated",
+      "event_status_changed",
+      "commented",
+    ]) {
       expect(activityVerbSchema.parse(verb)).toBe(verb);
     }
   });

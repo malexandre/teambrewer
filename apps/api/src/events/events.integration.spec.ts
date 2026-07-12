@@ -456,6 +456,67 @@ describe("Events endpoints (integration)", () => {
     });
   });
 
+  describe("Collaboration attach", () => {
+    it("emits create/update/status-change activity and accepts comments on an event", async () => {
+      const created = await asMemberA(http().post("/api/events")).send(validEvent());
+      const eventId = created.body.id;
+      await asMemberA(http().patch(`/api/events/${eventId}`)).send({ name: "Renamed" });
+      await asMemberA(http().patch(`/api/events/${eventId}`)).send({ status: "active" });
+
+      const comment = await asMemberA(http().post("/api/comments")).send({
+        subjectType: "event",
+        subjectId: eventId,
+        body: "Who is testing the top hero?",
+      });
+      expect(comment.status).toBe(201);
+
+      const perSubject = await asMemberA(
+        http().get("/api/activity").query({ subjectType: "event", subjectId: eventId }),
+      );
+      const verbs = perSubject.body.data.map((event: { verb: string }) => event.verb);
+      expect(verbs).toContain("event_created");
+      expect(verbs).toContain("event_updated");
+      expect(verbs).toContain("event_status_changed");
+      expect(verbs).toContain("commented");
+      expect(
+        perSubject.body.data.every((event: { subjectId: string }) => event.subjectId === eventId),
+      ).toBe(true);
+
+      const thread = await asMemberA(
+        http().get("/api/comments").query({ subjectType: "event", subjectId: eventId }),
+      );
+      expect(thread.body.data).toHaveLength(1);
+    });
+
+    it("refuses new comments on an archived event (422)", async () => {
+      const event = await createEvent(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        status: "archived",
+        archivedAt: new Date(),
+      });
+      const response = await asMemberA(http().post("/api/comments")).send({
+        subjectType: "event",
+        subjectId: event.id,
+        body: "late comment",
+      });
+      expect(response.status).toBe(422);
+    });
+
+    it("returns 404 commenting on / reading activity for another team's event", async () => {
+      const eventB = await createEvent(prisma, { teamId: teamB.id, formatId: fabFormatId });
+      const comment = await asMemberA(http().post("/api/comments")).send({
+        subjectType: "event",
+        subjectId: eventB.id,
+        body: "cross-tenant",
+      });
+      const activity = await asMemberA(
+        http().get("/api/activity").query({ subjectType: "event", subjectId: eventB.id }),
+      );
+      expect([comment.status, activity.status]).toEqual([404, 404]);
+    });
+  });
+
   describe("Tenant isolation (mandatory)", () => {
     it("returns 404 when a team-A user reads a team-B event/entry/attendance", async () => {
       const eventB = await createEvent(prisma, { teamId: teamB.id, formatId: fabFormatId });

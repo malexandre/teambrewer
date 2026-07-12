@@ -5,6 +5,7 @@ import { parseMentionHandles, subjectTypeSchema } from "./collaboration.js";
 describe("subjectTypeSchema", () => {
   it("accepts the adopted subject types", () => {
     expect(subjectTypeSchema.parse("deck")).toBe("deck");
+    expect(subjectTypeSchema.parse("event")).toBe("event");
   });
 
   it("rejects an unknown subject type at the boundary", () => {

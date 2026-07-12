@@ -20,6 +20,7 @@ import {
   type UpdateGauntletEntryInput,
 } from "@teambrewer/shared";
 
+import { CollaborationActivityService } from "../collaboration/activity.service.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 import { assertEventStatusTransition } from "./event-status-transition.js";
@@ -81,7 +82,10 @@ const GAUNTLET_ORDER = [{ expectedMetaShare: "desc" as const }, { createdAt: "as
  */
 @Injectable()
 export class EventsService {
-  constructor(private readonly scoped: TeamScopedPrisma) {}
+  constructor(
+    private readonly scoped: TeamScopedPrisma,
+    private readonly activity: CollaborationActivityService,
+  ) {}
 
   /**
    * List the team's events with filters + keyset pagination (most recently dated
@@ -147,6 +151,7 @@ export class EventsService {
       },
     })) as EventRow;
 
+    await this.recordEventActivity(team, created.id, "event_created");
     return this.requireEventDetail(created.id, { includeArchived: false });
   }
 
@@ -178,6 +183,12 @@ export class EventsService {
     }
 
     await this.scoped.db.event.updateMany({ where: { id: eventId }, data });
+    // A status advance is a distinct feed verb from a plain field edit.
+    await this.recordEventActivity(
+      team,
+      eventId,
+      input.status !== undefined ? "event_status_changed" : "event_updated",
+    );
     // Include archived so a status advance to `archived` still returns the event.
     return this.requireEventDetail(eventId, { includeArchived: true });
   }
@@ -279,6 +290,23 @@ export class EventsService {
       include: { user: { select: { id: true, username: true, displayName: true } } },
     })) as AttendanceRow;
     return toAttendance(row);
+  }
+
+  /**
+   * Record an event lifecycle action on the team activity feed. Events have no
+   * private visibility (a shared team board), so — unlike decks — every event is
+   * team-visible and always recorded.
+   */
+  private async recordEventActivity(
+    team: TeamContext,
+    eventId: string,
+    verb: "event_created" | "event_updated" | "event_status_changed",
+  ): Promise<void> {
+    await this.activity.recordActivity(team, {
+      verb,
+      subjectType: "event",
+      subjectId: eventId,
+    });
   }
 
   /** Load a non-archived event's id + current status, or throw 404. */
