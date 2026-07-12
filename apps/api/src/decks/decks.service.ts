@@ -15,6 +15,8 @@ import {
 } from "@teambrewer/shared";
 
 import { CollaborationActivityService } from "../collaboration/activity.service.js";
+import { decodeKeysetCursor, encodeKeysetCursor } from "../common/keyset-cursor.js";
+import { assertFormatInGame, assertHeroInGame } from "../common/reference-data-guards.js";
 import { GAME_CATALOG } from "../games/game-catalog.js";
 import { GameAdapterRegistry } from "../games/game-adapter.registry.js";
 import type { TeamContext } from "../tenancy/team-context.js";
@@ -64,7 +66,7 @@ export class DecksService {
 
   /** List the team's decks with filters + keyset pagination (newest first). */
   async list(team: TeamContext, query: DeckListQuery): Promise<DeckListResponse> {
-    const cursor = query.cursor ? decodeCursor(query.cursor) : null;
+    const cursor = query.cursor ? decodeKeysetCursor(query.cursor) : null;
 
     const andClauses: Record<string, unknown>[] = [];
     // Non-admins never see another member's private drafts.
@@ -74,8 +76,8 @@ export class DecksService {
     if (cursor) {
       andClauses.push({
         OR: [
-          { createdAt: { lt: cursor.createdAt } },
-          { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+          { createdAt: { lt: cursor.sortValue } },
+          { createdAt: cursor.sortValue, id: { lt: cursor.id } },
         ],
       });
     }
@@ -101,7 +103,7 @@ export class DecksService {
     const last = page.at(-1);
     return {
       data: page.map(toDeckSummary),
-      nextCursor: hasMore && last ? encodeCursor(last.createdAt, last.id) : null,
+      nextCursor: hasMore && last ? encodeKeysetCursor(last.createdAt, last.id) : null,
     };
   }
 
@@ -113,9 +115,9 @@ export class DecksService {
 
   /** Create a deck; stamps teamId/gameId/ownerId from context and recognizes the link. */
   async create(team: TeamContext, input: CreateDeckInput): Promise<DeckDetail> {
-    await this.assertFormatInGame(team.gameId, input.formatId);
+    await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
     if (input.heroId) {
-      await this.assertHeroInGame(team.gameId, input.heroId);
+      await assertHeroInGame(this.scoped.db, team.gameId, input.heroId);
     }
 
     const recognized = this.recognizeUrl(team.gameId, input.externalUrl);
@@ -146,10 +148,10 @@ export class DecksService {
     const deck = await this.loadModifiableDeck(team, deckId);
 
     if (input.formatId !== undefined) {
-      await this.assertFormatInGame(team.gameId, input.formatId);
+      await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
     }
     if (input.heroId) {
-      await this.assertHeroInGame(team.gameId, input.heroId);
+      await assertHeroInGame(this.scoped.db, team.gameId, input.heroId);
     }
 
     const data: Record<string, unknown> = {};
@@ -263,28 +265,6 @@ export class DecksService {
     }
     return deck;
   }
-
-  /** Reject a format that is not part of the team's game (cross-game FK). */
-  private async assertFormatInGame(gameId: string, formatId: string): Promise<void> {
-    const format = await this.scoped.db.format.findFirst({ where: { id: formatId, gameId } });
-    if (!format) {
-      throw new NotFoundException({
-        error: { code: errorCode.notFound, message: "Format not found for this team's game." },
-      });
-    }
-  }
-
-  /** Reject a hero that is not part of the team's game (cross-game FK). */
-  private async assertHeroInGame(gameId: string, heroId: string): Promise<void> {
-    const hero = await this.scoped.db.hero.findFirst({
-      where: { id: heroId, gameId, archivedAt: null },
-    });
-    if (!hero) {
-      throw new NotFoundException({
-        error: { code: errorCode.notFound, message: "Hero not found for this team's game." },
-      });
-    }
-  }
 }
 
 function toDeckSummary(deck: DeckRow): DeckSummary {
@@ -325,17 +305,4 @@ function toIterationEntry(entry: {
     body: entry.body,
     createdAt: entry.createdAt.toISOString(),
   };
-}
-
-/** Opaque keyset cursor over (createdAt, id), descending. Space-separated (ISO has no space). */
-function encodeCursor(createdAt: Date, id: string): string {
-  return Buffer.from(`${createdAt.toISOString()} ${id}`, "utf8").toString("base64url");
-}
-
-function decodeCursor(cursor: string): { createdAt: Date; id: string } {
-  const decoded = Buffer.from(cursor, "base64url").toString("utf8");
-  const separatorIndex = decoded.indexOf(" ");
-  const isoString = separatorIndex === -1 ? decoded : decoded.slice(0, separatorIndex);
-  const id = separatorIndex === -1 ? "" : decoded.slice(separatorIndex + 1);
-  return { createdAt: new Date(isoString), id };
 }

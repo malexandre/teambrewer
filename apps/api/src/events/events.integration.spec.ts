@@ -399,6 +399,14 @@ describe("Events endpoints (integration)", () => {
       expect(response.status).toBe(422);
     });
 
+    it("rejects a hero from another game with 404 (cross-game FK)", async () => {
+      const event = await createEvent(prisma, { teamId: teamA.id, formatId: fabFormatId });
+      const response = await asMemberA(
+        http().post(`/api/events/${event.id}/gauntlet-entries`),
+      ).send({ heroId: riftHeroId, expectedMetaShare: 20 });
+      expect(response.status).toBe(404);
+    });
+
     it("updates a gauntlet entry's share (target is immutable) and removes it", async () => {
       const event = await createEvent(prisma, { teamId: teamA.id, formatId: fabFormatId });
       const entry = await createGauntletEntry(prisma, {

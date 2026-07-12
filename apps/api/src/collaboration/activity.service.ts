@@ -7,6 +7,7 @@ import {
   type ActivityVerb,
 } from "@teambrewer/shared";
 
+import { decodeKeysetCursor, encodeKeysetCursor } from "../common/keyset-cursor.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 import { SubjectResolverRegistry } from "./subject-resolver.js";
@@ -68,7 +69,7 @@ export class CollaborationActivityService {
       await this.registry.requireSubject(team, query.subjectType ?? "", query.subjectId);
     }
 
-    const cursor = query.cursor ? decodeCursor(query.cursor) : null;
+    const cursor = query.cursor ? decodeKeysetCursor(query.cursor) : null;
     const rows = (await this.scoped.db.activityEvent.findMany({
       where: {
         ...(query.subjectType ? { subjectType: query.subjectType } : {}),
@@ -76,8 +77,8 @@ export class CollaborationActivityService {
         ...(cursor
           ? {
               OR: [
-                { createdAt: { lt: cursor.createdAt } },
-                { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+                { createdAt: { lt: cursor.sortValue } },
+                { createdAt: cursor.sortValue, id: { lt: cursor.id } },
               ],
             }
           : {}),
@@ -94,7 +95,7 @@ export class CollaborationActivityService {
     const last = page.at(-1);
     return {
       data: page.map(toActivityEvent),
-      nextCursor: hasMore && last ? encodeCursor(last.createdAt, last.id) : null,
+      nextCursor: hasMore && last ? encodeKeysetCursor(last.createdAt, last.id) : null,
     };
   }
 }
@@ -112,17 +113,4 @@ function toActivityEvent(row: ActivityRow): ActivityEvent {
     },
     createdAt: row.createdAt.toISOString(),
   };
-}
-
-/** Opaque keyset cursor over (createdAt, id), descending. Space-separated (ISO has no space). */
-function encodeCursor(createdAt: Date, id: string): string {
-  return Buffer.from(`${createdAt.toISOString()} ${id}`, "utf8").toString("base64url");
-}
-
-function decodeCursor(cursor: string): { createdAt: Date; id: string } {
-  const decoded = Buffer.from(cursor, "base64url").toString("utf8");
-  const separatorIndex = decoded.indexOf(" ");
-  const isoString = separatorIndex === -1 ? decoded : decoded.slice(0, separatorIndex);
-  const id = separatorIndex === -1 ? "" : decoded.slice(separatorIndex + 1);
-  return { createdAt: new Date(isoString), id };
 }

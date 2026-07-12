@@ -21,6 +21,8 @@ import {
 } from "@teambrewer/shared";
 
 import { CollaborationActivityService } from "../collaboration/activity.service.js";
+import { decodeKeysetCursor, encodeKeysetCursor } from "../common/keyset-cursor.js";
+import { assertFormatInGame, assertHeroInGame } from "../common/reference-data-guards.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 import { assertEventStatusTransition } from "./event-status-transition.js";
@@ -94,12 +96,12 @@ export class EventsService {
    * per-member visibility rules (a shared team board).
    */
   async list(query: EventListQuery): Promise<EventListResponse> {
-    const cursor = query.cursor ? decodeCursor(query.cursor) : null;
+    const cursor = query.cursor ? decodeKeysetCursor(query.cursor) : null;
 
     const andClauses: Record<string, unknown>[] = [];
     if (cursor) {
       andClauses.push({
-        OR: [{ date: { lt: cursor.date } }, { date: cursor.date, id: { lt: cursor.id } }],
+        OR: [{ date: { lt: cursor.sortValue } }, { date: cursor.sortValue, id: { lt: cursor.id } }],
       });
     }
 
@@ -120,7 +122,7 @@ export class EventsService {
     const last = page.at(-1);
     return {
       data: page.map(toEventSummary),
-      nextCursor: hasMore && last ? encodeCursor(last.date, last.id) : null,
+      nextCursor: hasMore && last ? encodeKeysetCursor(last.date, last.id) : null,
     };
   }
 
@@ -135,7 +137,7 @@ export class EventsService {
 
   /** Create an event; stamps teamId from context and starts it at `upcoming`. */
   async create(team: TeamContext, input: CreateEventInput): Promise<EventDetail> {
-    await this.assertFormatInGame(team.gameId, input.formatId);
+    await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
 
     const created = (await this.scoped.db.event.create({
       data: {
@@ -164,7 +166,7 @@ export class EventsService {
     const current = await this.requireEvent(eventId);
 
     if (input.formatId !== undefined) {
-      await this.assertFormatInGame(team.gameId, input.formatId);
+      await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
     }
 
     const data: Record<string, unknown> = {};
@@ -219,7 +221,7 @@ export class EventsService {
     input: CreateGauntletEntryInput,
   ): Promise<GauntletEntry> {
     await this.requireEvent(eventId);
-    const target = await this.resolveGauntletTarget(eventId, input);
+    const target = await this.resolveGauntletTarget(eventId, input, team.gameId);
 
     const created = (await this.scoped.db.gauntletEntry.create({
       data: {
@@ -377,6 +379,7 @@ export class EventsService {
   private async resolveGauntletTarget(
     eventId: string,
     input: CreateGauntletEntryInput,
+    gameId: string,
   ): Promise<{
     referenceDeckId: string | null;
     heroId: string | null;
@@ -400,7 +403,7 @@ export class EventsService {
     }
 
     if (input.heroId !== undefined) {
-      await this.assertHeroInGame(input.heroId);
+      await assertHeroInGame(this.scoped.db, gameId, input.heroId);
       await this.assertNoDuplicateTarget(eventId, { heroId: input.heroId });
       return { referenceDeckId: null, heroId: input.heroId, archetypeLabel: null };
     }
@@ -427,29 +430,6 @@ export class EventsService {
           code: errorCode.domainRuleViolation,
           message: "This target is already in the event's gauntlet.",
         },
-      });
-    }
-  }
-
-  /** Reject a format that is not part of the team's game (cross-game FK). */
-  private async assertFormatInGame(gameId: string, formatId: string): Promise<void> {
-    const format = await this.scoped.db.format.findFirst({ where: { id: formatId, gameId } });
-    if (!format) {
-      throw new NotFoundException({
-        error: { code: errorCode.notFound, message: "Format not found for this team's game." },
-      });
-    }
-  }
-
-  /** Reject a hero that is not part of the team's game (cross-game FK). */
-  private async assertHeroInGame(heroId: string): Promise<void> {
-    const hero = await this.scoped.db.hero.findFirst({
-      where: { id: heroId, archivedAt: null },
-      select: { id: true },
-    });
-    if (!hero) {
-      throw new NotFoundException({
-        error: { code: errorCode.notFound, message: "Hero not found for this team's game." },
       });
     }
   }
@@ -522,17 +502,4 @@ function summarizeAttendance(rows: { status: AttendanceStatus }[]): AttendanceSu
     else summary.notGoing += 1;
   }
   return summary;
-}
-
-/** Opaque keyset cursor over (date, id), descending. Space-separated (ISO has no space). */
-function encodeCursor(date: Date, id: string): string {
-  return Buffer.from(`${date.toISOString()} ${id}`, "utf8").toString("base64url");
-}
-
-function decodeCursor(cursor: string): { date: Date; id: string } {
-  const decoded = Buffer.from(cursor, "base64url").toString("utf8");
-  const separatorIndex = decoded.indexOf(" ");
-  const isoString = separatorIndex === -1 ? decoded : decoded.slice(0, separatorIndex);
-  const id = separatorIndex === -1 ? "" : decoded.slice(separatorIndex + 1);
-  return { date: new Date(isoString), id };
 }
