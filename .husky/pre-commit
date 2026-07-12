@@ -1,8 +1,0 @@
-# Pre-commit gate — keep every commit green (see .claude/rules/git-and-commits.md).
-# Auto-fix formatting on staged files, then block the commit on lint, typecheck, or build failure.
-# Chained with && so ANY failure aborts the commit (exit code must reflect the first failure).
-# Do NOT bypass with --no-verify.
-pnpm exec lint-staged &&
-pnpm lint &&
-pnpm typecheck &&
-pnpm build

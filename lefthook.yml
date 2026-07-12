@@ -1,0 +1,27 @@
+# Git hooks, managed by lefthook. See .claude/rules/git-and-commits.md.
+# After cloning, `pnpm install` wires the hooks (via the `prepare` → `lefthook install` script).
+# Each step below reports pass/fail by name. Do NOT bypass with `git commit --no-verify`.
+
+pre-commit:
+  piped: true # run steps in priority order and STOP at the first failure, so the culprit is obvious
+  commands:
+    format:
+      priority: 1
+      # Auto-format only the staged files and re-stage the result (respects .prettierignore),
+      # so a formatting fix never blocks the commit or needs a follow-up commit.
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    lint:
+      priority: 2
+      run: pnpm lint
+    typecheck:
+      priority: 3
+      run: pnpm typecheck
+    build:
+      priority: 4
+      run: pnpm build
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}

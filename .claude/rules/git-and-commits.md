@@ -13,17 +13,26 @@ The project is version-controlled from the start and will live on GitHub.
 - Keep docs/decisions in sync **within the same commit** as the code they describe.
 - Reference the phase in the body when implementing a plan phase (e.g. "Part of phase-03-decks").
 
-## Pre-commit gate (Husky)
+## Git hooks (lefthook)
 
-A Husky `pre-commit` hook enforces green commits so nothing broken lands:
+Hooks are managed by **lefthook** (`lefthook.yml`); `pnpm install` wires them via the `prepare` script.
+Each step reports pass/fail **by name**, and the `pre-commit` runs them in order and **stops at the first
+failure** (`piped: true`), so the culprit is obvious.
 
-- It **auto-formats staged files** (`lint-staged` → `prettier --write`), so formatting is fixed in place —
-  you never have to make a follow-up "fix formatting" commit.
-- It then **blocks the commit** unless `pnpm lint`, `pnpm typecheck`, and `pnpm build` all pass.
-- **Do not bypass it** with `git commit --no-verify` (or `-n`). If it blocks you, fix the cause.
-- Because every commit must lint + typecheck + build, make each commit **self-contained and green** — this
-  is the same "builds and passes tests" bar as above, now enforced mechanically. A commit-msg hook
-  (commitlint) also enforces Conventional Commits.
+`pre-commit` steps, in order:
+
+1. **format** — auto-formats the **staged files** (`prettier --write`, `stage_fixed: true` re-stages the
+   result; respects `.prettierignore`). A formatting fix is applied in place, so it never blocks the commit
+   or needs a follow-up "fix formatting" commit.
+2. **lint** — `pnpm lint` (blocks on failure).
+3. **typecheck** — `pnpm typecheck` (blocks).
+4. **build** — `pnpm build` (blocks).
+
+`commit-msg` runs **commitlint** to enforce Conventional Commits.
+
+- **Do not bypass** with `git commit --no-verify` / `-n` (or `LEFTHOOK=0`). If a step blocks you, fix the cause.
+- Because every commit must lint + typecheck + build, make each commit **self-contained and green** — the
+  same "builds and passes tests" bar as above, now enforced mechanically.
 
 ## Local-first — the remote is optional and deferred
 

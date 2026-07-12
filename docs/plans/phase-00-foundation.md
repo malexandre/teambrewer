@@ -50,7 +50,7 @@ phase exists so that from phase-01 onward, adding a feature is only writing that
 
 **Task checklist**
 - [x] Confirm the git repo is initialized (it already is — created in the knowledge-base session with `main`, `.gitignore`, and the docs commits). Extend `.gitignore` for the new toolchain (dist/build, coverage, Playwright artifacts) if anything is missing.
-- [x] Configure Conventional Commits tooling (commitlint + a commit-msg hook via Husky or lefthook).
+- [x] Configure git hooks via **lefthook** (`lefthook.yml`): a `commit-msg` commitlint hook (Conventional Commits) and a `pre-commit` gate (format → lint → typecheck → build; see [git-and-commits](../../.claude/rules/git-and-commits.md)).
 - [x] Create the pnpm workspace: `pnpm-workspace.yaml` listing `apps/*` and `packages/*`; root `package.json` with workspace scripts.
 - [x] Add `tsconfig.base.json` (strict: `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, etc.); per-package `tsconfig.json` extending it.
 - [x] Add shared ESLint + Prettier config; wire `pnpm lint` and `pnpm typecheck` to run across all packages.

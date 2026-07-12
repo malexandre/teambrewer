@@ -17,10 +17,7 @@
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "typecheck": "pnpm --recursive --if-present typecheck",
-    "prepare": "husky"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,cts,mts,js,jsx,cjs,mjs,json,jsonc,md,yml,yaml,css,html}": "prettier --write"
+    "prepare": "lefthook install"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.1",
@@ -30,8 +27,7 @@
     "eslint": "10.7.0",
     "eslint-config-prettier": "10.1.8",
     "globals": "17.7.0",
-    "husky": "9.1.7",
-    "lint-staged": "17.0.8",
+    "lefthook": "2.1.10",
     "prettier": "3.9.5",
     "typescript": "catalog:",
     "typescript-eslint": "8.63.0"
