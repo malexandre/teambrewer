@@ -84,10 +84,21 @@ When unsure whether something is "routine," it isn't — ask. Asking a good ques
   - Check the `- [ ]` boxes in the phase plan that are actually complete.
 - **Keep docs in sync in the same commits:** update `CLAUDE.md` "Commands" if they changed, and any
   doc/ADR a decision touched.
+- **Integrate and clean up the branch** (only after everything above is green, per
+  [`git-and-commits`](../../rules/git-and-commits.md)):
+  1. Ensure the tracker/doc updates are committed **on the phase branch**.
+  2. Fast-forward merge into `main`: `git switch main && git merge --ff-only <phase-branch>` (if it won't
+     fast-forward, `git switch <phase-branch> && git rebase main`, then retry). **Never `--no-ff`.**
+  3. **Delete the merged feature branch:** `git branch -d <phase-branch>` (safe delete). If `-d` refuses
+     because the branch isn't fully merged, **stop and investigate** — do NOT force-delete (`-D`); it means
+     work didn't actually land on `main`.
+  4. Do **not** push or create a remote (see "always stop and ask"). Leave `main` green and branch-free.
 
 ## 4. If you must stop early
-Leave the phase **🚧**, make the checkboxes reflect reality, commit what is green, and end with a short
-**handoff note**: what's done, what's left, and how to resume.
+Leave the phase **🚧**, make the checkboxes reflect reality, and commit what is green **on the phase
+branch**. **Keep the branch — do not merge it into `main` or delete it** (the next session resumes from it,
+per "Resuming an in-progress phase"). End with a short **handoff note**: the branch name, what's done,
+what's left, and how to resume.
 
 ## 5. Final report
 End with: the phase you implemented, the verification evidence, the trackers you updated, the branch/commits,

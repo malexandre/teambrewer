@@ -33,6 +33,9 @@ The project is version-controlled from the start and will live on GitHub.
 - `main` is the integration branch and should stay green.
 - Do real work on feature branches (e.g. `phase-03-decks`, `feat/matchup-matrix`); **fast-forward** merge to
   `main` locally (rebase onto `main` first if needed; open a PR instead once a remote exists).
+- **Delete a feature branch once it is merged** (`git branch -d <branch>` — safe delete); keep `main`
+  branch-free between phases. If `-d` refuses, the branch isn't fully merged — investigate, don't
+  force-delete (`-D`).
 - Only commit when the user asks, or per the active workflow. If on `main` for a substantive change,
   branch first. Never push without an explicit request.
 - Interactive git flags (`-i`) are not available in this environment.
