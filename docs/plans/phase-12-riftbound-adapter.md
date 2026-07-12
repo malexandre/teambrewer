@@ -76,26 +76,26 @@ Respect rate limits; cache/sync, never live-hammer.
 
 ## Task checklist (test-first, ordered)
 
-- [ ] Read [game-abstraction](../architecture/game-abstraction.md), [riftbound](../domain/riftbound.md),
+- [x] Read [game-abstraction](../architecture/game-abstraction.md), [riftbound](../domain/riftbound.md),
       [card-data-sources](../domain/card-data-sources.md), the FaB adapter (reference implementation), and
       the [`working-with-card-data`](../../.claude/skills/working-with-card-data/SKILL.md) and
       [`implementing-a-phase`](../../.claude/skills/implementing-a-phase/SKILL.md) skills.
-- [ ] **Confirm Riftcodex** endpoints/fields/pagination/rate-limits/terms from the live API `/docs`;
+- [x] **Confirm Riftcodex** endpoints/fields/pagination/rate-limits/terms from the live API `/docs`;
       capture a fixture card payload; record the confirmed schema in the plan/spec.
-- [ ] Write failing unit tests for `mapCard` against the fixture (field-by-field mapping, Domain/Region,
+- [x] Write failing unit tests for `mapCard` against the fixture (field-by-field mapping, Domain/Region,
       missing-field handling) and `cardIdentity`; then implement the mapping.
-- [ ] Write failing unit tests for `listFormats()` returning the confirmed Riftbound formats; implement.
-- [ ] Write a failing integration test for card-sync **idempotency** using the fixture (run twice → same
+- [x] Write failing unit tests for `listFormats()` returning the confirmed Riftbound formats; implement.
+- [x] Write a failing integration test for card-sync **idempotency** using the fixture (run twice → same
       rows, upsert by `(gameId, externalId)`, correct `sourceVersion`); implement the adapter's
       `fetchCardSource` behind the existing sync job to pass it.
-- [ ] Seed the Riftbound Game/Formats/Legends reference data; register the adapter in the registry.
-- [ ] Write the **cross-game smoke test**: create a team bound to Riftbound, then exercise decks, events,
+- [x] Seed the Riftbound Game/Formats/Legends reference data; register the adapter in the registry.
+- [x] Write the **cross-game smoke test**: create a team bound to Riftbound, then exercise decks, events,
       gauntlets, game logging, matchups, testing queue, game-plans, and knowledge — all succeed unchanged.
-- [ ] **Run a diff audit** of the change set: confirm only `apps/api/src/games/riftbound/`, the adapter
+- [x] **Run a diff audit** of the change set: confirm only `apps/api/src/games/riftbound/`, the adapter
       registry entry, reference-data/seed, fixtures, tests, and frontend config changed — **no core/feature
       module logic**. Record the result as the boundary report. If core changed, fix the boundary and
       re-run.
-- [ ] Run the full verification below; update the [roadmap Status table](README.md).
+- [x] Run the full verification below; update the [roadmap Status table](README.md).
 
 ## Tests & verification
 
@@ -127,6 +127,42 @@ logic files**. This audit result is the primary sign-off for the phase.
    (deck → event/gauntlet → game log → matchup → assignment → primer) and confirm correct labels.
 4. Confirm a FaB team still works identically and the two teams' data/reference sets never mix.
 5. Review `git diff --stat`; record the boundary report; `pnpm lint && pnpm typecheck` clean.
+
+## Boundary report (on completion — ✅ done)
+
+**The abstraction held. No core or feature-module logic changed.** `git diff --stat` for the phase touched
+only:
+
+- **The new adapter** — `apps/api/src/games/riftbound/` (adapter, `riftcodex-card-source.client`,
+  `riftbound-formats`, `riftbound-raw-card.type`, the committed `riftbound.fixture`, and three test files:
+  adapter unit, sync-idempotency/registry integration, cross-game acceptance).
+- **The two documented registration edits, both inside the games layer** — one entry in
+  `game-catalog.ts` and the provider wiring in `games.module.ts`.
+- **A seed test reconciliation** — `reference-data-seed.service.integration.spec.ts` now asserts the
+  two-game catalog (a direct consequence of the catalog entry, not a logic change).
+- **The pre-designed `identityLabel` UI wiring** — a small `useIdentityLabel` hook plus consuming it where
+  the identity term was hard-coded "Hero" (`DeckForm`, `DeckDetail`, `HeroPicker`, `GauntletBuilder`,
+  `GamePlanEditor`, the game-log wizard's `StepMatchup`) + its test. This is **completing an intended seam**
+  flagged as deferred in [game-abstraction.md](../architecture/game-abstraction.md) (§ the `GET /api/game-config`
+  note), **not a boundary leak**: it is config-driven with **no `game ===` branching**, no new core field,
+  and no change to any data shape — a Flesh and Blood team still shows "Hero"; a Riftbound team shows
+  "Legend".
+
+No service, controller, guard, DTO/Zod schema, or Prisma model/migration changed. Everything else (decks,
+events, gauntlets, game logging, matchups, testing queue, game-plans, collaboration, knowledge, dashboard)
+runs unchanged for a Riftbound-bound team, proven by the cross-game acceptance integration test.
+
+### Confirmed Riftcodex API (build-time, 2026-07-13)
+
+Base `https://api.riftcodex.com`; no auth on reads; an unofficial fan project under Riot's fan content
+policy (no explicit license/rate-limit text — **sync, don't hammer; attribute in-app**). List:
+`GET /cards?page=<n>&size=<n>` (`size` max 100), paginated as `{ items, total, page, size, pages }`. Card
+fields used: `id` (externalId), `name`, `classification.type`/`.domain[]`, `tags[]`, `media.image_url`.
+Card types include **`Legend`** (the identity, via `/index/card-types`); domains are `Body, Calm, Chaos,
+Colorless, Fury, Mind, Order` (`/index/domains`). Mapping: `mapCard` → `{ externalId: id, name, pitch: null,
+imageUrl }`; `cardIdentity` = name; `deriveHeroes` filters `type === "Legend"`, mapping Domain → `classes`
+and Region (`tags`) → `talents`. `sourceVersion` is pinned (`RIFTBOUND_CARDS_REF`, default
+`riftcodex-2026-07`) since the API exposes no version tag.
 
 ## Out of scope
 

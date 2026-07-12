@@ -241,7 +241,27 @@ team-scoped through the composed services (a cross-tenant `eventId` → 404, a f
 nav entry) — a mobile-first, sectioned page with a **For me** / **Team** scope toggle, every widget
 deep-linking into its owning feature. **Decisions (with the user):** rank **per opponent archetype** (not
 per our-deck × opponent pairing), and make the dashboard the landing route; `docs/features/dashboard.md` +
-the phase plan were updated to record both. Next: **phase-12 (riftbound adapter)** — pick it up per
+the phase plan were updated to record both.
+
+**Phase-12 (riftbound adapter) is ✅ done** (merged to `main`). The acceptance test for ADR-0006: a second
+game, **Riftbound**, added **entirely through a new `GameAdapter` + reference data** — no core or
+feature-module logic changed (all local-green: 479 API + 315 shared + 74 web unit/integration tests + 10
+e2e journeys). Delivered `apps/api/src/games/riftbound/` implementing the full contract against the
+**Riftcodex** open REST API (confirmed live at build time: base `https://api.riftcodex.com`, `GET /cards`
+paginated `{ items, total, page, size, pages }`, `size` max 100; no auth; unofficial fan project — sync +
+attribute, never hammer): `identityLabel: "Legend"`, `defaultBestOf: 3`, `Standard`/`Draft`/`Sealed`
+formats, **name-only** `cardIdentity` (`pitch` is null — Riftbound has no pitch), and `deriveHeroes` over
+**Legend**-type cards mapping **Domain → the class surface** and **Region (tags) → the talent surface** — no
+Riftbound-only core fields. Registered via the only two boundary-safe edits (a `GAME_CATALOG` entry +
+`GamesModule` provider wiring); the existing phase-02 seed + `card:sync` + `GET /api/game-config` drive it
+unchanged. **Frontend (decision with the user):** the pre-existing but unrendered `gameConfig.identityLabel`
+was **wired into every hard-coded "Hero" label** (deck form/detail, identity picker, gauntlet builder,
+game-plan editor, game-log wizard) via a `useIdentityLabel` hook — config-driven, **no `game ===`
+branching**; FaB still shows "Hero", Riftbound shows "Legend". This completes intended seam wiring flagged
+in `game-abstraction.md`, **not a leak** — recorded in the phase plan's **boundary report** ("the
+abstraction held"). A **cross-game acceptance** integration test drives decks → events/gauntlets → game log
+→ matchups → testing queue → primer for a Riftbound team through the real HTTP stack, with two-team
+isolation. Next: **phase-13 (polish, PWA & hardening)** — pick it up per
 [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo

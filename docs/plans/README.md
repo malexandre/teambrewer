@@ -80,7 +80,7 @@ Update as phases complete.
 | 09 | Game-Plans & Deck Selection | ✅ done |
 | 10 | Team Knowledge | ✅ done |
 | 11 | Dashboard | ✅ done |
-| 12 | Riftbound Adapter | ⛔ not started |
+| 12 | Riftbound Adapter | ✅ done |
 | 13 | Polish, PWA & Hardening | ⛔ not started |
 
 Legend: ⛔ not started · 🚧 in progress · ✅ done

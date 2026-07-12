@@ -17,10 +17,21 @@ would use the Riftbound game adapter.
 
 ## Data source
 
-- **[Riftcodex](https://riftcodex.com/)** — an open, unofficial REST API. Base URL observed:
-  `https://api.riftcodex.com/api/`, with a `cards` endpoint supporting `limit`, `page`, and `set_id`
-  filters, and search by champion/region/keyword. **It is an unofficial fan project, not affiliated with
-  Riot** — confirm current endpoints, fields, rate limits, and terms at build time (see the API's `/docs`).
+- **[Riftcodex](https://riftcodex.com/)** — an open, unofficial REST API. **Confirmed at build time
+  (phase-12, 2026-07-13):** base URL `https://api.riftcodex.com`; list endpoint `GET /cards?page=<n>&size=<n>`
+  (`size` max 100), paginated as `{ items, total, page, size, pages }`; also supports `set_id`/`sort`/`dir`.
+  A card carries `id`, `name`, `riftbound_id`, `classification { type, supertype, rarity, domain[] }`,
+  `attributes { energy, might, power }`, `media { image_url, artist, accessibility_text }`, `tags[]` (region
+  + subtypes), `set`, `text`, and `metadata`. Card types are `Battlefield, Gear, Legend, Rune, Spell, Unit`
+  (**`Legend`** is the identity); domains are `Body, Calm, Chaos, Colorless, Fury, Mind, Order`
+  (`/index/card-types`, `/index/domains`). **No auth on reads.** It is an **unofficial fan project under
+  Riot's fan content policy, not affiliated with Riot** — no explicit license/rate-limit text is published,
+  so TeamBrewer **syncs the catalog once (never live-hammers) and attributes the source in-app**.
+- The [Riftbound adapter](../plans/phase-12-riftbound-adapter.md) maps these into the lean `Card` (name +
+  image; `pitch` is null — Riftbound has no pitch resource) and derives Legends into `Hero`, mapping
+  **Domain → the class surface** and **Region (tags) → the talent surface**; card identity is name-only.
+- Riftbound competitive play is **Best-of-three Constructed (Standard)**; Limited is Draft/Sealed — so the
+  adapter's formats are `Standard` (constructed), `Draft`, `Sealed`, and `defaultBestOf` is **3**.
 - Other community databases exist (Piltover Archive, riftbound.one, riftdecks.com) as cross-references.
 
 ## What this implies for TeamBrewer
