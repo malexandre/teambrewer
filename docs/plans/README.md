@@ -73,7 +73,7 @@ Update as phases complete.
 | 02 | Card Database | ✅ done |
 | 03 | Decks | ✅ done |
 | 04 | Collaboration Core | ✅ done |
-| 05 | Events & Gauntlets | ⛔ not started |
+| 05 | Events & Gauntlets | ✅ done |
 | 06 | Game Logging | ⛔ not started |
 | 07 | Matchups & Coverage | ⛔ not started |
 | 08 | Testing Queue | ⛔ not started |

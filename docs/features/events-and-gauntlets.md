@@ -86,11 +86,15 @@ stateDiagram-v2
 
 ### Permissions
 
-- **Create/edit/delete events, gauntlet entries:** team-admin manages all; members may create/edit their
-  own events and gauntlet entries where allowed. Exact ownership follows
-  [multi-tenancy §Roles](../architecture/multi-tenancy.md#roles--capabilities).
-- **Attendance:** every member sets **their own** RSVP. Team-admins can view all attendance; they do not
-  set others' RSVP.
+- **Create/edit/delete events, gauntlet entries — shared team board (decided in phase-05):** an event and
+  its gauntlet are a **collaborative team prep board**, so **any team member may create *and* edit/delete
+  any event or gauntlet entry**; team-admins are the same. There is **no per-row owner/creator** on `Event`
+  or `GauntletEntry` — authorization is simply "verified member of the active team" (via `TeamContextGuard`),
+  on top of tenant isolation. (This resolves an ambiguity between the earlier user stories, which showed only
+  admins managing events, and the [multi-tenancy §Roles](../architecture/multi-tenancy.md#roles--capabilities)
+  table's "create/edit own"; events have no private visibility, so a shared board is the natural fit.)
+- **Attendance:** every member sets **their own** RSVP (`PUT .../attendance/me`, `userId` from the verified
+  context). Team-admins can view all attendance; they do not set others' RSVP.
 
 ## API surface
 

@@ -56,26 +56,30 @@ structure.
 
 ## Task checklist (test-first, ordered)
 
-- [ ] Write failing Zod schema tests in `packages/shared` for `Event`, `GauntletEntry`, `Attendance`
+- [x] Write failing Zod schema tests in `packages/shared` for `Event`, `GauntletEntry`, `Attendance`
       (valid + invalid payloads), then add the schemas to make them pass.
-- [ ] Write a failing unit test for the event status-transition helper (legal vs illegal transitions),
+- [x] Write a failing unit test for the event status-transition helper (legal vs illegal transitions),
       then implement the helper.
-- [ ] Write a failing unit test for the gauntlet target-form rule (exactly one of
+- [x] Write a failing unit test for the gauntlet target-form rule (exactly one of
       `referenceDeckId`/`heroId`/`archetypeLabel`) and `expectedMetaShare ∈ [0,100]`, then implement.
-- [ ] Add the Prisma models + migration; run `pnpm --filter api prisma migrate dev`.
-- [ ] Write failing integration tests for `Event` CRUD scoped to a team, then implement the service +
+- [x] Add the Prisma models + migration; run `pnpm --filter api prisma migrate dev`.
+- [x] Write failing integration tests for `Event` CRUD scoped to a team, then implement the service +
       controller.
-- [ ] Write failing integration tests for `GauntletEntry` CRUD (variants: reference deck / hero /
+- [x] Write failing integration tests for `GauntletEntry` CRUD (variants: reference deck / hero /
       archetype label; duplicate-target rejection `422`; cross-team reference-deck rejection), then
       implement.
-- [ ] Write failing integration tests for `Attendance` upsert idempotency (`PUT .../attendance/me`), then
+- [x] Write failing integration tests for `Attendance` upsert idempotency (`PUT .../attendance/me`), then
       implement.
-- [ ] Write failing **tenant-isolation** integration tests (team A cannot read/write team B's events,
+- [x] Write failing **tenant-isolation** integration tests (team A cannot read/write team B's events,
       gauntlet entries, attendance; forged `teamId`; cross-team FK), then confirm they pass.
-- [ ] Write failing component tests for the gauntlet builder (share validation, running-total display,
+- [x] Write failing component tests for the gauntlet builder (share validation, running-total display,
       target-form selection) and the RSVP toggle, then build the UI.
-- [ ] Wire the frontend `events` feature to the API with team-scoped TanStack Query keys `[teamId, ...]`.
-- [ ] Update [README.md](README.md) status table and this phase's cross-links.
+- [x] Wire the frontend `events` feature to the API with team-scoped TanStack Query keys `[teamId, ...]`.
+- [x] Update [README.md](README.md) status table and this phase's cross-links.
+
+> **Status decision (phase-05):** status is advanced through `PATCH /api/events/:eventId` (the API surface
+> has no dedicated status route), and event permissions are a **shared team board** (any member manages any
+> event/gauntlet entry; no owner column) — see [events-and-gauntlets §Permissions](../features/events-and-gauntlets.md).
 
 ## Tests & verification
 

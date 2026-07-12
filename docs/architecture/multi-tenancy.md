@@ -22,11 +22,15 @@ team's data. This is a **security property**, not merely a UI filter. Formal dec
 | Create users / generate setup links | ✅ | ✅ (within own team) | ❌ |
 | Manage team membership & roles | ✅ | ✅ (own team) | ❌ |
 | Create/edit own decks, log games, comment, suggest | ✅ | ✅ | ✅ |
-| Manage events, gauntlets, assignments | ✅ | ✅ | create/edit own; admin can manage all |
+| Manage events, gauntlets | ✅ | ✅ | any member creates/edits/deletes (shared team board) |
+| Manage assignments | ✅ | ✅ | create/edit own; admin can manage all |
 | Edit/delete others' content | ✅ | ✅ (moderation, own team) | ❌ |
 
-Ownership: a member controls their own decks/logs/suggestions; team-admins can moderate. Exact per-action
-rules live in each feature spec.
+Ownership: a member controls their own decks/logs/suggestions; team-admins can moderate. **Events and
+gauntlets are the exception** — they are a **shared team board** with no per-row owner, so any member may
+create/edit/delete any of them (decided in phase-05; see
+[events-and-gauntlets §Permissions](../features/events-and-gauntlets.md)). Exact per-action rules live in
+each feature spec.
 
 ## Enforcement (the core of the design)
 

@@ -69,8 +69,26 @@ phase; the `type` enum stays open for reply/authored notifications later. Endpoi
 `PATCH/DELETE /api/comments/:commentId`, `GET /api/notifications`, `PATCH /api/notifications/:id/read`,
 `POST /api/notifications/read-all`, `GET /api/activity`. Frontend: `CommentThread` (nested replies,
 in-team-only @-autocomplete, inline edit/remove), `NotificationCenter` (header bell + unread badge), and
-`ActivityFeed` (a `/activity` route + a per-deck section on `DeckDetail`). Next: **phase-05 (events &
-gauntlets)** — pick it up per [`docs/plans/`](docs/plans/README.md).
+`ActivityFeed` (a `/activity` route + a per-deck section on `DeckDetail`).
+
+**Phase-05 (events & gauntlets) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 243
+API + 147 shared + 31 web unit/integration tests + 4 e2e journeys): the **Event** as the central organizing
+hub (ADR-0004). Backend `EventsModule` — team-scoped **events** CRUD (keyset pagination; `status`/`formatId`/
+`importance` filters; status advanced **through `PATCH`** with a guarded lifecycle `upcoming → active →
+completed → archived` + cancellation, illegal → `422`; `DELETE` archives via `archivedAt`), the **gauntlet**
+(exactly-one target form — reference deck / hero / archetype label; raw `expectedMetaShare` 0–100; reference-
+deck must be the team's own `isReference` deck; cross-game hero rejection; duplicate-target `422`), and
+idempotent per-member **attendance** (`PUT .../attendance/me`). Models `Event`/`GauntletEntry`/`Attendance` +
+migration; `event`/`gauntletEntry` added to `TEAM_OWNED_MODELS` (attendance is scoped transitively through
+its parent event — no `teamId`). Endpoints `GET/POST /api/events`, `GET/PATCH/DELETE /api/events/:eventId`,
+`GET/POST /api/events/:eventId/gauntlet-entries`, `PATCH/DELETE .../:gauntletEntryId`,
+`GET /api/events/:eventId/attendance`, `PUT .../attendance/me`. Frontend `events` feature — list + filters,
+the **event hub** (header, status control, gauntlet builder with a share bar + running total, attendance
+toggle + roster), create/edit form, team-scoped hooks. **Decision (with the user):** events & gauntlets are a
+**shared team board** — any member creates/edits/deletes any event or gauntlet entry (no owner column);
+`data-model.md`'s `Event` has no owner field, and `multi-tenancy.md` + `events-and-gauntlets.md` were updated
+to record it. **Collaboration attach on events is deferred** (not in phase-05 scope). Next: **phase-06 (game
+logging)** — pick it up per [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 
