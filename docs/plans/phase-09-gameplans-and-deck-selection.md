@@ -64,26 +64,26 @@ confident deck choice and a durable review ([ADR-0004](../decisions/0004-event-c
 
 ## Task checklist (test-first, ordered)
 
-- [ ] Write failing Zod schema tests for the three entities (valid + invalid; required `body`; opponentRef
+- [x] Write failing Zod schema tests for the three entities (valid + invalid; required `body`; opponentRef
       exactly one form), then add the schemas.
-- [ ] Add the Prisma models + migration; run `pnpm --filter api prisma migrate dev`.
-- [ ] Write failing integration tests for `MatchupGamePlan` CRUD, the single-canonical-plan rule (duplicate
+- [x] Add the Prisma models + migration; run `pnpm --filter api prisma migrate dev`.
+- [x] Write failing integration tests for `MatchupGamePlan` CRUD, the single-canonical-plan rule (duplicate
       create → `409`, edit updates in place, `updatedBy` stamped), and card references resolving within the
       team's game, then implement.
-- [ ] Write failing integration tests for `DeckSelection` upsert of the caller's own selection
+- [x] Write failing integration tests for `DeckSelection` upsert of the caller's own selection
       (`PUT .../deck-selections/me`), then implement.
-- [ ] Write failing **lock-permission** tests: lock/unlock by a non-admin → `403`; a member editing a
+- [x] Write failing **lock-permission** tests: lock/unlock by a non-admin → `403`; a member editing a
       locked selection → `422`; team-admin lock → unlock → member edit succeeds. Then implement the lock
       helper + guard.
-- [ ] Write failing integration tests for `Retrospective` CRUD (member authors; admin edits/archives),
+- [x] Write failing integration tests for `Retrospective` CRUD (member authors; admin edits/archives),
       then implement.
-- [ ] Write failing **cross-team FK** tests (game-plan/selection referencing a team-B deck, card, event, or
+- [x] Write failing **cross-team FK** tests (game-plan/selection referencing a team-B deck, card, event, or
       gauntlet-entry rejected) and **tenant-isolation** tests (cross-tenant read → `404`; forged `teamId`
       → `403`), then confirm.
-- [ ] Wire collaboration-core comments onto game-plans (`subjectType: 'matchup_game_plan'`).
-- [ ] Write failing component tests for the game-plan editor (card autocomplete/hover, markdown), the
+- [x] Wire collaboration-core comments onto game-plans (`subjectType: 'matchup_game_plan'`).
+- [x] Write failing component tests for the game-plan editor (card autocomplete/hover, markdown), the
       deck-selection card + lock badge, and the retrospective editor, then build the UI.
-- [ ] Update [README.md](README.md) status table and cross-links.
+- [x] Update [README.md](README.md) status table and cross-links.
 
 ## Tests & verification
 

@@ -76,8 +76,11 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
 - **GauntletEntry** `{ id, eventId, teamId, referenceDeckId (→ Deck isReference) or heroId/archetypeLabel,
   expectedMetaShare (0–100), notes }`
 - **Attendance** `{ id, eventId, userId, status: 'going' | 'maybe' | 'not_going' }`
-- **DeckSelection** `{ id, eventId, userId, deckId, locked, lockedAt?, reasoning }`
-- **Retrospective** `{ id, eventId, teamId, authorId, body, resultsSummary, learnings }`
+- **DeckSelection** `{ id, eventId, userId, deckId, locked, lockedAt?, reasoning }` — one per
+  `(event, user)`; carries **no `teamId`** (scoped transitively through its parent event, like
+  `Attendance`). Team-admin-only lock/unlock; a locked selection rejects a member edit (`422`).
+- **Retrospective** `{ id, eventId, teamId, authorId, body, resultsSummary, learnings, archivedAt? }` —
+  **one per event** (unique `eventId`; a second create → `409`).
 
 ### Game logging & matchups
 - **GameLog** `{ id, teamId, loggedById, formatId, eventId?, playedAt,
@@ -110,7 +113,17 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
 
 ### Game-plans
 - **MatchupGamePlan** `{ id, teamId, ourDeckId, opponentRef (gauntletEntryId | heroId | archetypeLabel),
-  formatId, body, keyCards[] (→ Card), updatedBy }`
+  formatId, body, keyCards[] (→ Card), updatedBy, archivedAt? }` — one canonical plan per
+  `(teamId, ourDeckId, opponentRef, formatId)`. **Implementation note (phase-09):** `opponentRef` is
+  persisted as three nullable columns **plus a derived, normalized `opponentRef` key string**
+  (`gauntlet:<id>` | `hero:<id>` | `label:<lowercased>`) so the uniqueness constraint holds across the
+  polymorphic target (Postgres treats NULLs as distinct); a derived `opponentSnapshotLabel` (like
+  `TestAssignment`) survives deletion of the referenced gauntlet entry/hero. A duplicate create → `409`;
+  editing updates in place and re-stamps `updatedBy`. Shared team knowledge (no owner): any member
+  creates/edits; **archive is team-admin only**. `keyCards[]` are a child model **`MatchupGamePlanCard`
+  `{ id, gamePlanId, cardId }`** (scoped transitively through the parent, like `GameLogCard`; update
+  replaces the set; `cardId` must belong to the team's game). A collaboration subject
+  (`subjectType: 'matchup_game_plan'`).
 
 ### Collaboration (polymorphic — see collaboration-core spec)
 - **Comment** `{ id, teamId, authorId, subjectType, subjectId, body, parentCommentId?, archivedAt? }`

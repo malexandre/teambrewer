@@ -166,7 +166,32 @@ required resolution note, on-demand discussion) embedded on `DeckDetail`, and an
 (assign a matchup, "All / Assigned to me" scope, status control, discussion). **Decisions (with the user):**
 votes are **upvote-only** (no `value`); assignment statuses use the feature-spec vocabulary
 **`open/in_progress/done`** (+`cancelled`); the opponent snapshot is implemented now (not deferred).
-Next: **phase-09 (game-plans & deck selection)** — pick it up per [`docs/plans/`](docs/plans/README.md).
+
+**Phase-09 (game-plans & deck selection) is ✅ done** (merged to `main`). Delivered and tested (all
+local-green: 389 API + 269 shared + 60 web unit/integration tests + 8 e2e journeys): the endgame that turns
+testing into decisions (ADR-0004). Backend new **`GamePlansModule`** — team-scoped **`MatchupGamePlan`** CRUD
+(`GET/POST /api/game-plans`, `GET/PATCH/DELETE /api/game-plans/:gamePlanId`): one canonical plan per
+`(teamId, ourDeckId, opponentRef, formatId)` (duplicate create → `409`; edit updates in place + re-stamps
+`updatedBy`), a polymorphic opponent (gauntlet entry / hero / archetype label) persisted as three nullable
+columns **plus a derived normalized `opponentRef` key** (`gauntlet:`/`hero:`/`label:`) so uniqueness holds
+across the target, and a derived `opponentSnapshotLabel`; `keyCards[]` are a transitively-scoped child model
+**`MatchupGamePlanCard`** (replacement set, validated against the team's game); shared team knowledge (any
+member creates/edits, **archive team-admin only**); a `matchup_game_plan` collaboration subject emitting
+`matchup_game_plan_created/_updated` activity. Two event sub-resources were **added to the existing
+`EventsModule`** (decision with the user): per-member **`DeckSelection`** (`GET .../deck-selections`,
+`PUT .../deck-selections/me` upsert, `PATCH .../deck-selections/:id/lock|/unlock`) — no `teamId` (scoped
+through its event, like `Attendance`), **team-admin-only lock/unlock** (non-admin → `403`), a locked member
+edit → `422` — and the post-event **`Retrospective`** (`GET/POST/PATCH .../retrospective`), one per event
+(duplicate → `409`), any member authors, author-or-admin edits, admin-only archive. Models
+`MatchupGamePlan`/`MatchupGamePlanCard`/`DeckSelection`/`Retrospective` + migration; `matchupGamePlan`/
+`retrospective` added to `TEAM_OWNED_MODELS`. Frontend: a **`gameplans`** feature (editor with a hero/
+archetype opponent picker, key-card autocomplete + strip, `GamePlanCard` with `CardPreview` + comments)
+embedded **only on `DeckDetail`** (decision with the user); and **`DeckSelectionSection`** (my-pick + lock
+badge + roster with admin lock/unlock + a format-mismatch warning) + **`RetrospectiveSection`** on the event
+hub. **Decisions (with the user):** bodies render as **plain `whitespace-pre-wrap` text** (no markdown-
+renderer dependency — the codebase convention); deck-selections/retrospectives live in `EventsModule`;
+game-plans are surfaced only on the deck page this phase (the matchup-matrix-cell link is a later follow-up).
+Next: **phase-10 (team knowledge)** — pick it up per [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 

@@ -77,7 +77,7 @@ Update as phases complete.
 | 06 | Game Logging | ✅ done |
 | 07 | Matchups & Coverage | ✅ done |
 | 08 | Testing Queue | ✅ done |
-| 09 | Game-Plans & Deck Selection | ⛔ not started |
+| 09 | Game-Plans & Deck Selection | ✅ done |
 | 10 | Team Knowledge | ⛔ not started |
 | 11 | Dashboard | ⛔ not started |
 | 12 | Riftbound Adapter | ⛔ not started |
