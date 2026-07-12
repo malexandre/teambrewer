@@ -306,7 +306,8 @@ model Card {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameLogCards GameLogCard[]
 
   @@unique([gameId, externalId])
   @@index([gameId, name])
@@ -639,6 +640,7 @@ model GameLog {
   opponentPilot User?  @relation("GameLogOpponentPilot", fields: [opponentPilotUserId], references: [id], onDelete: SetNull)
   opponentDeck  Deck?  @relation("GameLogOpponentDeck", fields: [opponentDeckId], references: [id], onDelete: SetNull)
   hero          Hero?  @relation(fields: [heroId], references: [id], onDelete: SetNull)
+  cards         GameLogCard[]
 
   @@index([teamId])
   @@index([teamId, formatId])
@@ -649,6 +651,38 @@ model GameLog {
   @@index([teamId, opponentDeckId])
   @@index([teamId, opponentPilotUserId])
   @@map("game_log")
+}
+
+/// Whether a card over- or under-performed in a logged game.
+enum GameLogCardRole {
+  impressive
+  underperforming
+}
+
+/// Whose card it was in the game.
+enum GameLogCardSide {
+  ours
+  theirs
+}
+
+/// A card reference captured on a game log (impressive/underperforming, tagged by
+/// side). Like Attendance, it carries no teamId — it is reached only through its
+/// team-scoped parent GameLog. Cards come from the global card DB (decks are
+/// links, ADR-0002); the referenced card must belong to the team's game.
+model GameLogCard {
+  id        String          @id @default(cuid())
+  gameLogId String          @map("game_log_id")
+  cardId    String          @map("card_id")
+  role      GameLogCardRole
+  side      GameLogCardSide
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  gameLog GameLog @relation(fields: [gameLogId], references: [id], onDelete: Cascade)
+  card    Card    @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([gameLogId])
+  @@index([cardId])
+  @@map("game_log_card")
 }
 
 // ---------------------------------------------------------------------------
