@@ -14,4 +14,16 @@ export const queryKeys = {
 
   adminTeams: () => ["admin", "teams"] as const,
   adminMembers: (teamId: string) => ["admin", teamId, "members"] as const,
+
+  /**
+   * Card reference data, keyed by the active team first so it is fetched for (and
+   * scoped to) the team's game and switching teams refetches the right game's
+   * data. The backend filters by the team's game; the key mirrors that isolation.
+   */
+  cardSearch: (teamId: string, params: { query?: string; pitch?: number }) =>
+    [teamId, "cards", params] as const,
+  card: (teamId: string, cardId: string) => [teamId, "card", cardId] as const,
+  formats: (teamId: string) => [teamId, "formats"] as const,
+  heroes: (teamId: string) => [teamId, "heroes"] as const,
+  cardDataVersion: (teamId: string) => [teamId, "card-data-version"] as const,
 } as const;
