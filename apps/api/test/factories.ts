@@ -414,6 +414,95 @@ export async function createAttendance(
 }
 
 /**
+ * Game-logging fixtures (phase-06). Team-owned; a log needs a `teamId`, a
+ * `loggedById`, a `formatId`, side-A pilot + deck, a result, the four confidence
+ * factors, and a derived `confidenceWeight`. Side B defaults to an external hero
+ * opponent. Everything else defaults so isolation/aggregation tests build one in a
+ * single call.
+ */
+
+type GameSide = "A" | "B";
+type SkillParity = "evenly_matched" | "minor_gap" | "major_gap";
+type Seriousness = "tournament_serious" | "focused_practice" | "casual";
+type DeckMaturity = "both_tuned" | "partially_tuned" | "experimental";
+type PilotFamiliarity = "knows_well" | "learning" | "first_time";
+
+export interface CreateGameLogOptions {
+  teamId: string;
+  loggedById: string;
+  formatId: string;
+  pilotUserId: string;
+  deckId: string;
+  eventId?: string | null;
+  playedAt?: Date;
+  opponentPilotUserId?: string | null;
+  externalOpponentName?: string | null;
+  opponentDeckId?: string | null;
+  heroId?: string | null;
+  archetypeLabel?: string | null;
+  firstPlayerSide?: GameSide;
+  bestOf?: number;
+  gamesWonA?: number;
+  gamesWonB?: number;
+  skillParity?: SkillParity;
+  seriousness?: Seriousness;
+  deckMaturity?: DeckMaturity;
+  pilotFamiliarity?: PilotFamiliarity;
+  confidenceWeight?: number;
+  archivedAt?: Date | null;
+}
+
+export interface TestGameLog {
+  id: string;
+  teamId: string;
+  loggedById: string;
+  confidenceWeight: number;
+}
+
+export async function createGameLog(
+  prisma: PrismaClient,
+  options: CreateGameLogOptions,
+): Promise<TestGameLog> {
+  const hasIdentifiedOpponent =
+    options.opponentPilotUserId ||
+    options.opponentDeckId ||
+    options.heroId ||
+    options.archetypeLabel;
+  const created = await prisma.gameLog.create({
+    data: {
+      teamId: options.teamId,
+      loggedById: options.loggedById,
+      formatId: options.formatId,
+      eventId: options.eventId ?? null,
+      playedAt: options.playedAt ?? new Date("2026-07-01T00:00:00.000Z"),
+      pilotUserId: options.pilotUserId,
+      deckId: options.deckId,
+      opponentPilotUserId: options.opponentPilotUserId ?? null,
+      externalOpponentName: options.externalOpponentName ?? null,
+      opponentDeckId: options.opponentDeckId ?? null,
+      heroId: options.heroId ?? null,
+      archetypeLabel: options.archetypeLabel ?? (hasIdentifiedOpponent ? null : "Aggro Red"),
+      firstPlayerSide: options.firstPlayerSide ?? "A",
+      bestOf: options.bestOf ?? 3,
+      gamesWonA: options.gamesWonA ?? 2,
+      gamesWonB: options.gamesWonB ?? 1,
+      skillParity: options.skillParity ?? "evenly_matched",
+      seriousness: options.seriousness ?? "tournament_serious",
+      deckMaturity: options.deckMaturity ?? "both_tuned",
+      pilotFamiliarity: options.pilotFamiliarity ?? "knows_well",
+      confidenceWeight: options.confidenceWeight ?? 1,
+      archivedAt: options.archivedAt ?? null,
+    },
+  });
+  return {
+    id: created.id,
+    teamId: created.teamId,
+    loggedById: created.loggedById,
+    confidenceWeight: created.confidenceWeight,
+  };
+}
+
+/**
  * Collaboration fixtures (phase-04). Comments, notifications, and activity events
  * are team-scoped and addressed polymorphically by `(subjectType, subjectId)`.
  * A comment needs a `teamId`, `authorId`, and a subject; everything else defaults

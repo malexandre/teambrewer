@@ -12,6 +12,7 @@ import { DomainExceptionFilter } from "./common/domain-exception.filter.js";
 import { THROTTLER_OPTIONS } from "./common/throttling.js";
 import { DiscordModule } from "./discord/discord.module.js";
 import { EventsModule } from "./events/events.module.js";
+import { GameLogsModule } from "./game-logs/game-logs.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { MeModule } from "./me/me.module.js";
 import { OnboardingModule } from "./onboarding/onboarding.module.js";
@@ -33,6 +34,7 @@ import { TenancyModule } from "./tenancy/tenancy.module.js";
     CardsModule,
     DecksModule,
     EventsModule,
+    GameLogsModule,
     CollaborationModule,
   ],
   providers: [
