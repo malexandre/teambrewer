@@ -67,9 +67,18 @@ test("create an event, build a gauntlet, RSVP, and confirm team isolation", asyn
     "aria-pressed",
     "true",
   );
-  await expect(page.getByText("Events User")).toBeVisible();
+  // Scope to the attendance section — the activity feed also shows the actor's name.
+  const attendanceSection = page.locator("section").filter({ hasText: "Attendance" });
+  await expect(attendanceSection.getByText("Events User")).toBeVisible();
 
-  // 7. Switch to the other team: the event must not be visible (tenant isolation).
+  // 7. Comment on the event hub; the event activity feed shows create + comment.
+  const commentBody = "Locking in the gauntlet, let's split the testing.";
+  await page.getByLabel("New comment").fill(commentBody);
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
+  await expect(page.getByText(commentBody)).toBeVisible();
+  await expect(page.getByText(/created an event/i)).toBeVisible();
+
+  // 8. Switch to the other team: the event must not be visible (tenant isolation).
   await page
     .getByRole("combobox", { name: /active team/i })
     .selectOption({ label: E2E_TEAMS.bravo.name });

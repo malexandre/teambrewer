@@ -87,7 +87,10 @@ the **event hub** (header, status control, gauntlet builder with a share bar + r
 toggle + roster), create/edit form, team-scoped hooks. **Decision (with the user):** events & gauntlets are a
 **shared team board** — any member creates/edits/deletes any event or gauntlet entry (no owner column);
 `data-model.md`'s `Event` has no owner field, and `multi-tenancy.md` + `events-and-gauntlets.md` were updated
-to record it. **Collaboration attach on events is deferred** (not in phase-05 scope). Next: **phase-06 (game
+to record it. **Post-phase follow-up (with the user):** events were then retrofitted onto the collaboration
+subsystem — `event` is a commentable subject (`EventSubjectResolver`), the hub renders the shared
+`CommentThread` + `ActivityFeed`, and create/update/status-change emit `event_created`/`event_updated`/
+`event_status_changed` activity (shared `subjectType`/`activityVerb` enums extended). Next: **phase-06 (game
 logging)** — pick it up per [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo

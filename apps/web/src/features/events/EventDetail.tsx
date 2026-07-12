@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useFormats } from "@/features/cards/use-formats";
+import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
+import { CommentThread } from "@/features/collaboration/CommentThread";
 import { ApiError } from "@/lib/api-client";
 
 import { AttendanceControl } from "./AttendanceControl";
@@ -109,6 +111,14 @@ export function EventDetail({
       <GauntletBuilder teamId={teamId} eventId={event.id} entries={event.gauntletEntries} canEdit />
 
       <AttendanceControl teamId={teamId} eventId={event.id} />
+
+      <CommentThread teamId={teamId} subjectType="event" subjectId={event.id} canComment />
+
+      <ActivityFeed
+        teamId={teamId}
+        filters={{ subjectType: "event", subjectId: event.id }}
+        title="Event activity"
+      />
     </div>
   );
 }

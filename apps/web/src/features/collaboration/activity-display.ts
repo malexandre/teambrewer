@@ -5,5 +5,8 @@ export const ACTIVITY_VERB_LABELS: Record<ActivityVerb, string> = {
   deck_created: "created a deck",
   deck_updated: "updated a deck",
   deck_status_changed: "changed a deck's status",
+  event_created: "created an event",
+  event_updated: "updated an event",
+  event_status_changed: "changed an event's status",
   commented: "commented",
 };

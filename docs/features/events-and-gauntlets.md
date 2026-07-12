@@ -96,6 +96,14 @@ stateDiagram-v2
 - **Attendance:** every member sets **their own** RSVP (`PUT .../attendance/me`, `userId` from the verified
   context). Team-admins can view all attendance; they do not set others' RSVP.
 
+### Collaboration
+
+Events are a **commentable, activity-tracked subject** (`subjectType: "event"`) via the phase-04
+[collaboration attach pattern](collaboration-core.md): the event hub renders the shared comment thread and a
+per-event activity feed, and event create / update / status-change emit `event_created` / `event_updated` /
+`event_status_changed` activity (plus the generic `commented`). An archived event refuses new comments; all
+of it is team-scoped (cross-tenant → 404).
+
 ## API surface
 
 Indicative REST per [api-conventions.md](../architecture/api-conventions.md). `teamId` is always taken
