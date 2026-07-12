@@ -4,6 +4,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { GamesModule } from "../games/games.module.js";
 import { CardSyncScheduler } from "./card-sync.scheduler.js";
 import { CardSyncService } from "./card-sync.service.js";
+import { ReferenceDataSeedService } from "./reference-data-seed.service.js";
 
 /**
  * Card reference data: sync + (later) search/reference endpoints. The scheduled
@@ -15,7 +16,11 @@ const cardSyncScheduleEnabled = process.env["CARD_SYNC_ENABLED"] === "true";
 
 @Module({
   imports: [GamesModule, ...(cardSyncScheduleEnabled ? [ScheduleModule.forRoot()] : [])],
-  providers: [CardSyncService, ...(cardSyncScheduleEnabled ? [CardSyncScheduler] : [])],
-  exports: [CardSyncService],
+  providers: [
+    CardSyncService,
+    ReferenceDataSeedService,
+    ...(cardSyncScheduleEnabled ? [CardSyncScheduler] : []),
+  ],
+  exports: [CardSyncService, ReferenceDataSeedService],
 })
 export class CardsModule {}
