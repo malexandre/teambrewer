@@ -184,6 +184,24 @@ async function seedGameLogDeck(databaseUrl: string): Promise<void> {
   }
 }
 
+/**
+ * Seed a single FaB card so the game-logging wizard's optional card-capture step
+ * (step 4) has something real to search for and pick, without a network card sync.
+ */
+async function seedGameLogCard(databaseUrl: string): Promise<void> {
+  const client = new Client({ connectionString: databaseUrl });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO "card" (id, game_id, external_id, name, pitch, updated_at)
+         VALUES ($1,'flesh-and-blood','e2e-cnc','Command and Conquer',1,$2)`,
+      [randomUUID(), new Date().toISOString()],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 async function waitForHealth(timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -238,6 +256,9 @@ export default async function globalSetup(): Promise<void> {
 
   // A team deck for the game-logging journey (FKs to the game + format from the seed).
   await seedGameLogDeck(databaseUrl);
+
+  // A card for the game-logging journey's optional card-capture step.
+  await seedGameLogCard(databaseUrl);
 
   const apiProcess = spawn(process.execPath, ["dist/main.js"], {
     cwd: apiDir,

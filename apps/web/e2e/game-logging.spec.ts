@@ -26,25 +26,47 @@ test("log a game on a phone with default factors, see the weight, confirm isolat
   await expect(page.getByTestId("backup-codes")).toBeVisible();
   await page.getByRole("button", { name: "Continue to app" }).click();
 
-  // 2. Log a game from the Games page — the fast path: format, deck, opponent hero,
-  //    accept the default confidence factors, save. A handful of taps.
+  // 2. Log a game from the Games page, driving the mobile wizard: step 1 (matchup),
+  //    Next to step 2 (result — defaults are fine), Next to step 3 (confidence), then
+  //    the optional step 4 to capture a card before saving.
   await page.getByRole("link", { name: "Games", exact: true }).click();
   await page.getByRole("button", { name: "Log a game" }).click();
+
+  // Step 1 — Matchup.
   await page.locator("#game-format").selectOption({ label: E2E_REFERENCE.formatName });
   await page.locator("#game-deck").selectOption({ label: deckName });
   await page
     .getByRole("combobox", { name: "Hero", exact: true })
     .selectOption({ label: E2E_REFERENCE.heroName });
+  await page.getByRole("button", { name: /next/i }).click();
+
+  // Step 2 — Result (the all-best defaults are fine).
+  await page.getByRole("button", { name: /next/i }).click();
+
+  // Step 3 — Confidence. The all-best defaults derive a weight of ~1.00.
+  await expect(page.getByText("~1.00").first()).toBeVisible();
+
+  // Step 3 -> Step 4: open the optional notes-and-cards step to capture a card.
+  await page.getByRole("button", { name: /add notes & cards/i }).click();
+
+  // Step 4 — search for the seeded card in the "Impressive cards" section and pick
+  // it. Both card-capture sections render an identically-labelled search combobox
+  // ("Search cards"), so scope to the impressive-cards group to disambiguate.
+  const impressiveCardsSection = page.getByRole("group", { name: /impressive cards/i });
+  await impressiveCardsSection.getByRole("combobox", { name: /search cards/i }).fill("Command");
+  await impressiveCardsSection.getByRole("button", { name: /command and conquer/i }).click();
+
   // Submit via the keyboard: on the narrow phone viewport the wrapped segmented
   // controls make a pointer click flaky (scroll-bounce hit-testing), and pressing
   // Enter on the focused submit button exercises the same form submission.
-  const logButton = page.getByRole("button", { name: "Log game" });
-  await logButton.scrollIntoViewIfNeeded();
-  await logButton.press("Enter");
+  const saveButton = page.getByRole("button", { name: /^save$/i });
+  await saveButton.scrollIntoViewIfNeeded();
+  await saveButton.press("Enter");
 
-  // 3. Lands on the game hub; the all-best defaults derive a weight of ~1.00.
+  // 3. Lands on the game hub; the weight and the captured card are both shown.
   await expect(page.getByRole("heading", { name: new RegExp(`${deckName} vs`) })).toBeVisible();
   await expect(page.getByText("~1.00").first()).toBeVisible();
+  await expect(page.getByText("Command and Conquer")).toBeVisible();
 
   // 4. The game appears in the team's list.
   await page.getByRole("link", { name: "Games", exact: true }).click();
