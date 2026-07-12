@@ -7,6 +7,8 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { Client } from "pg";
 
 import {
+  E2E_DECKS_SETUP_TOKEN,
+  E2E_DECKS_USER,
   E2E_ONBOARDING_USER,
   E2E_SETUP_TOKEN,
   E2E_TEAMS,
@@ -45,6 +47,15 @@ async function seed(databaseUrl: string): Promise<void> {
         [randomUUID(), teamId, userId],
       );
     }
+    async function insertSetupToken(userId: string, rawToken: string) {
+      const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      await client.query(
+        `INSERT INTO "invite_token" (id, user_id, purpose, token_hash, expires_at)
+         VALUES ($1,$2,'setup',$3,$4)`,
+        [randomUUID(), userId, tokenHash, expiresAt],
+      );
+    }
 
     await insertTeam(E2E_TEAMS.alpha.id, E2E_TEAMS.alpha.name, E2E_TEAMS.alpha.slug);
     await insertTeam(E2E_TEAMS.bravo.id, E2E_TEAMS.bravo.name, E2E_TEAMS.bravo.slug);
@@ -65,13 +76,13 @@ async function seed(databaseUrl: string): Promise<void> {
     await addMembership(E2E_TEAMS.alpha.id, alphaTwo);
     await addMembership(E2E_TEAMS.bravo.id, bravoTwo);
 
-    const tokenHash = createHash("sha256").update(E2E_SETUP_TOKEN).digest("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    await client.query(
-      `INSERT INTO "invite_token" (id, user_id, purpose, token_hash, expires_at)
-       VALUES ($1,$2,'setup',$3,$4)`,
-      [randomUUID(), E2E_ONBOARDING_USER.id, tokenHash, expiresAt],
-    );
+    // The decks user also belongs to both teams (alpha first -> default active).
+    await insertUser(E2E_DECKS_USER.id, E2E_DECKS_USER.username, E2E_DECKS_USER.displayName);
+    await addMembership(E2E_TEAMS.alpha.id, E2E_DECKS_USER.id);
+    await addMembership(E2E_TEAMS.bravo.id, E2E_DECKS_USER.id);
+
+    await insertSetupToken(E2E_ONBOARDING_USER.id, E2E_SETUP_TOKEN);
+    await insertSetupToken(E2E_DECKS_USER.id, E2E_DECKS_SETUP_TOKEN);
   } finally {
     await client.end();
   }
@@ -109,8 +120,22 @@ export default async function globalSetup(): Promise<void> {
   await seed(databaseUrl);
 
   // Build the API (and shared) so we can run the compiled server.
-  execFileSync("pnpm", ["--filter", "@teambrewer/shared", "build"], { cwd: repoRoot, stdio: "inherit" });
-  execFileSync("pnpm", ["--filter", "@teambrewer/api", "build"], { cwd: repoRoot, stdio: "inherit" });
+  execFileSync("pnpm", ["--filter", "@teambrewer/shared", "build"], {
+    cwd: repoRoot,
+    stdio: "inherit",
+  });
+  execFileSync("pnpm", ["--filter", "@teambrewer/api", "build"], {
+    cwd: repoRoot,
+    stdio: "inherit",
+  });
+
+  // Seed the network-free reference catalog (games + formats) so decks can be
+  // created against a real format and game (Deck.gameId/formatId are FKs).
+  execFileSync("pnpm", ["--filter", "@teambrewer/api", "db:seed"], {
+    cwd: repoRoot,
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+    stdio: "inherit",
+  });
 
   const apiProcess = spawn(process.execPath, ["dist/main.js"], {
     cwd: apiDir,
