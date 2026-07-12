@@ -35,8 +35,22 @@ seam + registry with the **Flesh and Blood** reference adapter; global per-game 
 `/api/formats`, `/api/heroes`, `/api/card-data/version`, instance-admin `/api/admin/card-data/sync`); and the
 **frontend** cards feature (`CardPicker`, `CardPreview`, data-version badge, hooks, a Cards page). **Decision
 recorded:** the `Card` model is **lean** (name + pitch + image only — decks are links, the image conveys
-stats); `data-model.md` and `card-database.md` were updated to match. Next: **phase-03 (decks)** — pick it up
-per [`docs/plans/`](docs/plans/README.md).
+stats); `data-model.md` and `card-database.md` were updated to match.
+
+**Phase-03 (decks) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 173 API + 81
+shared + 20 web unit/integration tests + 2 e2e journeys): the team-owned, **link-only** `Deck` and
+`DeckIterationEntry` models + migration (ADR-0002 — no stored card list); the **`DecksModule`** — the first
+real consumer of `TeamScopedPrisma` — with team-scoped CRUD, the dedicated status endpoint enforcing a
+**permissive status lifecycle** (transition map single-sourced in `packages/shared`), ownership +
+team-admin moderation, `private`/`team` visibility (404 to avoid enumeration), cross-game `formatId`/`heroId`
+rejection, the append-only iteration log, and best-effort **Fabrary URL recognition** via the game adapter
+(metadata only, no scraping — ADR-0007); endpoints `GET/POST /api/decks`, `GET/PATCH/DELETE
+/api/decks/:deckId`, `PATCH /api/decks/:deckId/status`, `GET/POST /api/decks/:deckId/iteration-entries`,
+`POST /api/decks/recognize-url`; and the mobile-first **frontend** decks feature (list/detail/form, status
++ visibility controls, iteration log, hero/format pickers, team-scoped hooks). **Fix:** `TeamScopedPrisma`
+now resolves the team context **lazily** (a request-scoped controller is instantiated before its guards
+run). **Doc updated:** the `decks.md` status mermaid now matches the permissive prose. Next: **phase-04
+(collaboration core)** — pick it up per [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 

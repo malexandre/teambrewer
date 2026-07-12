@@ -48,16 +48,20 @@ the recognized link provider (see below). Do not add card-list fields.
 
 ```mermaid
 flowchart LR
-  exploratory --> testing
-  testing --> tournament_ready
-  tournament_ready --> retired
-  testing --> retired
+  exploratory <--> testing
+  testing <--> tournament_ready
+  exploratory <--> tournament_ready
   exploratory --> retired
-  tournament_ready --> testing
+  testing --> retired
+  tournament_ready --> retired
+  retired --> testing
 ```
 
-- Transitions are unconstrained forward/back among the four states except `retired`, which is a terminal
-  "no longer worked on" state a user can reopen to `testing` if needed.
+- The three **active** states (`exploratory`, `testing`, `tournament_ready`) move **freely in both
+  directions**. Any active state may be **retired**. `retired` is a "no longer worked on" terminal that a
+  user can **reopen only to `testing`**. A no-op (transition to the current status) is not a valid move.
+  The transition table is the single source of truth in `packages/shared` (`deckStatusTransitions`), shared
+  by the API validator and the web status control; an invalid move is rejected with 422.
 - Status is independent of `archivedAt` (soft-delete). Retiring keeps the deck and its history; archiving
   hides it.
 

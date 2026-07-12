@@ -54,17 +54,17 @@ the first real exercise of the phase-01 tenancy backbone and the phase-02 card/r
   (`useDecks`, `useDeck`, `useCreateDeck`, `useUpdateDeck`, `useDeckIterations`) with team-scoped query keys.
 
 **Task checklist**
-- [ ] Read [decks](../features/decks.md), [ADR-0002](../decisions/0002-decks-as-links.md), [ADR-0007](../decisions/0007-external-data-approach.md), [data-model](../architecture/data-model.md#decks-link-only--see-adr-0002), [multi-tenancy](../architecture/multi-tenancy.md).
-- [ ] Write Zod schemas + enums in `packages/shared` (deck create/update, status change, iteration, list query) — test-first.
-- [ ] Add Prisma models + migration for `Deck` and `DeckIterationEntry`; add deck factories to the two-team test harness.
-- [ ] Implement `DecksModule` via the team-scoped data-access helper. **Write the tenant-isolation test first** (a member of team A cannot read/update/archive a deck in team B; forged `X-Team-Id`/`deckId` → 404).
-- [ ] Implement CRUD with ownership + team-admin moderation (member edits own; admin moderates any in-team; member cannot edit another member's deck → 403). Tests first.
-- [ ] Implement the status lifecycle with validated transitions (`exploratory → testing → tournament_ready → retired`, with allowed/blocked moves defined in [decks](../features/decks.md)); table-driven transition tests first.
-- [ ] Implement visibility rules (private draft visible only to owner + team-admins; team decks to all members); tests first, including a private-draft-not-visible-to-another-member test.
-- [ ] Validate `gameId` = team's game and `formatId`/`heroId` belong to that game's reference data (cross-game FK rejected). Test first.
-- [ ] Implement best-effort `recognize-url` via the FaB adapter (metadata only, no content fetch); test with fixture URLs (recognized Fabrary URL → provider label; unrecognized → null; **no network call**).
-- [ ] Build the frontend deck list/detail/form (mobile-first), status + visibility controls, iteration log, hero/format pickers; component tests for the form and status control.
-- [ ] Update [README.md](README.md) status.
+- [x] Read [decks](../features/decks.md), [ADR-0002](../decisions/0002-decks-as-links.md), [ADR-0007](../decisions/0007-external-data-approach.md), [data-model](../architecture/data-model.md#decks-link-only--see-adr-0002), [multi-tenancy](../architecture/multi-tenancy.md).
+- [x] Write Zod schemas + enums in `packages/shared` (deck create/update, status change, iteration, list query) — test-first.
+- [x] Add Prisma models + migration for `Deck` and `DeckIterationEntry`; add deck factories to the two-team test harness.
+- [x] Implement `DecksModule` via the team-scoped data-access helper. **Write the tenant-isolation test first** (a member of team A cannot read/update/archive a deck in team B; forged `X-Team-Id`/`deckId` → 404).
+- [x] Implement CRUD with ownership + team-admin moderation (member edits own; admin moderates any in-team; member cannot edit another member's deck → 403). Tests first.
+- [x] Implement the status lifecycle with validated transitions (`exploratory → testing → tournament_ready → retired`, with allowed/blocked moves defined in [decks](../features/decks.md)); table-driven transition tests first.
+- [x] Implement visibility rules (private draft visible only to owner + team-admins; team decks to all members); tests first, including a private-draft-not-visible-to-another-member test.
+- [x] Validate `gameId` = team's game and `formatId`/`heroId` belong to that game's reference data (cross-game FK rejected). Test first.
+- [x] Implement best-effort `recognize-url` via the FaB adapter (metadata only, no content fetch); test with fixture URLs (recognized Fabrary URL → provider label; unrecognized → null; **no network call**).
+- [x] Build the frontend deck list/detail/form (mobile-first), status + visibility controls, iteration log, hero/format pickers; component tests for the form and status control.
+- [x] Update [README.md](README.md) status.
 
 **Tests & verification**
 - **Unit (Vitest):** deck Zod schemas (valid/invalid, e.g. bad `externalUrl`); status-transition validator

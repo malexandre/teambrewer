@@ -71,7 +71,7 @@ Update as phases complete.
 | 00 | Foundation | ✅ done |
 | 01 | Auth & Tenancy | ✅ done |
 | 02 | Card Database | ✅ done |
-| 03 | Decks | ⛔ not started |
+| 03 | Decks | ✅ done |
 | 04 | Collaboration Core | ⛔ not started |
 | 05 | Events & Gauntlets | ⛔ not started |
 | 06 | Game Logging | ⛔ not started |
