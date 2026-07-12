@@ -19,6 +19,31 @@ export type DeckStatus = z.infer<typeof deckStatusSchema>;
 export const deckVisibilitySchema = z.enum(["team", "private"]);
 export type DeckVisibility = z.infer<typeof deckVisibilitySchema>;
 
+/**
+ * The deck status lifecycle as data (permissive model, docs/features/decks.md):
+ * for each status, the statuses it may transition to. The three active states
+ * move freely in both directions; any active state may retire; a retired deck is
+ * a reopenable terminal that returns only to `testing`. This is the single source
+ * of truth shared by the API validator and the web status control, so the two can
+ * never drift; a no-op (same status) is never a valid transition.
+ */
+export const deckStatusTransitions: Record<DeckStatus, readonly DeckStatus[]> = {
+  exploratory: ["testing", "tournament_ready", "retired"],
+  testing: ["exploratory", "tournament_ready", "retired"],
+  tournament_ready: ["exploratory", "testing", "retired"],
+  retired: ["testing"],
+};
+
+/** The statuses a deck may move to from `from` (never itself). */
+export function allowedNextDeckStatuses(from: DeckStatus): DeckStatus[] {
+  return [...deckStatusTransitions[from]];
+}
+
+/** Whether a status transition is permitted by the lifecycle. */
+export function isDeckStatusTransitionAllowed(from: DeckStatus, to: DeckStatus): boolean {
+  return deckStatusTransitions[from].includes(to);
+}
+
 /** A deck's display name. */
 export const deckNameSchema = z
   .string()

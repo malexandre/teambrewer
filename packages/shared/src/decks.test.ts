@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  allowedNextDeckStatuses,
   createDeckSchema,
   createIterationEntrySchema,
   deckListQuerySchema,
   deckStatusChangeSchema,
   deckStatusSchema,
   deckVisibilitySchema,
+  isDeckStatusTransitionAllowed,
   recognizeDeckUrlRequestSchema,
   updateDeckSchema,
 } from "./decks.js";
@@ -163,6 +165,25 @@ describe("deckListQuerySchema", () => {
     });
     expect(parsed.status).toBe("testing");
     expect(parsed.tag).toBe("aggro");
+  });
+});
+
+describe("deck status transitions", () => {
+  it("permits free movement among active states and retiring", () => {
+    expect(isDeckStatusTransitionAllowed("exploratory", "testing")).toBe(true);
+    expect(isDeckStatusTransitionAllowed("tournament_ready", "exploratory")).toBe(true);
+    expect(isDeckStatusTransitionAllowed("testing", "retired")).toBe(true);
+  });
+
+  it("reopens a retired deck only to testing and rejects no-ops", () => {
+    expect(isDeckStatusTransitionAllowed("retired", "testing")).toBe(true);
+    expect(isDeckStatusTransitionAllowed("retired", "exploratory")).toBe(false);
+    expect(isDeckStatusTransitionAllowed("testing", "testing")).toBe(false);
+  });
+
+  it("lists the allowed next statuses without the current one", () => {
+    expect(allowedNextDeckStatuses("retired")).toEqual(["testing"]);
+    expect(allowedNextDeckStatuses("exploratory")).not.toContain("exploratory");
   });
 });
 

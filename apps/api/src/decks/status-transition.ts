@@ -1,30 +1,22 @@
 import { UnprocessableEntityException } from "@nestjs/common";
 
-import { type DeckStatus, errorCode } from "@teambrewer/shared";
+import {
+  allowedNextDeckStatuses,
+  type DeckStatus,
+  errorCode,
+  isDeckStatusTransitionAllowed,
+} from "@teambrewer/shared";
 
 /**
- * The deck status lifecycle (docs/features/decks.md — permissive model). The
- * three active states move freely in both directions; any active state may be
- * retired; a retired deck is a reopenable terminal that returns only to
- * `testing`. A no-op (same status) is not a transition. This map is the single
- * source of truth; the controller offers only these moves and the service
- * enforces them.
+ * Server-side enforcement of the deck status lifecycle. The transition rules
+ * themselves live in `@teambrewer/shared` (`deckStatusTransitions`) so the API
+ * and the web status control share one source of truth; this module adds only the
+ * HTTP failure (422 → `DOMAIN_RULE_VIOLATION`).
  */
-const ALLOWED_TRANSITIONS: Record<DeckStatus, readonly DeckStatus[]> = {
-  exploratory: ["testing", "tournament_ready", "retired"],
-  testing: ["exploratory", "tournament_ready", "retired"],
-  tournament_ready: ["exploratory", "testing", "retired"],
-  retired: ["testing"],
-};
 
 /** The statuses a deck may move to from its current status (never itself). */
 export function allowedNextStatuses(from: DeckStatus): DeckStatus[] {
-  return [...ALLOWED_TRANSITIONS[from]];
-}
-
-/** Whether a transition is permitted by the lifecycle. */
-export function isDeckStatusTransitionAllowed(from: DeckStatus, to: DeckStatus): boolean {
-  return ALLOWED_TRANSITIONS[from].includes(to);
+  return allowedNextDeckStatuses(from);
 }
 
 /**

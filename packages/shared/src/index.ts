@@ -91,6 +91,9 @@ export {
 export {
   deckStatusSchema,
   deckVisibilitySchema,
+  deckStatusTransitions,
+  allowedNextDeckStatuses,
+  isDeckStatusTransitionAllowed,
   deckNameSchema,
   deckExternalUrlSchema,
   deckTagSchema,
