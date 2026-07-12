@@ -88,6 +88,10 @@ model User {
   updatedGamePlans            MatchupGamePlan[]    @relation("MatchupGamePlanUpdatedBy")
   deckSelections              DeckSelection[]
   authoredRetrospectives      Retrospective[]
+  authoredPrimers             Primer[]
+  authoredDecisions           Decision[]
+  authoredPolls               Poll[]
+  pollVotes                   PollVote[]
 
   @@map("user")
 }
@@ -185,6 +189,9 @@ model Team {
   testAssignments     TestAssignment[]
   matchupGamePlans    MatchupGamePlan[]
   retrospectives      Retrospective[]
+  primers             Primer[]
+  decisions           Decision[]
+  polls               Poll[]
 
   @@index([gameId])
   @@map("team")
@@ -409,6 +416,7 @@ model Deck {
   testAssignments        TestAssignment[]
   matchupGamePlans       MatchupGamePlan[]
   deckSelections         DeckSelection[]
+  primers                Primer[]
 
   @@index([teamId])
   @@index([teamId, status])
@@ -1045,4 +1053,129 @@ model Retrospective {
 
   @@index([teamId])
   @@map("retrospective")
+}
+
+// ---------------------------------------------------------------------------
+// Team knowledge (phase-10). Durable, findable team memory so conclusions stop
+// getting lost in chat: long-form primers, a decisions log, and polls. All
+// team-scoped by construction (non-null teamId); primers and decisions are
+// collaboration subjects. Bodies are markdown source rendered as pre-wrapped
+// plain text (no markdown/sanitizer dependency — the codebase convention).
+// See docs/features/team-knowledge.md and docs/architecture/data-model.md.
+// ---------------------------------------------------------------------------
+
+enum PrimerKind {
+  deck_primer
+  matchup
+  format_notes
+  other
+}
+
+enum PrimerVisibility {
+  team
+  private
+}
+
+enum PollStatus {
+  open
+  closed
+}
+
+/// A long-form living document (deck/matchup/format writeup). `kind` classifies it;
+/// a deck_primer/matchup primer may link relatedDeckId. A private primer is visible
+/// only to its author (and team-admins for moderation). Soft-deleted via archivedAt.
+model Primer {
+  id            String           @id @default(cuid())
+  teamId        String           @map("team_id")
+  authorId      String           @map("author_id")
+  title         String
+  kind          PrimerKind
+  relatedDeckId String?          @map("related_deck_id")
+  body          String
+  visibility    PrimerVisibility @default(team)
+  archivedAt    DateTime?        @map("archived_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  team        Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  author      User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  relatedDeck Deck? @relation(fields: [relatedDeckId], references: [id], onDelete: SetNull)
+
+  @@index([teamId])
+  @@index([teamId, kind])
+  @@index([teamId, relatedDeckId])
+  @@map("primer")
+}
+
+/// A structured record of what the team decided and why (context / decision /
+/// rationale). Append-oriented: superseding a decision is a new decision that links
+/// back via the relatedSubject columns. relatedSubjectType/relatedSubjectId address a
+/// subject polymorphically (like collaboration); relatedSubjectSnapshotLabel is a
+/// server-derived human label captured at write time. Soft-deleted via archivedAt.
+model Decision {
+  id                          String    @id @default(cuid())
+  teamId                      String    @map("team_id")
+  authorId                    String    @map("author_id")
+  title                       String
+  context                     String
+  decision                    String
+  rationale                   String
+  relatedSubjectType          String?   @map("related_subject_type")
+  relatedSubjectId            String?   @map("related_subject_id")
+  relatedSubjectSnapshotLabel String?   @map("related_subject_snapshot_label")
+  decidedAt                   DateTime  @default(now()) @map("decided_at")
+  archivedAt                  DateTime? @map("archived_at")
+  createdAt                   DateTime  @default(now()) @map("created_at")
+  updatedAt                   DateTime  @updatedAt @map("updated_at")
+
+  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([teamId, decidedAt])
+  @@map("decision")
+}
+
+/// A single-choice group vote. `options` is an ordered JSON array of { id, label }
+/// (the server assigns each option a stable id). A poll is effectively closed once
+/// closesAt passes even if status is still open — derived server-side.
+model Poll {
+  id        String     @id @default(cuid())
+  teamId    String     @map("team_id")
+  authorId  String     @map("author_id")
+  question  String
+  options   Json
+  status    PollStatus @default(open)
+  closesAt  DateTime?  @map("closes_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  votes PollVote[]
+
+  @@index([teamId])
+  @@index([teamId, status])
+  @@map("poll")
+}
+
+/// One member's vote on a poll (one row per member per poll; re-voting updates
+/// optionId). No teamId — reached only through its team-scoped parent poll, which is
+/// the tenant boundary (like SuggestionVote / Attendance). optionId references an
+/// option id inside the parent poll's JSON options.
+model PollVote {
+  id        String   @id @default(cuid())
+  pollId    String   @map("poll_id")
+  userId    String   @map("user_id")
+  optionId  String   @map("option_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+  @@index([pollId])
+  @@map("poll_vote")
 }
