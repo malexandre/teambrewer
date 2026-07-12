@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createDatabaseClient, resetDatabase } from "../../test/database.js";
 import {
   addMembership,
+  createAttendance,
   createDeck,
   createEvent,
   createFormat,
@@ -371,6 +372,35 @@ describe("Events endpoints (integration)", () => {
       expect(response.status).toBe(422);
     });
 
+    it("rejects a duplicate reference-deck and a duplicate archetype target with 422", async () => {
+      const event = await createEvent(prisma, { teamId: teamA.id, formatId: fabFormatId });
+      const referenceDeck = await createDeck(prisma, {
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+        isReference: true,
+      });
+      await createGauntletEntry(prisma, {
+        eventId: event.id,
+        teamId: teamA.id,
+        referenceDeckId: referenceDeck.id,
+      });
+      const duplicateDeck = await asMemberA(
+        http().post(`/api/events/${event.id}/gauntlet-entries`),
+      ).send({ referenceDeckId: referenceDeck.id, expectedMetaShare: 10 });
+      expect(duplicateDeck.status).toBe(422);
+
+      await createGauntletEntry(prisma, {
+        eventId: event.id,
+        teamId: teamA.id,
+        archetypeLabel: "Aggro Red",
+      });
+      const duplicateLabel = await asMemberA(
+        http().post(`/api/events/${event.id}/gauntlet-entries`),
+      ).send({ archetypeLabel: "aggro red", expectedMetaShare: 10 });
+      expect(duplicateLabel.status).toBe(422);
+    });
+
     it("rejects a reference deck that is not a reference deck with 422", async () => {
       const event = await createEvent(prisma, { teamId: teamA.id, formatId: fabFormatId });
       const nonReferenceDeck = await createDeck(prisma, {
@@ -461,6 +491,29 @@ describe("Events endpoints (integration)", () => {
 
       const detail = await asMemberA(http().get(`/api/events/${event.id}`));
       expect(detail.body.attendanceSummary).toEqual({ going: 0, maybe: 1, notGoing: 0 });
+    });
+
+    it("aggregates the summary across members with mixed RSVPs", async () => {
+      const event = await createEvent(prisma, { teamId: teamA.id, formatId: fabFormatId });
+      const going = await createUser(prisma);
+      const maybe = await createUser(prisma);
+      const notGoing = await createUser(prisma);
+      for (const user of [going, maybe, notGoing]) {
+        await addMembership(prisma, { teamId: teamA.id, userId: user.id, role: "member" });
+      }
+      await createAttendance(prisma, { eventId: event.id, userId: memberA.id, status: "going" });
+      await createAttendance(prisma, { eventId: event.id, userId: going.id, status: "going" });
+      await createAttendance(prisma, { eventId: event.id, userId: maybe.id, status: "maybe" });
+      await createAttendance(prisma, {
+        eventId: event.id,
+        userId: notGoing.id,
+        status: "not_going",
+      });
+
+      const detail = await asMemberA(http().get(`/api/events/${event.id}`));
+      expect(detail.body.attendanceSummary).toEqual({ going: 2, maybe: 1, notGoing: 1 });
+      const roster = await asMemberA(http().get(`/api/events/${event.id}/attendance`));
+      expect(roster.body.data).toHaveLength(4);
     });
   });
 
