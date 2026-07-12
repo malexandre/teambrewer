@@ -75,4 +75,16 @@ export const queryKeys = {
     [teamId, "notifications", params] as const,
   activity: (teamId: string, filters: Record<string, string>) =>
     [teamId, "activity", filters] as const,
+
+  /**
+   * Matchups & coverage, keyed by the active team first (teamId) so switching teams
+   * yields a different cache entry and one team's aggregates never bleed into
+   * another's. `filters` keys each scope variant (format / event / grouping).
+   */
+  matchups: (teamId: string, filters: Record<string, string>) =>
+    [teamId, "matchups", filters] as const,
+  matchupMatrix: (teamId: string, filters: Record<string, string>) =>
+    [teamId, "matchup-matrix", filters] as const,
+  matchupCoverage: (teamId: string, filters: Record<string, string>) =>
+    [teamId, "matchup-coverage", filters] as const,
 } as const;
