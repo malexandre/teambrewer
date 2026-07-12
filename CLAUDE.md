@@ -220,7 +220,29 @@ render as **plain `whitespace-pre-wrap` text** authored in a `<textarea>` — **
 dependency** (the codebase convention through phase-09); React escapes text content, so a script-laden body
 renders literally (proven by a component test) — the "markdown safety" requirement is met by escaping, not a
 sanitizer. `docs/plans/phase-10-team-knowledge.md` and `docs/features/team-knowledge.md` were updated to
-record it. Next: **phase-11 (dashboard)** — pick it up per [`docs/plans/`](docs/plans/README.md).
+record it.
+
+**Phase-11 (dashboard) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 461 API + 315
+shared + 72 web unit/integration tests + 10 e2e journeys): the **read/aggregation** landing surface that
+answers "what should I do next?" It introduces **no new persisted entity, no migration, no
+`TEAM_OWNED_MODELS` change** — it composes the existing events, matchups/coverage, testing-queue,
+game-logging, and collaboration services (their modules now `export` their services). The one piece of real
+logic is the pure, table-driven **`rankTestingPriorities`** in `packages/shared` (next to the matchup math):
+ranks **per opponent archetype** by `priorityScore = normalizedShare × coverageGap`
+(`coverageGap = max(0, target − effectiveSample)/target`, `target` defaults to the `high` trust boundary 15),
+ordered priority desc → `expectedMetaShare` desc → `effectiveSample` asc → `opponentKey`, with a no-shares
+fallback (rank by coverage gap, `sharesUnset` flagged) and empty-gauntlet → `[]`. Backend read-only
+**`DashboardModule`** — `GET /api/dashboard/me` (my open+in-progress assignments, nearest-upcoming events
+with my RSVP + deck selection, recent results with the outcome from my perspective — flipped when I piloted
+side B) and `GET /api/dashboard/team` (target event = explicit `?eventId=` else nearest upcoming; the ranked
+recommendation, coverage gaps with current assignees, recent team results, an activity slice) — all
+team-scoped through the composed services (a cross-tenant `eventId` → 404, a forged team → 403). Frontend
+**`dashboard`** feature at the **authenticated landing `/`** (the team roster moved to a new `/team` route +
+nav entry) — a mobile-first, sectioned page with a **For me** / **Team** scope toggle, every widget
+deep-linking into its owning feature. **Decisions (with the user):** rank **per opponent archetype** (not
+per our-deck × opponent pairing), and make the dashboard the landing route; `docs/features/dashboard.md` +
+the phase plan were updated to record both. Next: **phase-12 (riftbound adapter)** — pick it up per
+[`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 

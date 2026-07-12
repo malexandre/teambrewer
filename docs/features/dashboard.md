@@ -66,12 +66,20 @@ effectiveSample    = Σ(confidenceWeight) for the matchup   # see ADR-0005 / con
 ## API surface
 
 REST per [api-conventions.md](../architecture/api-conventions.md); `teamId` from the verified context. The
-dashboard prefers thin **aggregation endpoints** (or composes existing per-module reads):
+dashboard prefers thin **aggregation endpoints** that compose existing per-module reads.
+
+**Implemented (phase-11):** two composite endpoints, split personal ↔ team rather than one blob:
 
 ```
-GET /api/dashboard                       # composite summary for the active team + caller
-GET /api/dashboard/what-to-test-next?eventId=   # ranked matchup recommendations
+GET /api/dashboard/me                    # the caller's personal overview (assignments, upcoming, results)
+GET /api/dashboard/team?eventId=         # team overview: recommendation + coverage gaps + results + activity
 ```
+
+The `/team` payload embeds the ranked recommendation (the earlier `what-to-test-next` idea) for its target
+event (an explicit `?eventId=`, else the nearest upcoming). The ranking is **per opponent archetype** — one
+row per gauntlet target, aggregating all our reps — matching the formula below and the coverage tracker
+(decided with the user; not per our-deck × opponent pairing). The dashboard is also the **authenticated
+landing at `/`** (the team roster moved to `/team`).
 
 Backing per-module reads it may call instead of/alongside the composite:
 

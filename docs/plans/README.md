@@ -79,7 +79,7 @@ Update as phases complete.
 | 08 | Testing Queue | ✅ done |
 | 09 | Game-Plans & Deck Selection | ✅ done |
 | 10 | Team Knowledge | ✅ done |
-| 11 | Dashboard | ⛔ not started |
+| 11 | Dashboard | ✅ done |
 | 12 | Riftbound Adapter | ⛔ not started |
 | 13 | Polish, PWA & Hardening | ⛔ not started |
 

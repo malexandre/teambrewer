@@ -65,22 +65,30 @@ Per the [roadmap graph](README.md):
 
 ## Task checklist (test-first, ordered)
 
-- [ ] Read [dashboard](../features/dashboard.md), the phase-05/07/08 plans + their feature specs,
+- [x] Read [dashboard](../features/dashboard.md), the phase-05/07/08 plans + their feature specs,
       [data-model](../architecture/data-model.md), and [playtesting-methodology](../domain/playtesting-methodology.md).
-- [ ] Specify the ranking formula in the plan/spec (inputs, weighting, tie-breaks); get it unambiguous
+- [x] Specify the ranking formula in the plan/spec (inputs, weighting, tie-breaks); get it unambiguous
       before coding — if the weighting is unclear, ask rather than guess.
-- [ ] Write failing unit tests for `rankTestingPriorities` with **crafted data** producing a known order
+- [x] Write failing unit tests for `rankTestingPriorities` with **crafted data** producing a known order
       (e.g. high share + zero games outranks low share + thin coverage outranks well-covered); include
       tie-break and empty-gauntlet cases. Then implement the pure function.
-- [ ] Write failing integration tests for `GET /api/dashboard/me` and `/team` composing fixture data
+- [x] Write failing integration tests for `GET /api/dashboard/me` and `/team` composing fixture data
       (assignments, events, attendance, selections, game logs, gauntlet) for a team; assert the shapes and
       the recommendation order. Then implement the dashboard module by calling existing services.
-- [ ] Add tenant-isolation integration tests (below); make them pass.
-- [ ] Build the personal dashboard UI (assignments, upcoming events + my attendance/selection, recent
+- [x] Add tenant-isolation integration tests (below); make them pass.
+- [x] Build the personal dashboard UI (assignments, upcoming events + my attendance/selection, recent
       results) with deep links; component-test rendering + empty states.
-- [ ] Build the team dashboard UI (coverage gaps, recent results, recommendation list with reasons).
-- [ ] Verify query keys are team-scoped; add the switch-teams invalidation test.
-- [ ] Run the full verification below; update the [roadmap Status table](README.md).
+- [x] Build the team dashboard UI (coverage gaps, recent results, recommendation list with reasons).
+- [x] Verify query keys are team-scoped; add the switch-teams invalidation test.
+- [x] Run the full verification below; update the [roadmap Status table](README.md).
+
+**Decisions made (with the user), realized in this phase:**
+- The dashboard ranks **per opponent archetype** (one row per gauntlet target, aggregating all our reps),
+  matching this spec's formula and the coverage tracker — not per (our-deck × opponent) pairing.
+- The dashboard is the **authenticated landing** at `/`; the team roster moved to a new `/team` route + nav
+  entry. Endpoints are `GET /api/dashboard/me` and `GET /api/dashboard/team` (per this plan's deliverable).
+- Query keys are team-scoped (`teamId` first), so the global team-switch invalidation already covers them;
+  the switch-teams behavior is proven by the dashboard e2e (personal isolation) rather than a bespoke unit.
 
 ## Tests & verification
 
