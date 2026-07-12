@@ -307,6 +307,109 @@ export async function createDeck(
 }
 
 /**
+ * Collaboration fixtures (phase-04). Comments, notifications, and activity events
+ * are team-scoped and addressed polymorphically by `(subjectType, subjectId)`.
+ * A comment needs a `teamId`, `authorId`, and a subject; everything else defaults
+ * so isolation tests can create one in a single call.
+ */
+
+export interface CreateCommentOptions {
+  teamId: string;
+  authorId: string;
+  subjectId: string;
+  subjectType?: string;
+  body?: string;
+  parentCommentId?: string | null;
+  archivedAt?: Date | null;
+}
+
+export interface TestComment {
+  id: string;
+  teamId: string;
+  authorId: string;
+  subjectType: string;
+  subjectId: string;
+  parentCommentId: string | null;
+}
+
+export async function createComment(
+  prisma: PrismaClient,
+  options: CreateCommentOptions,
+): Promise<TestComment> {
+  const created = await prisma.comment.create({
+    data: {
+      teamId: options.teamId,
+      authorId: options.authorId,
+      subjectType: options.subjectType ?? "deck",
+      subjectId: options.subjectId,
+      body: options.body ?? "A test comment.",
+      parentCommentId: options.parentCommentId ?? null,
+      archivedAt: options.archivedAt ?? null,
+    },
+  });
+  return {
+    id: created.id,
+    teamId: created.teamId,
+    authorId: created.authorId,
+    subjectType: created.subjectType,
+    subjectId: created.subjectId,
+    parentCommentId: created.parentCommentId,
+  };
+}
+
+export interface CreateNotificationOptions {
+  teamId: string;
+  userId: string;
+  subjectId: string;
+  type?: string;
+  subjectType?: string;
+  commentId?: string | null;
+  readAt?: Date | null;
+}
+
+export async function createNotification(
+  prisma: PrismaClient,
+  options: CreateNotificationOptions,
+): Promise<{ id: string; teamId: string; userId: string; readAt: Date | null }> {
+  const created = await prisma.notification.create({
+    data: {
+      teamId: options.teamId,
+      userId: options.userId,
+      type: options.type ?? "mention",
+      subjectType: options.subjectType ?? "deck",
+      subjectId: options.subjectId,
+      commentId: options.commentId ?? null,
+      readAt: options.readAt ?? null,
+    },
+  });
+  return { id: created.id, teamId: created.teamId, userId: created.userId, readAt: created.readAt };
+}
+
+export interface CreateActivityEventOptions {
+  teamId: string;
+  actorId: string;
+  verb: string;
+  subjectId: string;
+  subjectType?: string;
+}
+
+export async function createActivityEvent(
+  prisma: PrismaClient,
+  options: CreateActivityEventOptions,
+): Promise<{ id: string; teamId: string; verb: string }> {
+  const created = await prisma.activityEvent.create({
+    data: {
+      teamId: options.teamId,
+      actorId: options.actorId,
+      verb: options.verb,
+      subjectType: options.subjectType ?? "deck",
+      subjectId: options.subjectId,
+    },
+  });
+  return { id: created.id, teamId: created.teamId, verb: created.verb };
+}
+
+/**
  * The canonical two-team world for isolation tests: an instance-admin, plus
  * team A (with a team-admin and a member) and team B (with its own member).
  * `memberA` belongs only to team A and must never be able to reach team B.
