@@ -144,13 +144,7 @@ export class CollaborationService {
       where: { id: commentId },
       data: { body: input.body },
     });
-    await this.syncMentions(
-      team,
-      comment.id,
-      input.body,
-      comment.subjectType,
-      comment.subjectId,
-    );
+    await this.syncMentions(team, comment.id, input.body, comment.subjectType, comment.subjectId);
 
     const updated = (await this.scoped.db.comment.findFirst({
       where: { id: commentId },

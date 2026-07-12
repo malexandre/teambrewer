@@ -327,9 +327,9 @@ describe("Collaboration endpoints (integration)", () => {
       const perSubject = await asMemberA(
         http().get("/api/activity").query({ subjectType: "deck", subjectId: deckId }),
       );
-      expect(perSubject.body.data.every((event: { subjectId: string }) => event.subjectId === deckId)).toBe(
-        true,
-      );
+      expect(
+        perSubject.body.data.every((event: { subjectId: string }) => event.subjectId === deckId),
+      ).toBe(true);
     });
   });
 

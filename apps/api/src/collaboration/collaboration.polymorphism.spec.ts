@@ -90,9 +90,12 @@ describe("Collaboration polymorphism (service-level, test-only subject type)", (
     const registry = new SubjectResolverRegistry();
     registry.register(testResolver());
     const scopedFor = (team: TeamContext) =>
-      new TeamScopedPrisma(prisma as unknown as PrismaService, {
-        teamContext: team,
-      } as RequestWithTenantContext);
+      new TeamScopedPrisma(
+        prisma as unknown as PrismaService,
+        {
+          teamContext: team,
+        } as RequestWithTenantContext,
+      );
     // Each call builds a scoped client from the passed team context; we bind one
     // team's context here since a single service call uses one team.
     const scoped = scopedFor(teamContextFor(teamA, memberA));
