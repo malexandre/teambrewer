@@ -2,6 +2,10 @@
 # After cloning, `pnpm install` wires the hooks (via the `prepare` → `lefthook install` script).
 # Each step below reports pass/fail by name. Do NOT bypass with `git commit --no-verify`.
 
+# Run the repo's pinned lefthook (node_modules) rather than any global one on PATH,
+# so the version is reproducible from package.json regardless of a machine's brew/global install.
+lefthook: pnpm exec lefthook
+
 pre-commit:
   piped: true # run steps in priority order and STOP at the first failure, so the culprit is obvious
   commands:
