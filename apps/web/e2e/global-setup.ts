@@ -26,6 +26,9 @@ import {
   E2E_REFERENCE,
   E2E_SETUP_TOKEN,
   E2E_TEAMS,
+  E2E_TESTQUEUE_DECK_NAME,
+  E2E_TESTQUEUE_SETUP_TOKEN,
+  E2E_TESTQUEUE_USER,
   RUNTIME_FILE,
 } from "./fixtures";
 
@@ -110,6 +113,15 @@ async function seed(databaseUrl: string): Promise<void> {
     await addMembership(E2E_TEAMS.alpha.id, E2E_MATCHUP_USER.id);
     await addMembership(E2E_TEAMS.bravo.id, E2E_MATCHUP_USER.id);
 
+    // The testing-queue user also belongs to both teams (alpha first -> default active).
+    await insertUser(
+      E2E_TESTQUEUE_USER.id,
+      E2E_TESTQUEUE_USER.username,
+      E2E_TESTQUEUE_USER.displayName,
+    );
+    await addMembership(E2E_TEAMS.alpha.id, E2E_TESTQUEUE_USER.id);
+    await addMembership(E2E_TEAMS.bravo.id, E2E_TESTQUEUE_USER.id);
+
     // Two collaboration teammates on alpha only (mentions resolve within a team).
     await insertUser(
       E2E_COLLAB_AUTHOR.id,
@@ -131,6 +143,7 @@ async function seed(databaseUrl: string): Promise<void> {
     await insertSetupToken(E2E_MATCHUP_USER.id, E2E_MATCHUP_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_AUTHOR.id, E2E_COLLAB_AUTHOR_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_MENTIONED.id, E2E_COLLAB_MENTIONED_SETUP_TOKEN);
+    await insertSetupToken(E2E_TESTQUEUE_USER.id, E2E_TESTQUEUE_SETUP_TOKEN);
   } finally {
     await client.end();
   }
@@ -186,6 +199,44 @@ async function seedGameLogDeck(databaseUrl: string): Promise<void> {
         formatId,
         "https://fabrary.net/decks/e2e-gamelog",
         E2E_GAMELOG_USER.id,
+        new Date().toISOString(),
+      ],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * Seed a team deck owned by the testing-queue user on alpha, so the testing-queue
+ * journey can propose card tests on it and assign matchups for it without driving
+ * the deck form. FKs to the game + the "Classic Constructed" format from `db:seed`.
+ */
+async function seedTestQueueDeck(databaseUrl: string): Promise<void> {
+  const client = new Client({ connectionString: databaseUrl });
+  await client.connect();
+  try {
+    const format = await client.query<{ id: string }>(
+      `SELECT id FROM "format" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
+      [E2E_REFERENCE.formatName],
+    );
+    const formatId = format.rows[0]?.id;
+    if (!formatId) {
+      throw new Error("Expected the seeded Classic Constructed format to exist.");
+    }
+    await client.query(
+      `INSERT INTO "deck"
+         (id, team_id, name, game_id, format_id, external_url, source, owner_id,
+          status, visibility, is_reference, tags, notes, updated_at)
+       VALUES ($1,$2,$3,'flesh-and-blood',$4,$5,'fabrary',$6,
+          'testing','team',false, ARRAY[]::text[], '', $7)`,
+      [
+        randomUUID(),
+        E2E_TEAMS.alpha.id,
+        E2E_TESTQUEUE_DECK_NAME,
+        formatId,
+        "https://fabrary.net/decks/e2e-testqueue",
+        E2E_TESTQUEUE_USER.id,
         new Date().toISOString(),
       ],
     );
@@ -348,6 +399,9 @@ export default async function globalSetup(): Promise<void> {
 
   // A team deck for the game-logging journey (FKs to the game + format from the seed).
   await seedGameLogDeck(databaseUrl);
+
+  // A team deck for the testing-queue journey (suggestions + assignments).
+  await seedTestQueueDeck(databaseUrl);
 
   // A card for the game-logging journey's optional card-capture step.
   await seedGameLogCard(databaseUrl);

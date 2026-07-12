@@ -93,6 +93,22 @@ export const E2E_MATCHUP_DECK_NAME = "E2E Matchup Deck";
 export const E2E_MATCHUP_EVENT_NAME = "E2E Matchup Cup";
 
 /**
+ * A dedicated onboardable user for the testing-queue journey — independent of the
+ * other specs so they can run in parallel (each consumes its own single-use token).
+ * Belongs to both teams (alpha first → default active) to exercise suggestion +
+ * assignment isolation across a team switch. The global-setup seeds this team a deck
+ * to propose card tests on and assign matchups for.
+ */
+export const E2E_TESTQUEUE_USER = {
+  id: "e2e-user-testqueue",
+  username: "testqueue_user",
+  displayName: "Testqueue User",
+};
+export const E2E_TESTQUEUE_SETUP_TOKEN = "e2e-testqueue-setup-token";
+/** The team deck seeded on alpha the testing-queue user proposes/assigns against. */
+export const E2E_TESTQUEUE_DECK_NAME = "E2E Testing Queue Deck";
+
+/**
  * Reference data for the specs. `formatName` comes from the network-free `db:seed`
  * (games + formats); `heroName` is a single hero the events e2e global-setup inserts
  * after the seed (heroes normally come from the network card sync, skipped in e2e).
