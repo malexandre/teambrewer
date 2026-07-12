@@ -20,7 +20,9 @@ test("setup link -> password -> TOTP -> backup codes -> team-switch isolation", 
   await expect(page.getByTestId("backup-codes")).toBeVisible();
   await page.getByRole("button", { name: "Continue to app" }).click();
 
-  // 4. Lands on the active team (alpha, the first membership) and shows only its roster.
+  // 4. Lands on the dashboard; open the team roster (alpha, the first membership) —
+  //    it shows only the active team's members.
+  await page.getByRole("link", { name: "Team", exact: true }).click();
   await expect(page.getByText(E2E_TEAMS.alpha.extraMember)).toBeVisible();
   await expect(page.getByText(E2E_TEAMS.bravo.extraMember)).toHaveCount(0);
 

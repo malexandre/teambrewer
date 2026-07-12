@@ -144,6 +144,25 @@ export const E2E_KNOWLEDGE_USER = {
 export const E2E_KNOWLEDGE_SETUP_TOKEN = "e2e-knowledge-setup-token";
 
 /**
+ * A dedicated onboardable user for the dashboard journey — independent of the other
+ * specs so they can run in parallel (each consumes its own single-use token). Belongs
+ * to both teams (alpha first → default active) to exercise dashboard isolation across
+ * a team switch. The global-setup seeds this team a deck, an upcoming event with a
+ * gauntlet, two logged wins, and an open test assignment so every dashboard widget
+ * (assignments, recent results, recommendation, coverage) has real data.
+ */
+export const E2E_DASHBOARD_USER = {
+  id: "e2e-user-dashboard",
+  username: "dashboard_user",
+  displayName: "Dashboard User",
+};
+export const E2E_DASHBOARD_SETUP_TOKEN = "e2e-dashboard-setup-token";
+/** The team deck seeded on alpha the dashboard user's assignment + results reference. */
+export const E2E_DASHBOARD_DECK_NAME = "E2E Dashboard Deck";
+/** The upcoming event (with a gauntlet) seeded on alpha the dashboard targets. */
+export const E2E_DASHBOARD_EVENT_NAME = "E2E Dashboard Cup";
+
+/**
  * Reference data for the specs. `formatName` comes from the network-free `db:seed`
  * (games + formats); `heroName` is a single hero the events e2e global-setup inserts
  * after the seed (heroes normally come from the network card sync, skipped in e2e).
