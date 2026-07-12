@@ -27,6 +27,24 @@ export const E2E_DECKS_USER = {
 };
 export const E2E_DECKS_SETUP_TOKEN = "e2e-decks-setup-token";
 
+/**
+ * Two onboardable teammates on the alpha team for the collaboration journey: the
+ * author posts a comment mentioning the other, who then sees the notification.
+ * Independent tokens so this spec runs in parallel with the others.
+ */
+export const E2E_COLLAB_AUTHOR = {
+  id: "e2e-user-collab-author",
+  username: "collab_author",
+  displayName: "Collab Author",
+};
+export const E2E_COLLAB_AUTHOR_SETUP_TOKEN = "e2e-collab-author-setup-token";
+export const E2E_COLLAB_MENTIONED = {
+  id: "e2e-user-collab-mentioned",
+  username: "collab_mentioned",
+  displayName: "Collab Mentioned",
+};
+export const E2E_COLLAB_MENTIONED_SETUP_TOKEN = "e2e-collab-mentioned-setup-token";
+
 /** Reference data the network-free `db:seed` provides (games + formats) for the decks spec. */
 export const E2E_REFERENCE = {
   formatName: "Classic Constructed",

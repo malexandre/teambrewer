@@ -7,6 +7,10 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { Client } from "pg";
 
 import {
+  E2E_COLLAB_AUTHOR,
+  E2E_COLLAB_AUTHOR_SETUP_TOKEN,
+  E2E_COLLAB_MENTIONED,
+  E2E_COLLAB_MENTIONED_SETUP_TOKEN,
   E2E_DECKS_SETUP_TOKEN,
   E2E_DECKS_USER,
   E2E_ONBOARDING_USER,
@@ -81,8 +85,24 @@ async function seed(databaseUrl: string): Promise<void> {
     await addMembership(E2E_TEAMS.alpha.id, E2E_DECKS_USER.id);
     await addMembership(E2E_TEAMS.bravo.id, E2E_DECKS_USER.id);
 
+    // Two collaboration teammates on alpha only (mentions resolve within a team).
+    await insertUser(
+      E2E_COLLAB_AUTHOR.id,
+      E2E_COLLAB_AUTHOR.username,
+      E2E_COLLAB_AUTHOR.displayName,
+    );
+    await insertUser(
+      E2E_COLLAB_MENTIONED.id,
+      E2E_COLLAB_MENTIONED.username,
+      E2E_COLLAB_MENTIONED.displayName,
+    );
+    await addMembership(E2E_TEAMS.alpha.id, E2E_COLLAB_AUTHOR.id);
+    await addMembership(E2E_TEAMS.alpha.id, E2E_COLLAB_MENTIONED.id);
+
     await insertSetupToken(E2E_ONBOARDING_USER.id, E2E_SETUP_TOKEN);
     await insertSetupToken(E2E_DECKS_USER.id, E2E_DECKS_SETUP_TOKEN);
+    await insertSetupToken(E2E_COLLAB_AUTHOR.id, E2E_COLLAB_AUTHOR_SETUP_TOKEN);
+    await insertSetupToken(E2E_COLLAB_MENTIONED.id, E2E_COLLAB_MENTIONED_SETUP_TOKEN);
   } finally {
     await client.end();
   }
