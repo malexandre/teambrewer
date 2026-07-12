@@ -126,4 +126,13 @@ export const queryKeys = {
   decision: (teamId: string, decisionId: string) => [teamId, "decision", decisionId] as const,
   polls: (teamId: string, filters: Record<string, string>) => [teamId, "polls", filters] as const,
   poll: (teamId: string, pollId: string) => [teamId, "poll", pollId] as const,
+
+  /**
+   * Dashboard (phase-11), keyed by the active team first (teamId) so switching teams
+   * yields a different cache entry and one team's aggregates never bleed into
+   * another's. The team view keys by its optional target event.
+   */
+  dashboardMe: (teamId: string) => [teamId, "dashboard", "me"] as const,
+  dashboardTeam: (teamId: string, filters: Record<string, string>) =>
+    [teamId, "dashboard", "team", filters] as const,
 } as const;

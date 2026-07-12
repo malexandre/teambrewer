@@ -1,6 +1,6 @@
 import { MembersPanel } from "@/features/teams/MembersPanel";
 
-/** Authenticated landing: the active team's roster (the phase-01 team view). */
+/** The active team's roster (the `/team` view; the dashboard is now the landing at `/`). */
 export function HomePage() {
   return (
     <div className="flex flex-col gap-4">

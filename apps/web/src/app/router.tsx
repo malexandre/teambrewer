@@ -6,6 +6,7 @@ import { AppChrome } from "@/features/app/AppChrome";
 import { HomePage } from "@/features/app/HomePage";
 import { CardsPage } from "@/features/cards/CardsPage";
 import { ActivityPage } from "@/features/collaboration/ActivityPage";
+import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { DeckDetailPage } from "@/features/decks/DeckDetailPage";
 import { DecksPage } from "@/features/decks/DecksPage";
 import { EventDetailPage } from "@/features/events/EventDetailPage";
@@ -72,6 +73,12 @@ const authenticatedLayout = createRoute({
 const homeRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/",
+  component: DashboardPage,
+});
+
+const teamRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/team",
   component: HomePage,
 });
 
@@ -177,6 +184,7 @@ const routeTree = rootRoute.addChildren([
   claimRoute,
   authenticatedLayout.addChildren([
     homeRoute,
+    teamRoute,
     cardsRoute,
     decksRoute,
     deckDetailRoute,

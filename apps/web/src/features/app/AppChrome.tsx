@@ -37,6 +37,9 @@ export function AppChrome({ children }: { children: ReactNode }) {
           </div>
           <nav className="flex items-center gap-2 text-sm">
             <Link to="/" className="px-2 py-1 hover:underline">
+              Dashboard
+            </Link>
+            <Link to="/team" className="px-2 py-1 hover:underline">
               Team
             </Link>
             <Link to="/decks" className="px-2 py-1 hover:underline">
