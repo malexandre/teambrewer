@@ -79,4 +79,11 @@ export { formatSchema, formatListSchema, type Format, type FormatList } from "./
 
 export { heroSchema, heroListSchema, type Hero, type HeroList } from "./heroes.js";
 
-export { cardDataVersionSchema, type CardDataVersion } from "./card-data.js";
+export {
+  cardDataVersionSchema,
+  cardSyncResultSchema,
+  cardSyncResponseSchema,
+  type CardDataVersion,
+  type CardSyncResult,
+  type CardSyncResponse,
+} from "./card-data.js";

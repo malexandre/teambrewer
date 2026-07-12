@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cardDataVersionSchema } from "./card-data.js";
+import { cardDataVersionSchema, cardSyncResponseSchema } from "./card-data.js";
 
 describe("cardDataVersionSchema", () => {
   it("parses a card-data provenance record", () => {
@@ -25,5 +25,14 @@ describe("cardDataVersionSchema", () => {
         cardCount: 4.5,
       }),
     ).toThrow();
+  });
+});
+
+describe("cardSyncResponseSchema", () => {
+  it("parses a per-game sync result envelope", () => {
+    const response = cardSyncResponseSchema.parse({
+      data: [{ gameId: "flesh-and-blood", cardCount: 4200, heroCount: 90, sourceVersion: "v8.2.0" }],
+    });
+    expect(response.data[0]?.gameId).toBe("flesh-and-blood");
   });
 });

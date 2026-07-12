@@ -15,3 +15,18 @@ export const cardDataVersionSchema = z.object({
   cardCount: z.number().int(),
 });
 export type CardDataVersion = z.infer<typeof cardDataVersionSchema>;
+
+/** Per-game outcome of an admin-triggered card-data sync. */
+export const cardSyncResultSchema = z.object({
+  gameId: z.string(),
+  cardCount: z.number().int(),
+  heroCount: z.number().int(),
+  sourceVersion: z.string(),
+});
+export type CardSyncResult = z.infer<typeof cardSyncResultSchema>;
+
+/** Response for `POST /api/admin/card-data/sync` (instance-admin only). */
+export const cardSyncResponseSchema = z.object({
+  data: z.array(cardSyncResultSchema),
+});
+export type CardSyncResponse = z.infer<typeof cardSyncResponseSchema>;

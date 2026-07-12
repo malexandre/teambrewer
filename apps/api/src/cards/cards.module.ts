@@ -1,8 +1,10 @@
 import { Module } from "@nestjs/common";
 import { ScheduleModule } from "@nestjs/schedule";
 
+import { RoleGuard } from "../common/role.guard.js";
 import { TenancyModule } from "../tenancy/tenancy.module.js";
 import { GamesModule } from "../games/games.module.js";
+import { AdminCardsController } from "./admin-cards.controller.js";
 import { CardDataController } from "./card-data.controller.js";
 import { CardSyncScheduler } from "./card-sync.scheduler.js";
 import { CardSyncService } from "./card-sync.service.js";
@@ -22,11 +24,18 @@ const cardSyncScheduleEnabled = process.env["CARD_SYNC_ENABLED"] === "true";
 
 @Module({
   imports: [GamesModule, TenancyModule, ...(cardSyncScheduleEnabled ? [ScheduleModule.forRoot()] : [])],
-  controllers: [CardsController, FormatsController, HeroesController, CardDataController],
+  controllers: [
+    CardsController,
+    FormatsController,
+    HeroesController,
+    CardDataController,
+    AdminCardsController,
+  ],
   providers: [
     CardsService,
     CardSyncService,
     ReferenceDataSeedService,
+    RoleGuard,
     ...(cardSyncScheduleEnabled ? [CardSyncScheduler] : []),
   ],
   exports: [CardSyncService, ReferenceDataSeedService],
