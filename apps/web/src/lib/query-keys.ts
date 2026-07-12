@@ -39,6 +39,19 @@ export const queryKeys = {
     [teamId, "deck", deckId, "iterations"] as const,
 
   /**
+   * Events & gauntlets, keyed by the active team first so switching teams yields a
+   * different cache entry and one team's events never bleed into another's.
+   * `filters` keys each list variant; the gauntlet and attendance sub-resources are
+   * keyed under their event.
+   */
+  events: (teamId: string, filters: Record<string, string>) => [teamId, "events", filters] as const,
+  event: (teamId: string, eventId: string) => [teamId, "event", eventId] as const,
+  eventGauntlet: (teamId: string, eventId: string) =>
+    [teamId, "event", eventId, "gauntlet"] as const,
+  eventAttendance: (teamId: string, eventId: string) =>
+    [teamId, "event", eventId, "attendance"] as const,
+
+  /**
    * Collaboration keys, all team-scoped (teamId first) so switching teams yields
    * a different cache entry and one team's discussion/awareness never bleeds into
    * another's. Comments are keyed by their polymorphic subject; notifications are

@@ -74,6 +74,8 @@ export const apiClient = {
     request<Output>("POST", path, options),
   patch: <Output>(path: string, options?: RequestOptions<Output>) =>
     request<Output>("PATCH", path, options),
+  put: <Output>(path: string, options?: RequestOptions<Output>) =>
+    request<Output>("PUT", path, options),
   delete: <Output>(path: string, options?: RequestOptions<Output>) =>
     request<Output>("DELETE", path, options),
 };
