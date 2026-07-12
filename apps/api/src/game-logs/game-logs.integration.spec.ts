@@ -409,6 +409,42 @@ describe("Game-log endpoints (integration)", () => {
       });
       expect(response.status).toBe(404);
     });
+
+    it("replaces the impressive-card set on update", async () => {
+      const card1 = await prisma.card.create({
+        data: { gameId: "flesh-and-blood", externalId: "c1", name: "Card One", pitch: 1 },
+      });
+      const card2 = await prisma.card.create({
+        data: { gameId: "flesh-and-blood", externalId: "c2", name: "Card Two", pitch: 2 },
+      });
+      const created = await asMemberA(http().post("/api/game-logs")).send({
+        ...validGame(),
+        impressiveCards: [{ cardId: card1.id, side: "ours" }],
+      });
+      const updated = await asMemberA(http().patch(`/api/game-logs/${created.body.id}`)).send({
+        impressiveCards: [{ cardId: card2.id, side: "theirs" }],
+      });
+      expect(updated.status).toBe(200);
+      expect(updated.body.impressiveCards).toEqual([
+        expect.objectContaining({
+          side: "theirs",
+          card: expect.objectContaining({ id: card2.id }),
+        }),
+      ]);
+    });
+
+    it("does not touch captured cards a team cannot see (tenant isolation)", async () => {
+      const card = await prisma.card.create({
+        data: { gameId: "flesh-and-blood", externalId: "c3", name: "Card Three", pitch: 1 },
+      });
+      const created = await asMemberA(http().post("/api/game-logs")).send({
+        ...validGame(),
+        impressiveCards: [{ cardId: card.id, side: "ours" }],
+      });
+      // memberB (team B) cannot read or edit team A's log or its cards.
+      const read = await asMemberB(http().get(`/api/game-logs/${created.body.id}`));
+      expect(read.status).toBe(404);
+    });
   });
 
   describe("DELETE /api/game-logs/:id", () => {

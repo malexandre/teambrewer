@@ -272,6 +272,22 @@ export class GameLogsService {
     }
 
     await this.scoped.db.gameLog.updateMany({ where: { id: gameLogId }, data });
+
+    if (input.impressiveCards !== undefined || input.underperformingCards !== undefined) {
+      const gameId = team.gameId;
+      if (input.impressiveCards !== undefined) {
+        await this.replaceCapturedCards(gameLogId, gameId, "impressive", input.impressiveCards);
+      }
+      if (input.underperformingCards !== undefined) {
+        await this.replaceCapturedCards(
+          gameLogId,
+          gameId,
+          "underperforming",
+          input.underperformingCards,
+        );
+      }
+    }
+
     await this.recordActivity(team, gameLogId, "game_log_updated");
     return this.requireGameLogDetail(gameLogId, { includeArchived: false });
   }
@@ -458,6 +474,42 @@ export class GameLogsService {
       }
     }
     return all;
+  }
+
+  /** Replace the captured cards for one role on a log (validated against the game). */
+  private async replaceCapturedCards(
+    gameLogId: string,
+    gameId: string,
+    role: "impressive" | "underperforming",
+    cards: { cardId: string; side: "ours" | "theirs" }[],
+  ): Promise<void> {
+    for (const entry of cards) {
+      const card = await this.scoped.db.card.findFirst({
+        where: { id: entry.cardId, gameId },
+        select: { id: true },
+      });
+      if (!card) {
+        throw new UnprocessableEntityException({
+          error: {
+            code: errorCode.domainRuleViolation,
+            message: "A captured card does not belong to this team's game.",
+          },
+        });
+      }
+    }
+    // gameLogCard is reached only through its team-scoped parent; scope by the
+    // parent id (already confirmed visible by loadModifiableGameLog above).
+    await this.scoped.db.gameLogCard.deleteMany({ where: { gameLogId, role } });
+    if (cards.length > 0) {
+      await this.scoped.db.gameLogCard.createMany({
+        data: cards.map((entry) => ({
+          gameLogId,
+          cardId: entry.cardId,
+          role,
+          side: entry.side,
+        })),
+      });
+    }
   }
 
   /** Read a log honoring archived visibility (team-scoped by construction). */
