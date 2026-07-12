@@ -3,7 +3,12 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createDatabaseClient, resetDatabase } from "../../test/database.js";
-import { createGame, createTestPrismaClient, createUser, type TestUser } from "../../test/factories.js";
+import {
+  createGame,
+  createTestPrismaClient,
+  createUser,
+  type TestUser,
+} from "../../test/factories.js";
 import { createApiTestApp } from "../../test/nest-app.js";
 import { AppModule } from "../app.module.js";
 import type { PrismaClient } from "../generated/prisma/client.js";
@@ -41,7 +46,11 @@ describe("POST /api/admin/card-data/sync (integration)", () => {
     await client.connect();
     await resetDatabase(client);
     await client.end();
-    await createGame(prisma, { id: "flesh-and-blood", key: "flesh_and_blood", name: "Flesh and Blood" });
+    await createGame(prisma, {
+      id: "flesh-and-blood",
+      key: "flesh_and_blood",
+      name: "Flesh and Blood",
+    });
     member = await createUser(prisma);
     admin = await createUser(prisma, { isInstanceAdmin: true });
   });
@@ -49,7 +58,9 @@ describe("POST /api/admin/card-data/sync (integration)", () => {
   const http = () => request(app.getHttpServer());
 
   it("rejects a non-admin (403)", async () => {
-    const response = await http().post("/api/admin/card-data/sync").set("x-test-user-id", member.id);
+    const response = await http()
+      .post("/api/admin/card-data/sync")
+      .set("x-test-user-id", member.id);
     expect(response.status).toBe(403);
     expect(await prisma.card.count()).toBe(0);
   });

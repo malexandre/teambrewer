@@ -3,7 +3,9 @@ import { authenticator } from "otplib";
 
 import { E2E_PASSWORD, E2E_SETUP_TOKEN, E2E_TEAMS } from "./fixtures";
 
-test("setup link -> password -> TOTP -> backup codes -> team-switch isolation", async ({ page }) => {
+test("setup link -> password -> TOTP -> backup codes -> team-switch isolation", async ({
+  page,
+}) => {
   // 1. Open the setup link and set a password.
   await page.goto(`/setup/${E2E_SETUP_TOKEN}`);
   await page.getByLabel("Password").fill(E2E_PASSWORD);

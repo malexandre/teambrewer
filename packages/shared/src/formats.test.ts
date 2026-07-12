@@ -17,7 +17,12 @@ describe("formatSchema", () => {
 
   it("rejects a format missing its game", () => {
     expect(() =>
-      formatSchema.parse({ id: "format-1", key: "cc", name: "Classic Constructed", isConstructed: true }),
+      formatSchema.parse({
+        id: "format-1",
+        key: "cc",
+        name: "Classic Constructed",
+        isConstructed: true,
+      }),
     ).toThrow();
   });
 });
@@ -25,7 +30,15 @@ describe("formatSchema", () => {
 describe("formatListSchema", () => {
   it("parses the format list envelope", () => {
     const list = formatListSchema.parse({
-      data: [{ id: "format-1", gameId: "flesh-and-blood", key: "blitz", name: "Blitz", isConstructed: true }],
+      data: [
+        {
+          id: "format-1",
+          gameId: "flesh-and-blood",
+          key: "blitz",
+          name: "Blitz",
+          isConstructed: true,
+        },
+      ],
     });
     expect(list.data).toHaveLength(1);
   });

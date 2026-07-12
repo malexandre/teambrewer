@@ -58,7 +58,9 @@ describe("ReferenceDataSeedService (integration)", () => {
     });
 
     expect(secondFormats).toHaveLength(firstFormats.length);
-    expect(secondFormats.map((format) => format.id)).toEqual(firstFormats.map((format) => format.id));
+    expect(secondFormats.map((format) => format.id)).toEqual(
+      firstFormats.map((format) => format.id),
+    );
     expect(await prisma.game.count()).toBe(1);
   });
 });

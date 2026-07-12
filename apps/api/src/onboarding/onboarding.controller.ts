@@ -1,6 +1,10 @@
 import { Body, Controller, Param, Post } from "@nestjs/common";
 
-import { type OnboardingResult, resetPasswordSchema, setupPasswordSchema } from "@teambrewer/shared";
+import {
+  type OnboardingResult,
+  resetPasswordSchema,
+  setupPasswordSchema,
+} from "@teambrewer/shared";
 
 import { StrictRateLimit } from "../common/throttling.js";
 import { OnboardingService } from "./onboarding.service.js";

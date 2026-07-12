@@ -1,14 +1,4 @@
-import {
-  Controller,
-  Get,
-  Logger,
-  Param,
-  Post,
-  Query,
-  Req,
-  Res,
-  UseGuards,
-} from "@nestjs/common";
+import { Controller, Get, Logger, Param, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import type { Request, Response } from "express";
 
 import { CurrentUser, type CurrentUserContext } from "../common/current-user.decorator.js";
@@ -99,7 +89,9 @@ export class DiscordOAuthController {
       response.redirect(target);
     } catch (error) {
       // No PII in the log; the user is redirected to a generic error state.
-      this.logger.warn(`Discord callback rejected: ${error instanceof Error ? error.name : "unknown"}`);
+      this.logger.warn(
+        `Discord callback rejected: ${error instanceof Error ? error.name : "unknown"}`,
+      );
       response.redirect(`${webOrigin()}/login?discordError=1`);
     }
   }

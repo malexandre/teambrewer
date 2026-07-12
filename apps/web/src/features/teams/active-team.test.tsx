@@ -10,14 +10,46 @@ import { TeamSelector } from "./TeamSelector";
 
 const teams = {
   data: [
-    { teamId: "team-a", name: "Alpha Squad", slug: "alpha", gameId: "flesh-and-blood", role: "member" },
-    { teamId: "team-b", name: "Bravo Squad", slug: "bravo", gameId: "flesh-and-blood", role: "member" },
+    {
+      teamId: "team-a",
+      name: "Alpha Squad",
+      slug: "alpha",
+      gameId: "flesh-and-blood",
+      role: "member",
+    },
+    {
+      teamId: "team-b",
+      name: "Bravo Squad",
+      slug: "bravo",
+      gameId: "flesh-and-blood",
+      role: "member",
+    },
   ],
 };
 
 const membersByTeam: Record<string, unknown> = {
-  "team-a": { data: [{ userId: "a1", username: "alpha_one", displayName: "Alpha One", role: "member", joinedAt: "2026-01-01T00:00:00.000Z" }] },
-  "team-b": { data: [{ userId: "b1", username: "bravo_one", displayName: "Bravo One", role: "member", joinedAt: "2026-01-01T00:00:00.000Z" }] },
+  "team-a": {
+    data: [
+      {
+        userId: "a1",
+        username: "alpha_one",
+        displayName: "Alpha One",
+        role: "member",
+        joinedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
+  },
+  "team-b": {
+    data: [
+      {
+        userId: "b1",
+        username: "bravo_one",
+        displayName: "Bravo One",
+        role: "member",
+        joinedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
+  },
 };
 
 function jsonResponse(body: unknown) {

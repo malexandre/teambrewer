@@ -99,7 +99,11 @@ export function LoginPage() {
                   required
                 />
               </div>
-              {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+              {error ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
               <Button type="submit" disabled={pending}>
                 {pending ? "Signing in…" : "Continue"}
               </Button>
@@ -117,7 +121,11 @@ export function LoginPage() {
                   required
                 />
               </div>
-              {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+              {error ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
               <Button type="submit" disabled={pending}>
                 {pending ? "Verifying…" : "Verify"}
               </Button>

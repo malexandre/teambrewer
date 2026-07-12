@@ -28,11 +28,17 @@ export function CardsPage() {
             <p className="text-sm">
               Selected: <CardPreview card={selected} />
               {pitchDisplay(selected.pitch) ? (
-                <span className="ml-2 text-xs text-muted-foreground">{pitchDisplay(selected.pitch)}</span>
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {pitchDisplay(selected.pitch)}
+                </span>
               ) : null}
             </p>
             {selected.imageUrl ? (
-              <img src={selected.imageUrl} alt={selected.name} className="w-60 rounded-md border border-border" />
+              <img
+                src={selected.imageUrl}
+                alt={selected.name}
+                className="w-60 rounded-md border border-border"
+              />
             ) : null}
           </div>
         ) : (

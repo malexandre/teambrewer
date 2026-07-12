@@ -62,10 +62,16 @@ describe("CardSyncService (integration)", () => {
 
   it("is idempotent: a second sync produces the same rows with stable ids", async () => {
     await service.syncGame(GAME_ID);
-    const first = await prisma.card.findMany({ where: { gameId: GAME_ID }, orderBy: { externalId: "asc" } });
+    const first = await prisma.card.findMany({
+      where: { gameId: GAME_ID },
+      orderBy: { externalId: "asc" },
+    });
 
     await service.syncGame(GAME_ID);
-    const second = await prisma.card.findMany({ where: { gameId: GAME_ID }, orderBy: { externalId: "asc" } });
+    const second = await prisma.card.findMany({
+      where: { gameId: GAME_ID },
+      orderBy: { externalId: "asc" },
+    });
 
     expect(second).toHaveLength(first.length);
     expect(second.map((card) => card.id)).toEqual(first.map((card) => card.id));

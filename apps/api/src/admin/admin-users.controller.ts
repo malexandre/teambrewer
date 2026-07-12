@@ -54,19 +54,13 @@ export class AdminUsersController {
 
   @Post(":userId/reset-2fa")
   @HttpCode(204)
-  resetTwoFactor(
-    @Param("teamId") teamId: string,
-    @Param("userId") userId: string,
-  ): Promise<void> {
+  resetTwoFactor(@Param("teamId") teamId: string, @Param("userId") userId: string): Promise<void> {
     return this.adminUsers.resetTwoFactor(teamId, userId);
   }
 
   @Delete(":userId/sessions")
   @HttpCode(204)
-  revokeSessions(
-    @Param("teamId") teamId: string,
-    @Param("userId") userId: string,
-  ): Promise<void> {
+  revokeSessions(@Param("teamId") teamId: string, @Param("userId") userId: string): Promise<void> {
     return this.adminUsers.revokeSessions(teamId, userId);
   }
 }

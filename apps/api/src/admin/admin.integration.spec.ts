@@ -4,7 +4,12 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createDatabaseClient, resetDatabase } from "../../test/database.js";
-import { createTestPrismaClient, createUser, seedTwoTeams, type TwoTeamWorld } from "../../test/factories.js";
+import {
+  createTestPrismaClient,
+  createUser,
+  seedTwoTeams,
+  type TwoTeamWorld,
+} from "../../test/factories.js";
 import { createApiTestApp } from "../../test/nest-app.js";
 import { AppModule } from "../app.module.js";
 import type { PrismaClient } from "../generated/prisma/client.js";
@@ -40,7 +45,11 @@ describe("Admin endpoints (integration)", () => {
         .post("/api/admin/teams")
         .set("x-test-user-id", world.instanceAdmin.id)
         .set("x-test-instance-admin", "true")
-        .send({ name: "Charlie Squad", gameId: "flesh-and-blood", firstAdminUserId: world.memberB.id });
+        .send({
+          name: "Charlie Squad",
+          gameId: "flesh-and-blood",
+          firstAdminUserId: world.memberB.id,
+        });
 
       expect(response.status).toBe(201);
       expect(response.body).toMatchObject({ name: "Charlie Squad", gameId: "flesh-and-blood" });
@@ -89,7 +98,12 @@ describe("Admin endpoints (integration)", () => {
       const response = await http()
         .post(`/api/admin/teams/${world.teamA.id}/users`)
         .set("x-test-user-id", world.teamAdminA.id)
-        .send({ username: "rookie", displayName: "Rookie", authMethod: "password_totp", role: "member" });
+        .send({
+          username: "rookie",
+          displayName: "Rookie",
+          authMethod: "password_totp",
+          role: "member",
+        });
 
       expect(response.status).toBe(201);
       expect(response.body.user).toMatchObject({ username: "rookie", authMethod: "password_totp" });
@@ -105,7 +119,12 @@ describe("Admin endpoints (integration)", () => {
       const response = await http()
         .post(`/api/admin/teams/${world.teamA.id}/users`)
         .set("x-test-user-id", world.teamAdminA.id)
-        .send({ username: "discordee", displayName: "Discordee", authMethod: "discord", role: "member" });
+        .send({
+          username: "discordee",
+          displayName: "Discordee",
+          authMethod: "discord",
+          role: "member",
+        });
 
       expect(response.status).toBe(201);
       expect(response.body.link.purpose).toBe("discord_link");

@@ -37,7 +37,12 @@ function SessionsCard() {
                 {session.isCurrent ? " · this device" : ""}
               </span>
               {session.isCurrent ? null : (
-                <Button type="button" size="sm" variant="outline" onClick={() => revoke.mutate(session.id)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => revoke.mutate(session.id)}
+                >
                   Sign out
                 </Button>
               )}
@@ -59,7 +64,10 @@ function ChangePasswordCard() {
     event.preventDefault();
     setStatus(null);
     setError(null);
-    const { error: changeError } = await authClient.changePassword({ currentPassword, newPassword });
+    const { error: changeError } = await authClient.changePassword({
+      currentPassword,
+      newPassword,
+    });
     if (changeError) {
       setError("Could not change your password. Check your current password.");
       return;
@@ -99,8 +107,16 @@ function ChangePasswordCard() {
               required
             />
           </div>
-          {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-          {status ? <p role="status" className="text-sm text-muted-foreground">{status}</p> : null}
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+          {status ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {status}
+            </p>
+          ) : null}
           <Button type="submit">Update password</Button>
         </form>
       </CardContent>
@@ -126,7 +142,9 @@ function DiscordIdentityCard() {
     <Card>
       <CardHeader>
         <CardTitle>Discord identity</CardTitle>
-        <CardDescription>Link Discord for recognition and @mentions (not for login).</CardDescription>
+        <CardDescription>
+          Link Discord for recognition and @mentions (not for login).
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {user?.discordUsername ? (

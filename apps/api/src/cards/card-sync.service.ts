@@ -1,6 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 
-import type { GameAdapter, NormalizedCard, NormalizedHero } from "../games/game-adapter.interface.js";
+import type {
+  GameAdapter,
+  NormalizedCard,
+  NormalizedHero,
+} from "../games/game-adapter.interface.js";
 import { GameAdapterRegistry } from "../games/game-adapter.registry.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
@@ -35,7 +39,9 @@ export class CardSyncService {
     const results: CardSyncResult[] = [];
     for (const game of games) {
       if (!this.registry.has(game.key)) {
-        this.logger.warn(`No adapter registered for game "${game.key}" (${game.id}); skipping sync.`);
+        this.logger.warn(
+          `No adapter registered for game "${game.key}" (${game.id}); skipping sync.`,
+        );
         continue;
       }
       results.push(await this.syncGame(game.id));
@@ -45,7 +51,10 @@ export class CardSyncService {
 
   /** Sync a single game's card data by its `Game.id`. */
   async syncGame(gameId: string): Promise<CardSyncResult> {
-    const game = await this.prisma.game.findUnique({ where: { id: gameId }, select: { id: true, key: true } });
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      select: { id: true, key: true },
+    });
     if (!game) {
       throw new Error(`Cannot sync unknown game "${gameId}".`);
     }

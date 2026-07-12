@@ -114,9 +114,7 @@ describe("Self-service + member roster (integration)", () => {
 
     it("lists the caller's sessions", async () => {
       await seedSession(world.memberA.id);
-      const response = await http()
-        .get("/api/me/sessions")
-        .set("x-test-user-id", world.memberA.id);
+      const response = await http().get("/api/me/sessions").set("x-test-user-id", world.memberA.id);
       expect(response.status).toBe(200);
       expect(response.body.data).toHaveLength(1);
     });

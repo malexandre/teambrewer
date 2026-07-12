@@ -42,7 +42,10 @@ export function CardPicker({ teamId, onSelect, placeholder }: CardPickerProps) {
         placeholder={placeholder ?? "Search cards…"}
       />
       {results.length > 0 && (
-        <ul role="listbox" className="mt-1 max-h-72 overflow-auto rounded-md border border-border bg-card">
+        <ul
+          role="listbox"
+          className="mt-1 max-h-72 overflow-auto rounded-md border border-border bg-card"
+        >
           {results.map((card) => {
             const pitch = pitchDisplay(card.pitch);
             return (

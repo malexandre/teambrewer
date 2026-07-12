@@ -14,9 +14,7 @@ export const FLESH_AND_BLOOD_CARD_FIXTURE: RawCardRecord[] = [
     pitch: "1",
     health: "",
     types: ["Instant"],
-    printings: [
-      { set_printing_unique_id: "AiA001", image_url: "https://cards.test/AiA001.webp" },
-    ],
+    printings: [{ set_printing_unique_id: "AiA001", image_url: "https://cards.test/AiA001.webp" }],
   },
   {
     unique_id: "absorb-aether-3",
@@ -24,9 +22,7 @@ export const FLESH_AND_BLOOD_CARD_FIXTURE: RawCardRecord[] = [
     pitch: "3",
     health: "",
     types: ["Instant"],
-    printings: [
-      { set_printing_unique_id: "AiA003", image_url: "https://cards.test/AiA003.webp" },
-    ],
+    printings: [{ set_printing_unique_id: "AiA003", image_url: "https://cards.test/AiA003.webp" }],
   },
   {
     unique_id: "arakni-hero",

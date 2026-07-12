@@ -49,7 +49,11 @@ describe("Cards endpoints (integration)", () => {
     await resetDatabase(client);
     await client.end();
 
-    await createGame(prisma, { id: "flesh-and-blood", key: "flesh_and_blood", name: "Flesh and Blood" });
+    await createGame(prisma, {
+      id: "flesh-and-blood",
+      key: "flesh_and_blood",
+      name: "Flesh and Blood",
+    });
     await createGame(prisma, { id: "riftbound", key: "riftbound", name: "Riftbound" });
 
     fabTeam = await createTeam(prisma, { gameId: "flesh-and-blood" });
@@ -61,10 +65,30 @@ describe("Cards endpoints (integration)", () => {
     await addMembership(prisma, { teamId: riftTeam.id, userId: riftUser.id, role: "member" });
 
     // Flesh and Blood cards, including a card at two pitch values and an archived one.
-    await createCard(prisma, { gameId: "flesh-and-blood", externalId: "aia1", name: "Absorb in Aether", pitch: 1 });
-    await createCard(prisma, { gameId: "flesh-and-blood", externalId: "aia3", name: "Absorb in Aether", pitch: 3 });
-    await createCard(prisma, { gameId: "flesh-and-blood", externalId: "cnc", name: "Command and Conquer", pitch: 1 });
-    await createCard(prisma, { gameId: "flesh-and-blood", externalId: "snap", name: "Snapdragon Scalers", pitch: 2 });
+    await createCard(prisma, {
+      gameId: "flesh-and-blood",
+      externalId: "aia1",
+      name: "Absorb in Aether",
+      pitch: 1,
+    });
+    await createCard(prisma, {
+      gameId: "flesh-and-blood",
+      externalId: "aia3",
+      name: "Absorb in Aether",
+      pitch: 3,
+    });
+    await createCard(prisma, {
+      gameId: "flesh-and-blood",
+      externalId: "cnc",
+      name: "Command and Conquer",
+      pitch: 1,
+    });
+    await createCard(prisma, {
+      gameId: "flesh-and-blood",
+      externalId: "snap",
+      name: "Snapdragon Scalers",
+      pitch: 2,
+    });
     await createCard(prisma, {
       gameId: "flesh-and-blood",
       externalId: "old",
@@ -74,17 +98,38 @@ describe("Cards endpoints (integration)", () => {
     });
 
     // Riftbound cards (another game).
-    await createCard(prisma, { gameId: "riftbound", externalId: "rift-a", name: "Absorb Rift", pitch: null });
+    await createCard(prisma, {
+      gameId: "riftbound",
+      externalId: "rift-a",
+      name: "Absorb Rift",
+      pitch: null,
+    });
 
-    await createFormat(prisma, { gameId: "flesh-and-blood", key: "cc", name: "Classic Constructed", sortOrder: 0 });
-    await createFormat(prisma, { gameId: "riftbound", key: "standard", name: "Standard", sortOrder: 0 });
+    await createFormat(prisma, {
+      gameId: "flesh-and-blood",
+      key: "cc",
+      name: "Classic Constructed",
+      sortOrder: 0,
+    });
+    await createFormat(prisma, {
+      gameId: "riftbound",
+      key: "standard",
+      name: "Standard",
+      sortOrder: 0,
+    });
 
-    await createHero(prisma, { gameId: "flesh-and-blood", name: "Dorinthea", classes: ["Warrior"] });
+    await createHero(prisma, {
+      gameId: "flesh-and-blood",
+      name: "Dorinthea",
+      classes: ["Warrior"],
+    });
     await createHero(prisma, { gameId: "riftbound", name: "Rift Legend", classes: [] });
   });
 
-  const asFab = (req: request.Test) => req.set("x-test-user-id", fabUser.id).set("x-team-id", fabTeam.id);
-  const asRift = (req: request.Test) => req.set("x-test-user-id", riftUser.id).set("x-team-id", riftTeam.id);
+  const asFab = (req: request.Test) =>
+    req.set("x-test-user-id", fabUser.id).set("x-team-id", fabTeam.id);
+  const asRift = (req: request.Test) =>
+    req.set("x-test-user-id", riftUser.id).set("x-team-id", riftTeam.id);
   const http = () => request(app.getHttpServer());
 
   describe("GET /api/cards", () => {
@@ -107,7 +152,9 @@ describe("Cards endpoints (integration)", () => {
     });
 
     it("distinguishes pitch values", async () => {
-      const response = await asFab(http().get("/api/cards").query({ query: "Absorb in Aether", pitch: 1 }));
+      const response = await asFab(
+        http().get("/api/cards").query({ query: "Absorb in Aether", pitch: 1 }),
+      );
       expect(response.body.data).toHaveLength(1);
       expect(response.body.data[0].pitch).toBe(1);
     });
@@ -117,7 +164,9 @@ describe("Cards endpoints (integration)", () => {
       expect(first.body.data).toHaveLength(2);
       expect(first.body.nextCursor).not.toBeNull();
 
-      const second = await asFab(http().get("/api/cards").query({ limit: 2, cursor: first.body.nextCursor }));
+      const second = await asFab(
+        http().get("/api/cards").query({ limit: 2, cursor: first.body.nextCursor }),
+      );
       const firstIds = first.body.data.map((card: { id: string }) => card.id);
       const secondIds = second.body.data.map((card: { id: string }) => card.id);
       expect(firstIds.filter((id: string) => secondIds.includes(id))).toEqual([]);
@@ -125,10 +174,14 @@ describe("Cards endpoints (integration)", () => {
 
     it("never returns another game's cards (isolation)", async () => {
       const fabResponse = await asFab(http().get("/api/cards").query({ query: "Absorb" }));
-      expect(fabResponse.body.data.every((card: { name: string }) => card.name !== "Absorb Rift")).toBe(true);
+      expect(
+        fabResponse.body.data.every((card: { name: string }) => card.name !== "Absorb Rift"),
+      ).toBe(true);
 
       const riftResponse = await asRift(http().get("/api/cards").query({ query: "Absorb" }));
-      expect(riftResponse.body.data.map((card: { name: string }) => card.name)).toEqual(["Absorb Rift"]);
+      expect(riftResponse.body.data.map((card: { name: string }) => card.name)).toEqual([
+        "Absorb Rift",
+      ]);
     });
 
     it("requires the X-Team-Id header (400) and authentication (401)", async () => {

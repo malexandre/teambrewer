@@ -15,10 +15,7 @@ export class AdminTeamsController {
   constructor(private readonly adminTeams: AdminTeamsService) {}
 
   @Post()
-  create(
-    @CurrentUser() caller: CurrentUserContext,
-    @Body() body: unknown,
-  ): Promise<TeamSummary> {
+  create(@CurrentUser() caller: CurrentUserContext, @Body() body: unknown): Promise<TeamSummary> {
     return this.adminTeams.createTeam(caller.userId, createTeamSchema.parse(body));
   }
 

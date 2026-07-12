@@ -1,10 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import {
-  Injectable,
-  NotFoundException,
-  UnprocessableEntityException,
-} from "@nestjs/common";
+import { Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 
 import {
   type AdminUserSummary,

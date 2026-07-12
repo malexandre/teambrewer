@@ -25,7 +25,10 @@ class FakeDiscordOAuthClient implements DiscordOAuthClient {
 
 function createService(prisma: PrismaClient, profile: DiscordProfile): DiscordOAuthService {
   const inviteTokens = new InviteTokenService(prisma as unknown as PrismaService);
-  const discordAccounts = new DiscordAccountService(prisma as unknown as PrismaService, inviteTokens);
+  const discordAccounts = new DiscordAccountService(
+    prisma as unknown as PrismaService,
+    inviteTokens,
+  );
   return new DiscordOAuthService(discordAccounts, new FakeDiscordOAuthClient(profile));
 }
 
@@ -61,7 +64,11 @@ describe("DiscordOAuthService", () => {
     const started = service.start("claim", token);
     const state = new URL(started.authorizeUrl).searchParams.get("state") ?? "";
 
-    const result = await service.handleCallback({ code: "auth-code", state, cookieNonce: started.nonce });
+    const result = await service.handleCallback({
+      code: "auth-code",
+      state,
+      cookieNonce: started.nonce,
+    });
     expect(result.kind).toBe("claim");
     const bound = await prisma.user.findUnique({
       where: { id: user.id },
@@ -93,7 +100,11 @@ describe("DiscordOAuthService", () => {
     const started = service.start("claim", "some-token");
 
     await expect(
-      service.handleCallback({ code: "auth-code", state: "forged.signature", cookieNonce: started.nonce }),
+      service.handleCallback({
+        code: "auth-code",
+        state: "forged.signature",
+        cookieNonce: started.nonce,
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 

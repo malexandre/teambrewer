@@ -13,7 +13,9 @@ function createAdapter(): FleshAndBloodAdapter {
 }
 
 const byExternalId = (externalId: string) =>
-  FLESH_AND_BLOOD_CARD_FIXTURE.find((record) => (record as { unique_id: string }).unique_id === externalId)!;
+  FLESH_AND_BLOOD_CARD_FIXTURE.find(
+    (record) => (record as { unique_id: string }).unique_id === externalId,
+  )!;
 
 describe("FleshAndBloodAdapter.mapCard", () => {
   const adapter = createAdapter();

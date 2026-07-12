@@ -34,11 +34,15 @@ export class FabCardSourceClient {
     this.logger.log(`Fetching Flesh and Blood card data from ${url}`);
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Failed to fetch Flesh and Blood card data (${response.status} from ${url}).`);
+      throw new Error(
+        `Failed to fetch Flesh and Blood card data (${response.status} from ${url}).`,
+      );
     }
     const payload: unknown = await response.json();
     if (!Array.isArray(payload)) {
-      throw new Error("Flesh and Blood card data is not an array; the source schema may have changed.");
+      throw new Error(
+        "Flesh and Blood card data is not an array; the source schema may have changed.",
+      );
     }
     return payload as RawCardRecord[];
   }

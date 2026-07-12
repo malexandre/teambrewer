@@ -30,7 +30,9 @@ function CopyableLink({ link }: { link: GeneratedLink }) {
     <div className="flex flex-col gap-1 rounded-md border border-border bg-muted p-2 text-xs">
       <span className="font-medium">Share this {link.purpose.replace("_", " ")} link:</span>
       <div className="flex items-center gap-2">
-        <code data-testid="generated-link" className="break-all">{link.url}</code>
+        <code data-testid="generated-link" className="break-all">
+          {link.url}
+        </code>
         <Button
           type="button"
           size="sm"
@@ -52,10 +54,7 @@ function InstanceTeamsSection() {
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    createTeam.mutate(
-      { name, gameId },
-      { onSuccess: () => setName("") },
-    );
+    createTeam.mutate({ name, gameId }, { onSuccess: () => setName("") });
   }
 
   return (
@@ -68,18 +67,30 @@ function InstanceTeamsSection() {
         <form className="flex flex-wrap items-end gap-2" onSubmit={submit}>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="team-name">Name</Label>
-            <Input id="team-name" value={name} onChange={(event) => setName(event.target.value)} required />
+            <Input
+              id="team-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="team-game">Game</Label>
-            <Input id="team-game" value={gameId} onChange={(event) => setGameId(event.target.value)} required />
+            <Input
+              id="team-game"
+              value={gameId}
+              onChange={(event) => setGameId(event.target.value)}
+              required
+            />
           </div>
           <Button type="submit" disabled={createTeam.isPending}>
             Create team
           </Button>
         </form>
         {createTeam.isError ? (
-          <p role="alert" className="text-sm text-destructive">{messageFor(createTeam.error)}</p>
+          <p role="alert" className="text-sm text-destructive">
+            {messageFor(createTeam.error)}
+          </p>
         ) : null}
         <ul className="divide-y divide-border text-sm">
           {teams.data?.data.map((team) => (
@@ -114,11 +125,21 @@ function CreateUserForm({ teamId }: { teamId: string }) {
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="new-username">Username</Label>
-          <Input id="new-username" value={username} onChange={(event) => setUsername(event.target.value)} required />
+          <Input
+            id="new-username"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            required
+          />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="new-display">Display name</Label>
-          <Input id="new-display" value={displayName} onChange={(event) => setDisplayName(event.target.value)} required />
+          <Input
+            id="new-display"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            required
+          />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="new-method">Login method</Label>
@@ -149,7 +170,9 @@ function CreateUserForm({ teamId }: { teamId: string }) {
         Create account
       </Button>
       {createUser.isError ? (
-        <p role="alert" className="text-sm text-destructive">{messageFor(createUser.error)}</p>
+        <p role="alert" className="text-sm text-destructive">
+          {messageFor(createUser.error)}
+        </p>
       ) : null}
       {createUser.data ? <CopyableLink link={createUser.data.link} /> : null}
     </form>
@@ -173,11 +196,18 @@ function MembersAdmin({ teamId }: { teamId: string }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {actionError ? <p role="alert" className="text-sm text-destructive">{actionError}</p> : null}
+      {actionError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {actionError}
+        </p>
+      ) : null}
       {link ? <CopyableLink link={link} /> : null}
       <ul className="divide-y divide-border">
         {members.data?.data.map((member) => (
-          <li key={member.userId} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+          <li
+            key={member.userId}
+            className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+          >
             <span className="font-medium">
               {member.displayName} <span className="text-muted-foreground">({member.role})</span>
             </span>
@@ -246,8 +276,7 @@ function MembersAdmin({ teamId }: { teamId: string }) {
 export function AdminPage() {
   const { data: user } = useCurrentUser();
   const { activeTeam } = useActiveTeam();
-  const canAdministerActive =
-    Boolean(user?.isInstanceAdmin) || activeTeam?.role === "team_admin";
+  const canAdministerActive = Boolean(user?.isInstanceAdmin) || activeTeam?.role === "team_admin";
 
   return (
     <div className="flex flex-col gap-6">
@@ -257,9 +286,7 @@ export function AdminPage() {
         <Card>
           <CardHeader>
             <CardTitle>{activeTeam.name} — accounts & members</CardTitle>
-            <CardDescription>
-              Create accounts and manage membership for this team.
-            </CardDescription>
+            <CardDescription>Create accounts and manage membership for this team.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
             <CreateUserForm teamId={activeTeam.teamId} />
@@ -267,9 +294,7 @@ export function AdminPage() {
           </CardContent>
         </Card>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          You do not administer the active team.
-        </p>
+        <p className="text-sm text-muted-foreground">You do not administer the active team.</p>
       )}
     </div>
   );

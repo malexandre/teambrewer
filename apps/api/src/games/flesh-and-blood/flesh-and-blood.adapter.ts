@@ -140,6 +140,8 @@ function selectRepresentativeImageUrl(printings: FabRawPrinting[] | undefined): 
   const ordered = [...printings].sort((left, right) =>
     left.set_printing_unique_id.localeCompare(right.set_printing_unique_id),
   );
-  const withImage = ordered.find((printing) => printing.image_url && printing.image_url.trim() !== "");
+  const withImage = ordered.find(
+    (printing) => printing.image_url && printing.image_url.trim() !== "",
+  );
   return withImage?.image_url ?? ordered[0]?.image_url ?? null;
 }

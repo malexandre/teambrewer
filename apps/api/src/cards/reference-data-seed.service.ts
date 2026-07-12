@@ -48,7 +48,11 @@ export class ReferenceDataSeedService {
             isConstructed: format.isConstructed,
             sortOrder: format.sortOrder,
           },
-          update: { name: format.name, isConstructed: format.isConstructed, sortOrder: format.sortOrder },
+          update: {
+            name: format.name,
+            isConstructed: format.isConstructed,
+            sortOrder: format.sortOrder,
+          },
         });
         formatsSeeded += 1;
       }

@@ -23,7 +23,11 @@ import { ReferenceDataSeedService } from "./reference-data-seed.service.js";
 const cardSyncScheduleEnabled = process.env["CARD_SYNC_ENABLED"] === "true";
 
 @Module({
-  imports: [GamesModule, TenancyModule, ...(cardSyncScheduleEnabled ? [ScheduleModule.forRoot()] : [])],
+  imports: [
+    GamesModule,
+    TenancyModule,
+    ...(cardSyncScheduleEnabled ? [ScheduleModule.forRoot()] : []),
+  ],
   controllers: [
     CardsController,
     FormatsController,

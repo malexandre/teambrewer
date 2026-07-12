@@ -67,8 +67,7 @@ export function useChangeRole(teamId: string) {
 export function useRemoveMember(teamId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (userId: string) =>
-      apiClient.delete(`/admin/teams/${teamId}/members/${userId}`),
+    mutationFn: (userId: string) => apiClient.delete(`/admin/teams/${teamId}/members/${userId}`),
     onSuccess: () => invalidateTeam(queryClient, teamId),
   });
 }
@@ -76,7 +75,13 @@ export function useRemoveMember(teamId: string) {
 /** Per-user recovery link generation (returns the copyable link). */
 export function useGenerateLink(teamId: string) {
   return useMutation({
-    mutationFn: ({ userId, kind }: { userId: string; kind: "setup-link" | "reset-link" }): Promise<GeneratedLink> =>
+    mutationFn: ({
+      userId,
+      kind,
+    }: {
+      userId: string;
+      kind: "setup-link" | "reset-link";
+    }): Promise<GeneratedLink> =>
       apiClient.post(`/admin/teams/${teamId}/users/${userId}/${kind}`, {
         schema: generatedLinkSchema,
       }),

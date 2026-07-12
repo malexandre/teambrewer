@@ -28,7 +28,12 @@ function createStubAdapter(key: string): GameAdapter {
       return [];
     },
     mapCard(record: RawCardRecord): NormalizedCard {
-      return { externalId: String(record["id"]), name: String(record["name"]), pitch: null, imageUrl: null };
+      return {
+        externalId: String(record["id"]),
+        name: String(record["name"]),
+        pitch: null,
+        imageUrl: null,
+      };
     },
     deriveHeroes(): NormalizedHero[] {
       return [];

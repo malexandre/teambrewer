@@ -1,23 +1,14 @@
-import {
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
+import { Controller, Delete, Get, HttpCode, Param, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 
-import {
-  type CurrentUser,
-  type MyTeamsResponse,
-  type SessionList,
-} from "@teambrewer/shared";
+import { type CurrentUser, type MyTeamsResponse, type SessionList } from "@teambrewer/shared";
 
 import { AuthService } from "../auth/auth.service.js";
 import { DiscordAccountService } from "../auth/discord-account.service.js";
-import { CurrentUser as Caller, type CurrentUserContext } from "../common/current-user.decorator.js";
+import {
+  CurrentUser as Caller,
+  type CurrentUserContext,
+} from "../common/current-user.decorator.js";
 import { RoleGuard } from "../common/role.guard.js";
 import { MeService } from "./me.service.js";
 

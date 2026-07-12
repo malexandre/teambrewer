@@ -11,7 +11,9 @@ function renderWithClient(ui: ReactNode) {
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
-function mockCardSearch(cards: { id: string; name: string; pitch: number | null; imageUrl: string | null }[]) {
+function mockCardSearch(
+  cards: { id: string; name: string; pitch: number | null; imageUrl: string | null }[],
+) {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = typeof input === "string" ? input : input.toString();
     if (url.includes("/api/cards")) {

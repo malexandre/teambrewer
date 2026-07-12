@@ -19,7 +19,9 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { buildOnboardingLink } from "./onboarding-link.js";
 
 function isUniqueViolation(error: unknown): boolean {
-  return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002";
+  return (
+    typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002"
+  );
 }
 
 /**
@@ -121,10 +123,7 @@ export class AdminUsersService {
     return buildOnboardingLink(purpose, rawToken, expiresAt);
   }
 
-  private async assertTeamMember(
-    teamId: string,
-    userId: string,
-  ): Promise<{ authMethod: string }> {
+  private async assertTeamMember(teamId: string, userId: string): Promise<{ authMethod: string }> {
     const membership = await this.prisma.teamMembership.findUnique({
       where: { teamId_userId: { teamId, userId } },
       select: { user: { select: { authMethod: true } } },

@@ -45,7 +45,16 @@ describe("heroSchema", () => {
 describe("heroListSchema", () => {
   it("parses the hero list envelope", () => {
     const list = heroListSchema.parse({
-      data: [{ id: "hero-1", name: "Dorinthea", classes: ["Warrior"], talents: [], startingLife: 20, imageUrl: null }],
+      data: [
+        {
+          id: "hero-1",
+          name: "Dorinthea",
+          classes: ["Warrior"],
+          talents: [],
+          startingLife: 20,
+          imageUrl: null,
+        },
+      ],
     });
     expect(list.data).toHaveLength(1);
   });

@@ -103,10 +103,7 @@ export class MembershipService {
     await this.prisma.teamMembership.delete({ where: { teamId_userId: { teamId, userId } } });
   }
 
-  private async requireMembershipRow(
-    teamId: string,
-    userId: string,
-  ): Promise<{ role: string }> {
+  private async requireMembershipRow(teamId: string, userId: string): Promise<{ role: string }> {
     const membership = await this.prisma.teamMembership.findUnique({
       where: { teamId_userId: { teamId, userId } },
       select: { role: true },

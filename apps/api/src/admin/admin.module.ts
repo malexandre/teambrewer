@@ -23,13 +23,7 @@ import { MembershipService } from "./membership.service.js";
     AdminUsersController,
     AdminMembershipController,
   ],
-  providers: [
-    AdminTeamsService,
-    AdminUsersService,
-    MembershipService,
-    RoleGuard,
-    TeamAdminGuard,
-  ],
+  providers: [AdminTeamsService, AdminUsersService, MembershipService, RoleGuard, TeamAdminGuard],
   // MembershipService backs the member-facing roster (GET /api/members) too.
   exports: [MembershipService],
 })

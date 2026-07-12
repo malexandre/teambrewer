@@ -25,12 +25,11 @@ export function ActiveTeamProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const teams = useMemo(() => data?.data ?? [], [data]);
 
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(
-    () => localStorage.getItem(STORAGE_KEY),
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(() =>
+    localStorage.getItem(STORAGE_KEY),
   );
 
-  const activeTeam =
-    teams.find((team) => team.teamId === selectedTeamId) ?? teams[0] ?? null;
+  const activeTeam = teams.find((team) => team.teamId === selectedTeamId) ?? teams[0] ?? null;
 
   const setActiveTeam = useCallback(
     (teamId: string) => {

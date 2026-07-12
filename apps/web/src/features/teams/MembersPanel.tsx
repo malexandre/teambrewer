@@ -27,9 +27,7 @@ export function MembersPanel() {
     <Card>
       <CardHeader>
         <CardTitle>{activeTeam.name}</CardTitle>
-        <CardDescription>
-          Members of the active team ({activeTeam.gameId}).
-        </CardDescription>
+        <CardDescription>Members of the active team ({activeTeam.gameId}).</CardDescription>
       </CardHeader>
       <CardContent>
         {isPending ? (

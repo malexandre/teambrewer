@@ -63,7 +63,10 @@ export class DiscordOAuthService {
     const payload = this.verifyState(input.state);
     if (!input.cookieNonce || !safeEquals(payload.nonce, input.cookieNonce)) {
       throw new BadRequestException({
-        error: { code: errorCode.validationFailed, message: "Invalid or expired Discord sign-in state." },
+        error: {
+          code: errorCode.validationFailed,
+          message: "Invalid or expired Discord sign-in state.",
+        },
       });
     }
 
@@ -121,7 +124,10 @@ export class DiscordOAuthService {
 
   private invalidState(): BadRequestException {
     return new BadRequestException({
-      error: { code: errorCode.validationFailed, message: "Invalid or expired Discord sign-in state." },
+      error: {
+        code: errorCode.validationFailed,
+        message: "Invalid or expired Discord sign-in state.",
+      },
     });
   }
 }

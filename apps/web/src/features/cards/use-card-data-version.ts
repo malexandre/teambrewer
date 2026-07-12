@@ -19,6 +19,7 @@ export function useCardDataVersion(teamId: string | undefined) {
       return apiClient.get("/card-data/version", { teamId, schema: cardDataVersionSchema });
     },
     enabled: Boolean(teamId),
-    retry: (failureCount, error) => !(error instanceof ApiError && error.status === 404) && failureCount < 3,
+    retry: (failureCount, error) =>
+      !(error instanceof ApiError && error.status === 404) && failureCount < 3,
   });
 }

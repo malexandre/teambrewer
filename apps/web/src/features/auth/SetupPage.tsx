@@ -122,7 +122,11 @@ export function SetupPage({ token }: { token: string }) {
                   required
                 />
               </div>
-              {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+              {error ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
               <Button type="submit" disabled={pending}>
                 {pending ? "Setting up…" : "Continue"}
               </Button>
@@ -155,7 +159,11 @@ export function SetupPage({ token }: { token: string }) {
                   required
                 />
               </div>
-              {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+              {error ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
               <Button type="submit" disabled={pending}>
                 {pending ? "Verifying…" : "Verify and continue"}
               </Button>
