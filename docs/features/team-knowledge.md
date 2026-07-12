@@ -32,7 +32,9 @@ Exact entities from [data-model.md](../architecture/data-model.md) (all team-sco
 relatedDeckId? (→ Deck), body (markdown), visibility, archivedAt? }`
 
 - A long-form **living document**. `kind` classifies it; `relatedDeckId` links a `deck_primer`/`matchup`
-  primer to its deck. `body` is markdown that can reference cards (hover/press preview) via the card DB.
+  primer to its deck. `body` is authored as plain text and rendered as pre-wrapped text on read (no
+  markdown library — a decision recorded in [phase-10](../plans/phase-10-team-knowledge.md); card
+  hover-preview inside bodies is deferred).
 - `visibility` mirrors deck visibility semantics (`team` | `private`) so an author can draft privately.
 
 ### `Decision`
@@ -51,8 +53,8 @@ relatedDeckId? (→ Deck), body (markdown), visibility, archivedAt? }`
 ### Primers
 - Any member may create/edit primers; team-admins may moderate/archive any. A `private` primer is visible
   only to its author (and team-admins for moderation); `team` primers are visible to all team members.
-- `title` and `kind` required; `relatedDeckId` (when set) must be a same-team deck; card references resolve
-  within the team's game.
+- `title` and `kind` required; `relatedDeckId` (when set) must be a same-team deck. Any member may edit a
+  primer they can see; the author or a team-admin may archive.
 - Primers are collaboration subjects (`subjectType: 'primer'`) — comments/@mentions attach.
 
 ### Decisions
@@ -106,8 +108,9 @@ Foreign keys (`relatedDeckId`, `relatedSubjectRef`) validated to be same-team; `
 
 ## UI / UX (mobile-first)
 
-- **Primers:** a searchable/filterable list (by `kind`, related deck); a markdown reader with card
-  hover/press previews and an inline comment thread; a markdown editor for authoring.
+- **Primers:** a searchable/filterable list (by `kind`, related deck); a read view (pre-wrapped plain text)
+  with an inline comment thread; a plain-text editor for authoring (no markdown library — see the
+  [phase-10](../plans/phase-10-team-knowledge.md) decision).
 - **Decisions log:** a reverse-chronological list of concise cards (title + decision), each expanding to
   context/rationale and a link to the related subject; prominent from the event page and retrospective.
 - **Polls:** a compact card with options as large tap targets, live tally after voting, a countdown to
@@ -140,12 +143,14 @@ Per [testing-strategy.md](../architecture/testing-strategy.md):
 - **Visibility:** `private` primers hidden from other members; visible to author and team-admin moderation.
 - **Poll rules:** one vote per user (upsert), no voting when closed, tally correctness with a crafted
   dataset, open↔closed transitions incl. `closesAt` expiry.
-- **Validation:** required fields on primers/decisions/polls; ≥2 options; card references resolve in-game.
+- **Validation:** required fields on primers/decisions/polls; ≥2 distinct options; a `relatedDeckId` /
+  `relatedSubjectRef` must resolve within the team.
 
 ## Out of scope
 
-- Wiki-style page hierarchies, cross-linking graphs, or version history/diffing of primers (markdown +
+- Wiki-style page hierarchies, cross-linking graphs, or version history/diffing of primers (plain-text +
   soft-delete only for now).
+- A markdown editor / sanitized renderer, and card hover-preview inside bodies (deferred by decision).
 - Rich real-time co-editing.
 - Email notification of new primers/decisions/polls — awareness is via in-app
   [collaboration-core.md](collaboration-core.md) (mentions, activity feed).

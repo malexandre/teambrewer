@@ -78,7 +78,7 @@ Update as phases complete.
 | 07 | Matchups & Coverage | ✅ done |
 | 08 | Testing Queue | ✅ done |
 | 09 | Game-Plans & Deck Selection | ✅ done |
-| 10 | Team Knowledge | ⛔ not started |
+| 10 | Team Knowledge | ✅ done |
 | 11 | Dashboard | ⛔ not started |
 | 12 | Riftbound Adapter | ⛔ not started |
 | 13 | Polish, PWA & Hardening | ⛔ not started |

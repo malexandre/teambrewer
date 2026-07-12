@@ -4,9 +4,16 @@
 
 Give a team durable, findable knowledge so conclusions stop getting lost in chat and the same debates
 stop repeating: **primers** (long-form deck/matchup/format writeups), a **decisions log** (what the team
-decided and why), and **polls** (structured group choices). All markdown-first, all commentable via the
-collaboration core, all strictly team-scoped. This directly serves
+decided and why), and **polls** (structured group choices). All commentable via the collaboration core, all
+strictly team-scoped. This directly serves
 [playtesting-methodology §5 — Communication is the #1 factor](../domain/playtesting-methodology.md).
+
+> **Decision (with the user), recorded here as done.** Long-form bodies (primers, decisions) render as
+> **plain `whitespace-pre-wrap` text**, authored in a plain `<textarea>` — **not** a markdown editor +
+> sanitized renderer. This keeps the codebase convention established through phase-09 (game-plans) and adds
+> **no markdown/sanitizer dependency**. React escapes text content, so a body containing HTML/script renders
+> literally and is never executed (covered by a component test) — the "markdown safety" requirement is met
+> by escaping, not by a sanitizer. The scope/deliverables/verification below are updated to match.
 
 ## Depends on
 
@@ -35,8 +42,9 @@ Three new team-scoped domain entities plus poll voting, their API modules, and t
   (polymorphic { subjectType, subjectId } — e.g. a deck, event, or primer), decidedAt }`.
 - **Poll** `{ id, teamId, authorId, question, options[] (ordered { id, label }), closesAt?,
   status: 'open' | 'closed' }` with **PollVote** `{ id, pollId, userId, optionId }`.
-- **Markdown**: authored in an editor, rendered safely (sanitized) on read. Card hover-preview inside
-  markdown is a nice-to-have but **out of scope** here (see below).
+- **Bodies**: authored as plain text in a `<textarea>` and rendered as `whitespace-pre-wrap` text on read
+  (no markdown library; React escapes the content — see the decision note above). Card hover-preview inside
+  bodies is a nice-to-have but **out of scope** here (see below).
 - **Comments**: attach primers and decisions as collaboration `subjectType`s so existing threaded
   comments/mentions/activity/notifications work unchanged.
 
@@ -54,8 +62,8 @@ Three new team-scoped domain entities plus poll voting, their API modules, and t
 - Collaboration wiring: register `primer` and `decision` as commentable subject types; emit activity
   events on create/close.
 - Frontend feature folders under `apps/web/src/features/knowledge/`:
-  - **Primers library** — list/filter by `kind` and related deck; create/edit with a markdown editor and
-    live preview; read view with sanitized rendering and a comment thread.
+  - **Primers library** — list/filter by `kind` and related deck; create/edit with a plain-text body field;
+    a read view (pre-wrapped text) with a comment thread.
   - **Decisions log** — reverse-chronological list; each entry shows context / decision / rationale and its
     related subject link; create/edit; comment thread.
   - **Polls** — create a poll (question + options + optional `closesAt`); vote; live results (counts +
@@ -64,30 +72,30 @@ Three new team-scoped domain entities plus poll voting, their API modules, and t
 
 ## Task checklist (test-first, ordered)
 
-- [ ] Read [team-knowledge](../features/team-knowledge.md), [collaboration-core](../features/collaboration-core.md),
+- [x] Read [team-knowledge](../features/team-knowledge.md), [collaboration-core](../features/collaboration-core.md),
       [data-model](../architecture/data-model.md), [multi-tenancy](../architecture/multi-tenancy.md), and
       the [`implementing-a-phase`](../../.claude/skills/implementing-a-phase/SKILL.md) and
       [`adding-a-feature-module`](../../.claude/skills/adding-a-feature-module/SKILL.md) skills.
-- [ ] Write the shared Zod schemas + enums; unit-test schema edge cases (empty options, ≥2 options
-      required, `closesAt` in the future, valid `relatedSubjectRef` shape).
-- [ ] Write failing integration tests for Primer CRUD scoped to a team (happy path + cross-tenant 404 +
+- [x] Write the shared Zod schemas + enums; unit-test schema edge cases (empty options, ≥2 options
+      required, distinct options, valid `closesAt`, valid `relatedSubjectRef` shape).
+- [x] Write failing integration tests for Primer CRUD scoped to a team (happy path + cross-tenant 404 +
       unauthenticated 401); then implement the primers module + migration to pass them.
-- [ ] Write failing integration tests for Decision CRUD (same isolation matrix + `relatedSubjectRef`
+- [x] Write failing integration tests for Decision CRUD (same isolation matrix + `relatedSubjectRef`
       round-trips and is validated to reference same-team subjects); then implement the decisions module.
-- [ ] Write failing integration tests for Poll create + PollVote: one vote per user, change-vote while
+- [x] Write failing integration tests for Poll create + PollVote: one vote per user, change-vote while
       open, reject vote on closed/expired poll, close transitions `status`, results math; then implement
       the polls module.
-- [ ] Add the migration; run it against the test DB; assert indexes/unique constraints exist.
-- [ ] Register `primer` and `decision` as collaboration subject types; test that a comment + @mention on a
+- [x] Add the migration; run it against the test DB; assert indexes/unique constraints exist.
+- [x] Register `primer` and `decision` as collaboration subject types; test that a comment + @mention on a
       primer creates a notification and an activity event, all team-scoped.
-- [ ] Enforce visibility: a `private` primer is readable only by its author (and team-admin per the
+- [x] Enforce visibility: a `private` primer is readable only by its author (and team-admin per the
       feature spec); write a test proving another member gets 404.
-- [ ] Build the primers library (list/create/edit/read) with the markdown editor + sanitized renderer;
-      component-test the renderer sanitizes script/HTML injection.
-- [ ] Build the decisions log and polls UI (create/vote/results/close); component-test poll results
+- [x] Build the primers library (list/create/edit/read) with a plain-text body; component-test that a
+      script/HTML body renders as literal escaped text (React escapes it — no sanitizer dependency).
+- [x] Build the decisions log and polls UI (create/vote/results/close); component-test poll results
       rendering and the disabled-vote state on closed polls.
-- [ ] Wire TanStack Query keys to include `teamId`; verify switching teams invalidates knowledge queries.
-- [ ] Run the full verification below; update the [roadmap Status table](README.md).
+- [x] Wire TanStack Query keys to include `teamId`; verify switching teams invalidates knowledge queries.
+- [x] Run the full verification below; update the [roadmap Status table](README.md).
 
 ## Tests & verification
 
@@ -104,8 +112,9 @@ cross-team subject. Include a two-team fixture per [testing-strategy](../archite
 
 **Visibility.** `private` primer hidden from other members (404); `team` primer visible to all members.
 
-**Markdown safety.** Rendered markdown sanitizes embedded HTML/script (component test with a malicious
-body string).
+**Body safety.** A body containing HTML/script renders as literal, escaped text (React escapes text
+content — no sanitizer dependency); a component test asserts a `<script>`-laden primer body is shown
+verbatim and injects no `<script>` element.
 
 **Collaboration integration.** Commenting + @mentioning on a primer/decision produces a scoped
 notification + activity event.
@@ -113,14 +122,16 @@ notification + activity event.
 **End-to-end steps to prove it works:**
 1. `pnpm --filter api prisma migrate dev` — migration applies cleanly.
 2. `pnpm test` — unit + integration green, including the isolation and poll-rule tests above.
-3. `pnpm dev`; in team A: create a primer (markdown renders), comment + @mention a teammate (they get a
-   notification), log a decision, create a poll, vote, then close it and confirm final results.
+3. `pnpm dev`; in team A: create a primer (body renders as pre-wrapped text), comment + @mention a
+   teammate (they get a notification), log a decision, create a poll, vote, then close it and confirm
+   final results.
 4. Switch to team B (team selector) and confirm none of team A's knowledge appears.
 5. `pnpm lint && pnpm typecheck` clean.
 
 ## Out of scope
 
-- Card hover-preview / autocomplete **inside** markdown bodies (revisit with card UX work).
+- Card hover-preview / autocomplete **inside** bodies (revisit with card UX work).
+- A markdown editor + sanitized renderer (deferred by decision — bodies are plain pre-wrapped text).
 - Rich collaborative/real-time co-editing; version history/diffing of primers (single-author edit is fine).
 - Ranked-choice / multi-select polls (single-choice only for now).
 - Dashboard surfacing of knowledge — the dashboard is [phase-11](phase-11-dashboard.md).

@@ -191,7 +191,36 @@ badge + roster with admin lock/unlock + a format-mismatch warning) + **`Retrospe
 hub. **Decisions (with the user):** bodies render as **plain `whitespace-pre-wrap` text** (no markdown-
 renderer dependency — the codebase convention); deck-selections/retrospectives live in `EventsModule`;
 game-plans are surfaced only on the deck page this phase (the matchup-matrix-cell link is a later follow-up).
-Next: **phase-10 (team knowledge)** — pick it up per [`docs/plans/`](docs/plans/README.md).
+
+**Phase-10 (team knowledge) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 448 API
++ 307 shared + 64 web unit/integration tests + 9 e2e journeys): the team's durable memory — long-form
+**primers**, a **decisions log**, and **polls** — all strictly team-scoped and (primers/decisions)
+commentable via the collaboration core. Backend three modules under `apps/api/src/knowledge/`: **primers**
+(team-scoped CRUD, `team`/`private` visibility — a private draft is readable/editable only by its author +
+team-admins, list excludes others' private, single read 404; any member edits a visible primer, author or
+team-admin archives; `relatedDeckId` validated same-team → 422; `primer` collaboration subject with private
+drafts kept off the activity feed); **decisions** (append-oriented CRUD with **no delete**; a polymorphic
+`relatedSubjectRef` — `{subjectType, subjectId}` reusing the collaboration addressing — resolved + validated
+same-team via `TeamScopedPrisma` with a durable snapshot label, cross-team → 404; any member records,
+author/team-admin corrects; `decision` collaboration subject); **polls** (single-choice votes with an
+**effective status** — a poll past `closesAt` counts as closed even if stored `open`; `PUT/DELETE .../vote`
+upserts one vote per `(pollId, userId)`, vote on a closed/expired poll → 422, an `optionId` outside the poll
+→ 422; `open↔closed` lifecycle via `PATCH` with a reopen-past-`closesAt` → 422 and options-locked-once-voted
+→ 422; author/team-admin manage; per-option counts + percentages computed read-only; polls are
+activity-tracked but **not** commentable). Models `Primer`/`Decision`/`Poll`/`PollVote` + migration
+(`PollVote` transitively scoped through its parent poll, `@@unique(pollId,userId)`; `primer`/`decision`/
+`poll` added to `TEAM_OWNED_MODELS`); poll `options` are an ordered JSON array of `{id,label}`. Endpoints
+`GET/POST /api/primers`, `GET/PATCH/DELETE /api/primers/:primerId`, `GET/POST /api/decisions`,
+`GET/PATCH /api/decisions/:decisionId`, `GET/POST /api/polls`, `GET/PATCH /api/polls/:pollId`,
+`PUT/DELETE /api/polls/:pollId/vote`. Frontend a **`knowledge`** feature at a `/knowledge` hub (tabs:
+Primers | Decisions | Polls) — a primers library + detail route (`/knowledge/primers/:id`) with
+edit/archive + `CommentThread`, a decisions log with expandable cards + discussion, and a polls board (vote
+with live count/percentage bars, retract, close/reopen). **Decision (with the user):** long-form bodies
+render as **plain `whitespace-pre-wrap` text** authored in a `<textarea>` — **no markdown editor/sanitizer
+dependency** (the codebase convention through phase-09); React escapes text content, so a script-laden body
+renders literally (proven by a component test) — the "markdown safety" requirement is met by escaping, not a
+sanitizer. `docs/plans/phase-10-team-knowledge.md` and `docs/features/team-knowledge.md` were updated to
+record it. Next: **phase-11 (dashboard)** — pick it up per [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 
