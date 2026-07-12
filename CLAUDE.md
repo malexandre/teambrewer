@@ -19,16 +19,24 @@ the pnpm monorepo, strict TypeScript, lint/format, the Vitest + Testcontainers +
 Prisma 7 with an empty base migration, the NestJS API (`GET /api/health`), the React + Vite PWA shell, and
 the Docker Compose stack (Postgres + API + Nginx) all exist and pass locally.
 
-**Phase-01 (auth & tenancy) is ✅ done** on branch `phase-01-auth-and-tenancy` (not yet merged to `main`).
-Delivered and tested (140 unit/integration tests + the canonical Playwright e2e, all local-green): the
-identity/tenancy models + migration; **Better Auth** (password + mandatory TOTP + backup codes, invite-only,
-no-email) and the **Discord** login method (custom OAuth claim/link transport, invite-only + method
-exclusivity); the **tenant-isolation backbone** (`TeamContextGuard` + `TeamScopedPrisma`) and the
-management-side **`TeamAdminGuard`** ("Option C" path-scoped admin routes — the isolation guard keeps no
-bypass); the admin (teams/accounts/membership, last-admin 422), onboarding-link, and self endpoints; rate
-limiting on sensitive routes; and the **frontend** (auth pages, active-team context + selector, admin
-console, account settings). Next: **phase-02 (card database)** — pick it up per
-[`docs/plans/`](docs/plans/README.md).
+**Phase-01 (auth & tenancy) is ✅ done** (merged to `main`): the identity/tenancy models + migration;
+**Better Auth** (password + mandatory TOTP + backup codes, invite-only, no-email) and the **Discord** login
+method; the **tenant-isolation backbone** (`TeamContextGuard` + `TeamScopedPrisma`) and the management-side
+**`TeamAdminGuard`**; the admin, onboarding-link, and self endpoints; rate limiting; and the auth/teams
+**frontend**.
+
+**Phase-02 (card database) is ✅ done** on branch `phase-02-card-database`. Delivered and tested (all
+local-green: 132 API + 58 shared + 12 web unit/integration tests + the phase-01 e2e; plus a live proof-sync
+of the real the-fab-cube v8.2.0 dataset → 4862 cards / 145 heroes, idempotent): the finalized **`GameAdapter`**
+seam + registry with the **Flesh and Blood** reference adapter; global per-game reference models
+(`Game`/`Format`/`Hero`/lean `Card`/`CardDataVersion`); the idempotent **card sync** (`CardSyncService` +
+`card:sync` CLI + env-gated cron) importing the-fab-cube (pinned release tag), plus the network-free
+`db:seed`; game-filtered **endpoints** (`/api/cards` search with keyset pagination, `/api/cards/:id`,
+`/api/formats`, `/api/heroes`, `/api/card-data/version`, instance-admin `/api/admin/card-data/sync`); and the
+**frontend** cards feature (`CardPicker`, `CardPreview`, data-version badge, hooks, a Cards page). **Decision
+recorded:** the `Card` model is **lean** (name + pitch + image only — decks are links, the image conveys
+stats); `data-model.md` and `card-database.md` were updated to match. Next: **phase-03 (decks)** — pick it up
+per [`docs/plans/`](docs/plans/README.md).
 
 ## How to work in this repo
 
@@ -105,6 +113,9 @@ With mise activated in your shell, `pnpm`/`node` resolve to these pinned version
 - `pnpm format` / `pnpm format:write` — Prettier check / write
 - `pnpm --filter @teambrewer/api db:migrate` — apply database migrations (`prisma migrate dev`)
 - `pnpm --filter @teambrewer/api db:generate` — regenerate the Prisma client
+- `pnpm --filter @teambrewer/api db:seed` — seed the network-free reference catalog (games + formats)
+- `pnpm --filter @teambrewer/api card:sync` — sync card data from the sanctioned open source (all games, or
+  one: `card:sync <gameId>`); requires a built API (`pnpm --filter @teambrewer/api build`) since it runs `dist/`
 - `docker compose up --build` — run the full self-hosted stack (web on `WEB_PORT`, default 8080)
 
 Keep this section in sync with reality as phases land.
