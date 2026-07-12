@@ -26,5 +26,8 @@ import { RetrospectivesService } from "./retrospectives.service.js";
   imports: [TenancyModule, CollaborationModule],
   controllers: [EventsController, DeckSelectionsController, RetrospectivesController],
   providers: [EventsService, EventSubjectResolver, DeckSelectionsService, RetrospectivesService],
+  // Exported so the dashboard module (phase-11) can compose upcoming-events,
+  // attendance, and deck-selection reads.
+  exports: [EventsService, DeckSelectionsService],
 })
 export class EventsModule {}

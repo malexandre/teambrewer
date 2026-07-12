@@ -18,5 +18,7 @@ import { GameLogsService } from "./game-logs.service.js";
   imports: [TenancyModule, CollaborationModule],
   controllers: [GameLogsController],
   providers: [GameLogsService, GameLogSubjectResolver],
+  // Exported so the dashboard module (phase-11) can compose recent-results reads.
+  exports: [GameLogsService],
 })
 export class GameLogsModule {}

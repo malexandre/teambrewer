@@ -15,5 +15,7 @@ import { MatchupsService } from "./matchups.service.js";
   imports: [TenancyModule],
   controllers: [MatchupsController],
   providers: [MatchupsService],
+  // Exported so the dashboard module (phase-11) can compose coverage reads.
+  exports: [MatchupsService],
 })
 export class MatchupsModule {}

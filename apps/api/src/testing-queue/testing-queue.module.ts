@@ -25,5 +25,7 @@ import { TestAssignmentsService } from "./test-assignments.service.js";
     TestAssignmentsService,
     TestAssignmentSubjectResolver,
   ],
+  // Exported so the dashboard module (phase-11) can compose assignment reads.
+  exports: [TestAssignmentsService],
 })
 export class TestingQueueModule {}
