@@ -126,8 +126,8 @@ capture optional **impressive/underperforming cards**, each tagged ours/theirs, 
 `impressiveCards[]`/`underperformingCards[]` on create/update (update replaces the set per role); cross-game
 `cardId` is rejected.
 
-**Phase-07 (matchups & coverage) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 284
-API + 211 shared + 49 web unit/integration tests + 6 e2e journeys): the signature **confidence-weighted
+**Phase-07 (matchups & coverage) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 294
+API + 211 shared + 44 web unit/integration tests + 6 e2e journeys): the signature **confidence-weighted
 matchup reads**, derived read-only from `GameLog` (still the source of truth — no materialized table). The
 math is pure and single-sourced in `packages/shared` (`aggregateMatchup`, `trustIndicator`,
 `deriveGameOutcome`, coverage helpers) next to `deriveConfidenceWeight`: **weighted win rate**
