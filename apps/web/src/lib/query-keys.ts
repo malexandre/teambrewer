@@ -98,4 +98,18 @@ export const queryKeys = {
     [teamId, "card-test-suggestions", filters] as const,
   testAssignments: (teamId: string, filters: Record<string, string>) =>
     [teamId, "test-assignments", filters] as const,
+
+  /**
+   * Game-plans, deck selection & retrospective (phase-09), keyed by the active team
+   * first (teamId) so switching teams yields a different cache entry. Game-plan lists
+   * are keyed by their filters (surfaced per-deck on the deck page); deck selection and
+   * retrospective are keyed under their event.
+   */
+  gamePlans: (teamId: string, filters: Record<string, string>) =>
+    [teamId, "game-plans", filters] as const,
+  gamePlan: (teamId: string, gamePlanId: string) => [teamId, "game-plan", gamePlanId] as const,
+  eventDeckSelections: (teamId: string, eventId: string) =>
+    [teamId, "event", eventId, "deck-selections"] as const,
+  eventRetrospective: (teamId: string, eventId: string) =>
+    [teamId, "event", eventId, "retrospective"] as const,
 } as const;

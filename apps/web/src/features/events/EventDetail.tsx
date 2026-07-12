@@ -9,10 +9,12 @@ import { CommentThread } from "@/features/collaboration/CommentThread";
 import { ApiError } from "@/lib/api-client";
 
 import { AttendanceControl } from "./AttendanceControl";
+import { DeckSelectionSection } from "./DeckSelectionSection";
 import { EVENT_IMPORTANCE_LABELS, formatEventDate } from "./event-display";
 import { EventForm } from "./EventForm";
 import { EventStatusControl } from "./EventStatusControl";
 import { GauntletBuilder } from "./GauntletBuilder";
+import { RetrospectiveSection } from "./RetrospectiveSection";
 import { useArchiveEvent, useUpdateEvent } from "./use-event-mutations";
 
 /**
@@ -111,6 +113,10 @@ export function EventDetail({
       <GauntletBuilder teamId={teamId} eventId={event.id} entries={event.gauntletEntries} canEdit />
 
       <AttendanceControl teamId={teamId} eventId={event.id} />
+
+      <DeckSelectionSection teamId={teamId} eventId={event.id} eventFormatId={event.formatId} />
+
+      <RetrospectiveSection teamId={teamId} eventId={event.id} />
 
       <CommentThread teamId={teamId} subjectType="event" subjectId={event.id} canComment />
 

@@ -14,6 +14,8 @@ import { CommentThread } from "@/features/collaboration/CommentThread";
 
 import { SuggestionBoard } from "@/features/testing-queue/SuggestionBoard";
 
+import { GamePlanSection } from "@/features/gameplans/GamePlanSection";
+
 import { DECK_VISIBILITY_LABELS } from "./deck-display";
 import { DeckForm } from "./DeckForm";
 import { DeckStatusControl } from "./DeckStatusControl";
@@ -146,6 +148,13 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
       <IterationLog teamId={teamId} deckId={deck.id} canAddEntry={canModify} />
 
       <SuggestionBoard teamId={teamId} deckId={deck.id} deckArchived={deck.archivedAt !== null} />
+
+      <GamePlanSection
+        teamId={teamId}
+        deckId={deck.id}
+        formatId={deck.formatId}
+        deckArchived={deck.archivedAt !== null}
+      />
 
       <CommentThread teamId={teamId} subjectType="deck" subjectId={deck.id} canComment />
 
