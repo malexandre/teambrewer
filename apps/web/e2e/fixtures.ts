@@ -130,6 +130,20 @@ export const E2E_GAMEPLAN_EVENT_NAME = "E2E Game-Plan Cup";
 export const E2E_GAMEPLAN_CARD_NAME = "Snatch";
 
 /**
+ * A dedicated onboardable user for the team-knowledge journey (primers, decisions,
+ * polls) — independent of the other specs so they can run in parallel (each consumes
+ * its own single-use token). Belongs to both teams (alpha first → default active) to
+ * exercise knowledge isolation across a team switch. The mention target is the seeded
+ * `alpha_two` teammate (E2E_TEAMS.alpha.extraMember), who is already on alpha.
+ */
+export const E2E_KNOWLEDGE_USER = {
+  id: "e2e-user-knowledge",
+  username: "knowledge_user",
+  displayName: "Knowledge User",
+};
+export const E2E_KNOWLEDGE_SETUP_TOKEN = "e2e-knowledge-setup-token";
+
+/**
  * Reference data for the specs. `formatName` comes from the network-free `db:seed`
  * (games + formats); `heroName` is a single hero the events e2e global-setup inserts
  * after the seed (heroes normally come from the network card sync, skipped in e2e).

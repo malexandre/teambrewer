@@ -23,6 +23,8 @@ import {
   E2E_GAMELOG_DECK_NAME,
   E2E_GAMELOG_SETUP_TOKEN,
   E2E_GAMELOG_USER,
+  E2E_KNOWLEDGE_SETUP_TOKEN,
+  E2E_KNOWLEDGE_USER,
   E2E_MATCHUP_DECK_NAME,
   E2E_MATCHUP_EVENT_NAME,
   E2E_MATCHUP_SETUP_TOKEN,
@@ -140,6 +142,15 @@ async function seed(databaseUrl: string): Promise<void> {
     await addMembership(E2E_TEAMS.alpha.id, E2E_GAMEPLAN_USER.id, "team_admin");
     await addMembership(E2E_TEAMS.bravo.id, E2E_GAMEPLAN_USER.id);
 
+    // The team-knowledge user belongs to both teams (alpha first -> default active).
+    await insertUser(
+      E2E_KNOWLEDGE_USER.id,
+      E2E_KNOWLEDGE_USER.username,
+      E2E_KNOWLEDGE_USER.displayName,
+    );
+    await addMembership(E2E_TEAMS.alpha.id, E2E_KNOWLEDGE_USER.id);
+    await addMembership(E2E_TEAMS.bravo.id, E2E_KNOWLEDGE_USER.id);
+
     // Two collaboration teammates on alpha only (mentions resolve within a team).
     await insertUser(
       E2E_COLLAB_AUTHOR.id,
@@ -163,6 +174,7 @@ async function seed(databaseUrl: string): Promise<void> {
     await insertSetupToken(E2E_COLLAB_MENTIONED.id, E2E_COLLAB_MENTIONED_SETUP_TOKEN);
     await insertSetupToken(E2E_TESTQUEUE_USER.id, E2E_TESTQUEUE_SETUP_TOKEN);
     await insertSetupToken(E2E_GAMEPLAN_USER.id, E2E_GAMEPLAN_SETUP_TOKEN);
+    await insertSetupToken(E2E_KNOWLEDGE_USER.id, E2E_KNOWLEDGE_SETUP_TOKEN);
   } finally {
     await client.end();
   }
