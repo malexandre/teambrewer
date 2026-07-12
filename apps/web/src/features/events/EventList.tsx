@@ -33,7 +33,7 @@ export function EventList({ teamId }: { teamId: string | undefined }) {
     ...(importance ? { importance } : {}),
   };
 
-  const { data, isPending } = useEvents(teamId, filters);
+  const { data, isPending, isError } = useEvents(teamId, filters);
   const { data: formatData } = useFormats(teamId);
   const formatNames = useMemo(
     () => new Map((formatData?.data ?? []).map((format) => [format.id, format.name])),
@@ -76,6 +76,8 @@ export function EventList({ teamId }: { teamId: string | undefined }) {
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading events…</p>
+      ) : isError ? (
+        <p className="text-sm text-destructive">Could not load events.</p>
       ) : events.length === 0 ? (
         <p className="text-sm text-muted-foreground">No events match these filters.</p>
       ) : (
