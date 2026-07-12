@@ -13,6 +13,7 @@ import { THROTTLER_OPTIONS } from "./common/throttling.js";
 import { DiscordModule } from "./discord/discord.module.js";
 import { EventsModule } from "./events/events.module.js";
 import { GameConfigModule } from "./game-config/game-config.module.js";
+import { GamePlansModule } from "./game-plans/game-plans.module.js";
 import { GameLogsModule } from "./game-logs/game-logs.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { MatchupsModule } from "./matchups/matchups.module.js";
@@ -42,6 +43,7 @@ import { TestingQueueModule } from "./testing-queue/testing-queue.module.js";
     MatchupsModule,
     CollaborationModule,
     TestingQueueModule,
+    GamePlansModule,
   ],
   providers: [
     // The uniform error envelope (api-conventions.md) is applied to every route.

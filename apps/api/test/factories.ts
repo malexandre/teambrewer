@@ -606,6 +606,129 @@ export async function createActivityEvent(
 }
 
 /**
+ * Game-plans, deck selection & retrospective fixtures (phase-09). MatchupGamePlan
+ * and Retrospective are team-owned; DeckSelection is scoped transitively through its
+ * event (no teamId, like Attendance). Each defaults everything but the required
+ * references so an isolation test builds one in a single call.
+ */
+
+export interface CreateMatchupGamePlanOptions {
+  teamId: string;
+  ourDeckId: string;
+  formatId: string;
+  updatedById: string;
+  opponentHeroId?: string | null;
+  opponentGauntletEntryId?: string | null;
+  opponentArchetypeLabel?: string | null;
+  opponentRef?: string;
+  opponentSnapshotLabel?: string;
+  body?: string;
+  keyCardIds?: string[];
+  archivedAt?: Date | null;
+}
+
+export async function createMatchupGamePlan(
+  prisma: PrismaClient,
+  options: CreateMatchupGamePlanOptions,
+): Promise<{ id: string; teamId: string; ourDeckId: string; opponentRef: string }> {
+  const label =
+    options.opponentArchetypeLabel ??
+    (options.opponentHeroId
+      ? "Hero"
+      : options.opponentGauntletEntryId
+        ? "Gauntlet target"
+        : "Aggro Red");
+  const opponentRef =
+    options.opponentRef ??
+    (options.opponentGauntletEntryId
+      ? `gauntlet:${options.opponentGauntletEntryId}`
+      : options.opponentHeroId
+        ? `hero:${options.opponentHeroId}`
+        : `label:${(options.opponentArchetypeLabel ?? "Aggro Red").trim().toLowerCase()}`);
+  const created = await prisma.matchupGamePlan.create({
+    data: {
+      teamId: options.teamId,
+      ourDeckId: options.ourDeckId,
+      formatId: options.formatId,
+      updatedById: options.updatedById,
+      opponentGauntletEntryId: options.opponentGauntletEntryId ?? null,
+      opponentHeroId: options.opponentHeroId ?? null,
+      opponentArchetypeLabel:
+        options.opponentArchetypeLabel ??
+        (options.opponentHeroId || options.opponentGauntletEntryId ? null : "Aggro Red"),
+      opponentRef,
+      opponentSnapshotLabel: options.opponentSnapshotLabel ?? label,
+      body: options.body ?? "Mulligan aggressively; race the clock.",
+      archivedAt: options.archivedAt ?? null,
+      ...(options.keyCardIds
+        ? { keyCards: { create: options.keyCardIds.map((cardId) => ({ cardId })) } }
+        : {}),
+    },
+  });
+  return {
+    id: created.id,
+    teamId: created.teamId,
+    ourDeckId: created.ourDeckId,
+    opponentRef: created.opponentRef,
+  };
+}
+
+export async function createDeckSelection(
+  prisma: PrismaClient,
+  options: {
+    eventId: string;
+    userId: string;
+    deckId: string;
+    reasoning?: string;
+    locked?: boolean;
+    lockedAt?: Date | null;
+  },
+): Promise<{ id: string; eventId: string; userId: string; locked: boolean }> {
+  const created = await prisma.deckSelection.create({
+    data: {
+      eventId: options.eventId,
+      userId: options.userId,
+      deckId: options.deckId,
+      reasoning: options.reasoning ?? "",
+      locked: options.locked ?? false,
+      lockedAt: options.lockedAt ?? (options.locked ? new Date() : null),
+    },
+  });
+  return {
+    id: created.id,
+    eventId: created.eventId,
+    userId: created.userId,
+    locked: created.locked,
+  };
+}
+
+export async function createRetrospective(
+  prisma: PrismaClient,
+  options: {
+    eventId: string;
+    teamId: string;
+    authorId: string;
+    body?: string;
+    resultsSummary?: string;
+    learnings?: string;
+    archivedAt?: Date | null;
+  },
+): Promise<{ id: string; eventId: string; teamId: string }> {
+  const created = await prisma.retrospective.create({
+    data: {
+      eventId: options.eventId,
+      teamId: options.teamId,
+      authorId: options.authorId,
+      body: options.body ?? "We went 5-2; the plan held up.",
+      resultsSummary: options.resultsSummary ?? "",
+      learnings: options.learnings ?? "",
+      archivedAt: options.archivedAt ?? null,
+    },
+  });
+  return { id: created.id, eventId: created.eventId, teamId: created.teamId };
+}
+
+/**
  * The canonical two-team world for isolation tests: an instance-admin, plus
  * team A (with a team-admin and a member) and team B (with its own member).
  * `memberA` belongs only to team A and must never be able to reach team B.
