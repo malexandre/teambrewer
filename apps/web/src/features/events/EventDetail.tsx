@@ -9,7 +9,7 @@ import { CommentThread } from "@/features/collaboration/CommentThread";
 import { ApiError } from "@/lib/api-client";
 
 import { AttendanceControl } from "./AttendanceControl";
-import { EVENT_IMPORTANCE_LABELS } from "./event-display";
+import { EVENT_IMPORTANCE_LABELS, formatEventDate } from "./event-display";
 import { EventForm } from "./EventForm";
 import { EventStatusControl } from "./EventStatusControl";
 import { GauntletBuilder } from "./GauntletBuilder";
@@ -73,7 +73,7 @@ export function EventDetail({
         </div>
         <div>
           <dt className="text-muted-foreground">Date</dt>
-          <dd>{new Date(event.date).toLocaleDateString()}</dd>
+          <dd>{formatEventDate(event.date)}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Importance</dt>

@@ -10,7 +10,12 @@ import { useMemo, useState } from "react";
 import { useFormats } from "@/features/cards/use-formats";
 import { FormatPicker } from "@/features/decks/FormatPicker";
 
-import { EVENT_IMPORTANCE_LABELS, EVENT_STATUS_LABELS, SELECT_CLASS } from "./event-display";
+import {
+  EVENT_IMPORTANCE_LABELS,
+  EVENT_STATUS_LABELS,
+  formatEventDate,
+  SELECT_CLASS,
+} from "./event-display";
 import { type EventFilters, useEvents } from "./use-events";
 
 /**
@@ -92,7 +97,7 @@ export function EventList({ teamId }: { teamId: string | undefined }) {
                   </span>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {new Date(event.date).toLocaleDateString()}
+                  {formatEventDate(event.date)}
                   {" · "}
                   {formatNames.get(event.formatId) ?? "Unknown format"}
                   {event.location ? ` · ${event.location}` : ""}
