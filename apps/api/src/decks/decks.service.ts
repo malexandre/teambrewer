@@ -159,7 +159,8 @@ export class DecksService {
     if (input.notes !== undefined) data["notes"] = input.notes;
     if (input.externalUrl !== undefined && input.externalUrl !== deck.externalUrl) {
       data["externalUrl"] = input.externalUrl;
-      data["source"] = this.recognizeUrl(team.gameId, input.externalUrl)?.provider ?? UNRECOGNIZED_SOURCE;
+      data["source"] =
+        this.recognizeUrl(team.gameId, input.externalUrl)?.provider ?? UNRECOGNIZED_SOURCE;
     }
 
     await this.scoped.db.deck.updateMany({ where: { id: deckId }, data });
@@ -177,7 +178,10 @@ export class DecksService {
   /** Soft-delete (archive) a deck (owner or team-admin); history survives. */
   async archive(team: TeamContext, deckId: string): Promise<void> {
     await this.loadModifiableDeck(team, deckId);
-    await this.scoped.db.deck.updateMany({ where: { id: deckId }, data: { archivedAt: new Date() } });
+    await this.scoped.db.deck.updateMany({
+      where: { id: deckId },
+      data: { archivedAt: new Date() },
+    });
   }
 
   /** A deck's iteration log, most-recent first (requires being able to see the deck). */

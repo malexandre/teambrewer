@@ -67,7 +67,11 @@ export const deckTagsSchema = z.array(deckTagSchema).max(20);
 export const deckNotesSchema = z.string().max(5000);
 
 /** The body of a single iteration-log entry (a prose changelog line). */
-export const iterationEntryBodySchema = z.string().trim().min(1, "An entry cannot be empty.").max(2000);
+export const iterationEntryBodySchema = z
+  .string()
+  .trim()
+  .min(1, "An entry cannot be empty.")
+  .max(2000);
 
 /**
  * Create-deck input. Omits every server-controlled field (`teamId`/`gameId`/
