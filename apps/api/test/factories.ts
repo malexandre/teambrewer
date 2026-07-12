@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { inject } from "vitest";
 
-import { PrismaClient } from "../src/generated/prisma/client.js";
+import { Prisma, PrismaClient } from "../src/generated/prisma/client.js";
 
 /**
  * Test fixtures for the identity/tenancy models. Centralised here so every
@@ -726,6 +726,146 @@ export async function createRetrospective(
     },
   });
   return { id: created.id, eventId: created.eventId, teamId: created.teamId };
+}
+
+/**
+ * Team-knowledge fixtures (phase-10). Primer, Decision, and Poll are team-owned;
+ * PollVote is scoped transitively through its poll (no teamId, like SuggestionVote).
+ * Each defaults everything but the required references so an isolation test builds one
+ * in a single call.
+ */
+
+type PrimerKind = "deck_primer" | "matchup" | "format_notes" | "other";
+type PrimerVisibility = "team" | "private";
+type PollStatus = "open" | "closed";
+
+export interface CreatePrimerOptions {
+  teamId: string;
+  authorId: string;
+  title?: string;
+  kind?: PrimerKind;
+  relatedDeckId?: string | null;
+  body?: string;
+  visibility?: PrimerVisibility;
+  archivedAt?: Date | null;
+}
+
+export async function createPrimer(
+  prisma: PrismaClient,
+  options: CreatePrimerOptions,
+): Promise<{ id: string; teamId: string; authorId: string; visibility: string }> {
+  const suffix = randomUUID().slice(0, 8);
+  const created = await prisma.primer.create({
+    data: {
+      teamId: options.teamId,
+      authorId: options.authorId,
+      title: options.title ?? `Primer ${suffix}`,
+      kind: options.kind ?? "matchup",
+      relatedDeckId: options.relatedDeckId ?? null,
+      body: options.body ?? "Keep two blues; block the on-hit triggers.",
+      visibility: options.visibility ?? "team",
+      archivedAt: options.archivedAt ?? null,
+    },
+  });
+  return {
+    id: created.id,
+    teamId: created.teamId,
+    authorId: created.authorId,
+    visibility: created.visibility,
+  };
+}
+
+export interface CreateDecisionOptions {
+  teamId: string;
+  authorId: string;
+  title?: string;
+  context?: string;
+  decision?: string;
+  rationale?: string;
+  relatedSubjectType?: string | null;
+  relatedSubjectId?: string | null;
+  relatedSubjectSnapshotLabel?: string | null;
+  decidedAt?: Date;
+  archivedAt?: Date | null;
+}
+
+export async function createDecision(
+  prisma: PrismaClient,
+  options: CreateDecisionOptions,
+): Promise<{ id: string; teamId: string; authorId: string }> {
+  const suffix = randomUUID().slice(0, 8);
+  const created = await prisma.decision.create({
+    data: {
+      teamId: options.teamId,
+      authorId: options.authorId,
+      title: options.title ?? `Decision ${suffix}`,
+      context: options.context ?? "We tested five decks over three weeks.",
+      decision: options.decision ?? "Bring Fai as the main.",
+      rationale: options.rationale ?? "Best coverage against the expected field.",
+      relatedSubjectType: options.relatedSubjectType ?? null,
+      relatedSubjectId: options.relatedSubjectId ?? null,
+      relatedSubjectSnapshotLabel: options.relatedSubjectSnapshotLabel ?? null,
+      decidedAt: options.decidedAt ?? new Date("2026-07-01T00:00:00.000Z"),
+      archivedAt: options.archivedAt ?? null,
+    },
+  });
+  return { id: created.id, teamId: created.teamId, authorId: created.authorId };
+}
+
+export interface PollOptionSeed {
+  id: string;
+  label: string;
+}
+
+export interface CreatePollOptions {
+  teamId: string;
+  authorId: string;
+  question?: string;
+  options?: PollOptionSeed[];
+  status?: PollStatus;
+  closesAt?: Date | null;
+}
+
+export async function createPoll(
+  prisma: PrismaClient,
+  options: CreatePollOptions,
+): Promise<{ id: string; teamId: string; authorId: string; options: PollOptionSeed[] }> {
+  const suffix = randomUUID().slice(0, 8);
+  const pollOptions = options.options ?? [
+    { id: `opt-fai-${suffix}`, label: "Fai" },
+    { id: `opt-kano-${suffix}`, label: "Kano" },
+  ];
+  const created = await prisma.poll.create({
+    data: {
+      teamId: options.teamId,
+      authorId: options.authorId,
+      question: options.question ?? "Which deck for Nationals?",
+      options: pollOptions as unknown as Prisma.InputJsonValue,
+      status: options.status ?? "open",
+      closesAt: options.closesAt ?? null,
+    },
+  });
+  return {
+    id: created.id,
+    teamId: created.teamId,
+    authorId: created.authorId,
+    options: pollOptions,
+  };
+}
+
+export async function createPollVote(
+  prisma: PrismaClient,
+  options: { pollId: string; userId: string; optionId: string },
+): Promise<{ id: string; pollId: string; userId: string; optionId: string }> {
+  const created = await prisma.pollVote.create({
+    data: { pollId: options.pollId, userId: options.userId, optionId: options.optionId },
+  });
+  return {
+    id: created.id,
+    pollId: created.pollId,
+    userId: created.userId,
+    optionId: created.optionId,
+  };
 }
 
 /**
