@@ -15,6 +15,7 @@ import { EventsModule } from "./events/events.module.js";
 import { GameConfigModule } from "./game-config/game-config.module.js";
 import { GameLogsModule } from "./game-logs/game-logs.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { MatchupsModule } from "./matchups/matchups.module.js";
 import { MeModule } from "./me/me.module.js";
 import { OnboardingModule } from "./onboarding/onboarding.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
@@ -37,6 +38,7 @@ import { TenancyModule } from "./tenancy/tenancy.module.js";
     EventsModule,
     GameConfigModule,
     GameLogsModule,
+    MatchupsModule,
     CollaborationModule,
   ],
   providers: [
