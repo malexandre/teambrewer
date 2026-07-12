@@ -73,6 +73,7 @@ model User {
   inviteTokens         InviteToken[]
   ownedDecks           Deck[]
   deckIterationEntries DeckIterationEntry[]
+  attendances          Attendance[]
   authoredComments     Comment[]
   mentions             Mention[]
   notifications        Notification[]
@@ -162,11 +163,13 @@ model Team {
   updatedAt  DateTime  @updatedAt @map("updated_at")
   archivedAt DateTime? @map("archived_at")
 
-  memberships    TeamMembership[]
-  decks          Deck[]
-  comments       Comment[]
-  notifications  Notification[]
-  activityEvents ActivityEvent[]
+  memberships     TeamMembership[]
+  decks           Deck[]
+  events          Event[]
+  gauntletEntries GauntletEntry[]
+  comments        Comment[]
+  notifications   Notification[]
+  activityEvents  ActivityEvent[]
 
   @@index([gameId])
   @@map("team")
@@ -250,8 +253,9 @@ model Format {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  game  Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  decks Deck[]
+  game   Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  decks  Deck[]
+  events Event[]
 
   @@unique([gameId, key])
   @@index([gameId])
@@ -273,8 +277,9 @@ model Hero {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  game  Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  decks Deck[]
+  game            Game            @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  decks           Deck[]
+  gauntletEntries GauntletEntry[]
 
   @@unique([gameId, externalId])
   @@index([gameId, name])
@@ -373,6 +378,7 @@ model Deck {
   owner  User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   iterationEntries DeckIterationEntry[]
+  gauntletEntries  GauntletEntry[]
 
   @@index([teamId])
   @@index([teamId, status])
@@ -395,6 +401,120 @@ model DeckIterationEntry {
 
   @@index([deckId, createdAt])
   @@map("deck_iteration_entry")
+}
+
+// ---------------------------------------------------------------------------
+// Events & gauntlets (phase-05). The Event is the central organizing hub (ADR-0004):
+// a target tournament with a gauntlet (the field to beat, weighted by expected
+// metagame share) and member attendance (RSVP). See
+// docs/features/events-and-gauntlets.md and docs/architecture/data-model.md.
+//
+// Permissions are a shared team board: any member may create/edit/delete any event
+// or gauntlet entry (no owner column); attendance is per-user. Event and
+// GauntletEntry carry teamId and are team-scoped by construction; Attendance is
+// scoped transitively through its parent event (like DeckIterationEntry).
+// ---------------------------------------------------------------------------
+
+/// An event's lifecycle. Transitions are validated server-side (see
+/// docs/features/events-and-gauntlets.md); `archived` is the terminal soft-delete
+/// state (reaching it stamps `archivedAt` and drops the event from default lists).
+enum EventStatus {
+  upcoming
+  active
+  completed
+  archived
+}
+
+/// How much an event matters (ordinal: local < regional < national < major).
+/// Drives dashboard prioritization (consumers deferred to later phases).
+enum EventImportance {
+  local
+  regional
+  national
+  major
+}
+
+/// A member's RSVP for an event.
+enum AttendanceStatus {
+  going
+  maybe
+  not_going
+}
+
+/// A team's target tournament: format + date + importance, with a lifecycle status.
+/// The hub that later modules (game logging, matchups, assignments, deck selection)
+/// optionally reference. Soft-deleted via `archivedAt` so history survives.
+model Event {
+  id          String          @id @default(cuid())
+  teamId      String          @map("team_id")
+  name        String
+  formatId    String          @map("format_id")
+  date        DateTime
+  location    String?
+  importance  EventImportance
+  description String          @default("")
+  status      EventStatus     @default(upcoming)
+  archivedAt  DateTime?       @map("archived_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  format Format @relation(fields: [formatId], references: [id])
+
+  gauntletEntries GauntletEntry[]
+  attendances     Attendance[]
+
+  @@index([teamId])
+  @@index([teamId, status])
+  @@index([teamId, formatId])
+  @@index([teamId, importance])
+  @@map("event")
+}
+
+/// One entry in an event's gauntlet (the field to beat). Names exactly one target
+/// form — a reference deck (a Deck where isReference is true), a bare hero, or a
+/// free-text archetype label — plus its projected field share (0–100, stored raw;
+/// normalization into weights is deferred to consumers). The exactly-one-target and
+/// duplicate-target rules are enforced server-side.
+model GauntletEntry {
+  id                String   @id @default(cuid())
+  eventId           String   @map("event_id")
+  teamId            String   @map("team_id")
+  referenceDeckId   String?  @map("reference_deck_id")
+  heroId            String?  @map("hero_id")
+  archetypeLabel    String?  @map("archetype_label")
+  expectedMetaShare Int      @map("expected_meta_share")
+  notes             String   @default("")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  event         Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  team          Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  referenceDeck Deck? @relation(fields: [referenceDeckId], references: [id], onDelete: SetNull)
+  hero          Hero? @relation(fields: [heroId], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@index([teamId])
+  @@map("gauntlet_entry")
+}
+
+/// A member's RSVP for an event (one row per member per event). No teamId — it is
+/// reached only through its team-scoped parent event. Retained for history even if
+/// the member later leaves the team.
+model Attendance {
+  id        String           @id @default(cuid())
+  eventId   String           @map("event_id")
+  userId    String           @map("user_id")
+  status    AttendanceStatus
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@map("attendance")
 }
 
 // ---------------------------------------------------------------------------

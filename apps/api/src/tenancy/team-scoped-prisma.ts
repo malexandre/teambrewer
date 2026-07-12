@@ -13,6 +13,8 @@ import type { RequestWithTenantContext } from "./team-context.js";
 export const TEAM_OWNED_MODELS = new Set<string>([
   "teamMembership",
   "deck",
+  "event",
+  "gauntletEntry",
   "comment",
   "notification",
   "activityEvent",
