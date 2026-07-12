@@ -10,7 +10,11 @@ import { useDecks } from "@/features/decks/use-decks";
 import { ApiError } from "@/lib/api-client";
 
 import { SELECT_CLASS } from "./event-display";
-import { useAddGauntletEntry, useRemoveGauntletEntry } from "./use-event-mutations";
+import {
+  useAddGauntletEntry,
+  useRemoveGauntletEntry,
+  useUpdateGauntletEntry,
+} from "./use-event-mutations";
 
 /** The kind of target being added: a reference deck, a bare hero, or a free-text label. */
 type TargetKind = "hero" | "deck" | "archetype";
@@ -38,9 +42,13 @@ export function GauntletBuilder({
   const [archetypeLabel, setArchetypeLabel] = useState("");
   const [share, setShare] = useState("10");
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editShare, setEditShare] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
 
   const addEntry = useAddGauntletEntry(teamId, eventId);
   const removeEntry = useRemoveGauntletEntry(teamId, eventId);
+  const updateEntry = useUpdateGauntletEntry(teamId, eventId);
 
   const { data: heroData } = useHeroes(teamId);
   const { data: referenceDeckData } = useDecks(teamId, { isReference: true });
@@ -64,6 +72,25 @@ export function GauntletBuilder({
       return heroNames.get(entry.heroId) ?? "Hero";
     }
     return entry.archetypeLabel ?? "Archetype";
+  }
+
+  function startEditingShare(entry: GauntletEntry) {
+    setEditError(null);
+    setEditingEntryId(entry.id);
+    setEditShare(String(entry.expectedMetaShare));
+  }
+
+  function saveShare(entry: GauntletEntry) {
+    setEditError(null);
+    const shareValue = Number(editShare);
+    if (!Number.isInteger(shareValue) || shareValue < 0 || shareValue > 100) {
+      setEditError("Expected share must be a whole number between 0 and 100.");
+      return;
+    }
+    updateEntry.mutate(
+      { gauntletEntryId: entry.id, body: { expectedMetaShare: shareValue } },
+      { onSuccess: () => setEditingEntryId(null) },
+    );
   }
 
   function submit() {
@@ -125,7 +152,39 @@ export function GauntletBuilder({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-sm">{targetLabel(entry)}</span>
-                  <span className="text-xs text-muted-foreground">{entry.expectedMetaShare}%</span>
+                  {editingEntryId === entry.id ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={editShare}
+                        onChange={(event) => setEditShare(event.target.value)}
+                        className="h-7 w-20"
+                        aria-label={`Expected share for ${targetLabel(entry)}`}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={updateEntry.isPending}
+                        onClick={() => saveShare(entry)}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingEntryId(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      {entry.expectedMetaShare}%
+                    </span>
+                  )}
                 </div>
                 <div className="mt-1 h-2 w-full overflow-hidden rounded bg-muted">
                   <div
@@ -134,18 +193,34 @@ export function GauntletBuilder({
                     aria-hidden
                   />
                 </div>
+                {editingEntryId === entry.id && editError ? (
+                  <p role="alert" className="mt-1 text-xs text-destructive">
+                    {editError}
+                  </p>
+                ) : null}
               </div>
-              {canEdit ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  aria-label={`Remove ${targetLabel(entry)}`}
-                  disabled={removeEntry.isPending}
-                  onClick={() => removeEntry.mutate(entry.id)}
-                >
-                  Remove
-                </Button>
+              {canEdit && editingEntryId !== entry.id ? (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Edit share for ${targetLabel(entry)}`}
+                    onClick={() => startEditingShare(entry)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Remove ${targetLabel(entry)}`}
+                    disabled={removeEntry.isPending}
+                    onClick={() => removeEntry.mutate(entry.id)}
+                  >
+                    Remove
+                  </Button>
+                </>
               ) : null}
             </li>
           ))}

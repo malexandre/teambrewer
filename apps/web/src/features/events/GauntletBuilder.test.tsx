@@ -12,12 +12,31 @@ function renderWithClient(ui: ReactNode) {
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
-/** Mock the reference-data reads (and optionally the gauntlet-entry create) the builder needs. */
-function mockApi(options: { onCreate?: (body: unknown) => void } = {}) {
+/** Mock the reference-data reads (and optionally the gauntlet-entry create/update) the builder needs. */
+function mockApi(
+  options: { onCreate?: (body: unknown) => void; onUpdate?: (body: unknown) => void } = {},
+) {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = typeof input === "string" ? input : input.toString();
     const method = init?.method ?? "GET";
 
+    if (/\/api\/events\/event-1\/gauntlet-entries\/[^/]+$/.test(url) && method === "PATCH") {
+      const body: { expectedMetaShare?: number } = init?.body
+        ? JSON.parse(init.body as string)
+        : {};
+      options.onUpdate?.(body);
+      return json({
+        id: "entry-1",
+        eventId: "event-1",
+        referenceDeckId: null,
+        heroId: null,
+        archetypeLabel: "Aggro Red",
+        expectedMetaShare: body.expectedMetaShare ?? 40,
+        notes: "",
+        createdAt: "2026-07-12T00:00:00.000Z",
+        updatedAt: "2026-07-12T00:00:00.000Z",
+      });
+    }
     if (url.includes("/api/heroes")) {
       return json({
         data: [
@@ -139,5 +158,23 @@ describe("GauntletBuilder", () => {
 
     await vi.waitFor(() => expect(created).toHaveLength(1));
     expect(created[0]).toMatchObject({ heroId: "hero-dori", expectedMetaShare: 25 });
+  });
+
+  it("edits an existing entry's expected share", async () => {
+    const updated: unknown[] = [];
+    mockApi({ onUpdate: (body) => updated.push(body) });
+    const user = userEvent.setup();
+    renderWithClient(
+      <GauntletBuilder teamId="team-1" eventId="event-1" entries={entries} canEdit />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /edit share for aggro red/i }));
+    const shareInput = screen.getByLabelText(/expected share for aggro red/i);
+    await user.clear(shareInput);
+    await user.type(shareInput, "45");
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+
+    await vi.waitFor(() => expect(updated).toHaveLength(1));
+    expect(updated[0]).toMatchObject({ expectedMetaShare: 45 });
   });
 });

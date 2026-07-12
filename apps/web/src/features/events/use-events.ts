@@ -8,8 +8,6 @@ import {
   type EventListResponse,
   eventListResponseSchema,
   type EventStatus,
-  type GauntletEntryList,
-  gauntletEntryListSchema,
 } from "@teambrewer/shared";
 
 import { apiClient } from "@/lib/api-client";
@@ -66,24 +64,6 @@ export function useEvent(teamId: string | undefined, eventId: string | undefined
         throw new Error("No active team or event.");
       }
       return apiClient.get(`/events/${eventId}`, { teamId, schema: eventDetailSchema });
-    },
-    enabled: Boolean(teamId && eventId),
-  });
-}
-
-/** An event's gauntlet (highest share first), via GET /api/events/:eventId/gauntlet-entries. */
-export function useGauntletEntries(teamId: string | undefined, eventId: string | undefined) {
-  return useQuery<GauntletEntryList>({
-    queryKey:
-      teamId && eventId ? queryKeys.eventGauntlet(teamId, eventId) : ["event-gauntlet", "none"],
-    queryFn: () => {
-      if (!teamId || !eventId) {
-        throw new Error("No active team or event.");
-      }
-      return apiClient.get(`/events/${eventId}/gauntlet-entries`, {
-        teamId,
-        schema: gauntletEntryListSchema,
-      });
     },
     enabled: Boolean(teamId && eventId),
   });
