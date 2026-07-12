@@ -11,6 +11,26 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        runtimeCaching: [
+          {
+            // Card art (cross-origin CDN) has a unique URL per card, so it caches
+            // safely and gives the biggest offline/perf win. We deliberately do
+            // NOT cache the reference JSON (/api/cards, /api/formats, /api/heroes):
+            // those share one URL across teams (the game comes from the X-Team-Id
+            // header), so a URL-keyed cache could surface another team's game data
+            // — the tenancy rule forbids that. TanStack Query handles that layer
+            // and invalidates on team switch.
+            urlPattern: ({ request, sameOrigin }) => !sameOrigin && request.destination === "image",
+            handler: "CacheFirst",
+            options: {
+              cacheName: "card-images",
+              expiration: { maxEntries: 1000, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
       manifest: {
         name: "TeamBrewer",
         short_name: "TeamBrewer",
