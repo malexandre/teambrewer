@@ -3,8 +3,8 @@
 ## Summary
 
 A **global, per-game** card reference database, synced from **sanctioned open sources** (the-fab-cube for
-Flesh and Blood) through the **game adapter**. It powers autocomplete pickers, hover/press previews, card
-detail, and card references embedded elsewhere (suggestions, game-plans, primers). It is **not** deck
+Flesh and Blood) through the **game adapter**. It powers autocomplete pickers, hover/press image previews,
+and card references embedded elsewhere (suggestions, game-plans, primers). It is **not** deck
 contents — decks are links ([ADR-0002](../decisions/0002-decks-as-links.md)). See
 [ADR-0007](../decisions/0007-external-data-approach.md) and
 [card-data-sources](../domain/card-data-sources.md).
@@ -23,8 +23,8 @@ contents — decks are links ([ADR-0002](../decisions/0002-decks-as-links.md)). 
 ## User stories
 
 - As a **member**, I can search cards by name (and pitch for FaB) with fast autocomplete.
-- As a **member**, I can hover or press a referenced card anywhere to preview its details/image.
-- As a **member**, I can open a card's detail (types, keywords, text, format legality, printings).
+- As a **member**, I can hover or press a referenced card anywhere to preview its image (which conveys the
+  card's stats and text).
 - As a **member**, I can see **when the card data was last synced** ("card data as of …") and its source.
 - As an **instance-admin**, I can trigger a card-data sync (command + scheduled job).
 - As a **member of a FaB team**, I only see FaB cards; a Riftbound team only sees Riftbound cards.
@@ -34,12 +34,17 @@ contents — decks are links ([ADR-0002](../decisions/0002-decks-as-links.md)). 
 Global reference entities from [data-model](../architecture/data-model.md#game-reference-data-global-per-game--owned-by-adapter):
 
 - **Game** `{ id, key, name }`
-- **Card** `{ id, gameId, externalId (stable source id), name, pitch?, cost?, power?, defense?, types[],
-  subtypes[], keywords[], text, rarity, imageUrl, formatLegality{}, sourceVersion, ... }` — unique on
-  `(gameId, externalId)`; searchable index on `(gameId, name)`. Fields vary by game; the adapter maps
-  source -> this normalized model.
+- **Card (lean)** `{ id, gameId, externalId (stable source id), name, pitch?, imageUrl?, archivedAt? }` —
+  unique on `(gameId, externalId)`; searchable index on `(gameId, name)`. Cards are reference data only
+  (decks are links, [ADR-0002](../decisions/0002-decks-as-links.md)), so the model stores just enough to
+  reference a card by search/autocomplete and show its image — **no** combat stats, format legality, or
+  printings (the card **image** conveys those; the matchup/confidence math never reads card stats). The
+  adapter maps source -> this normalized model. *(Lean model decided in phase-02; a richer card can be
+  reintroduced by a future phase + ADR if a feature needs structured stats.)*
+- **CardDataVersion** `{ gameId, sourceName, sourceUrl, sourceVersion, lastSyncedAt, cardCount }` — one row
+  per game; drives "card data as of …".
 - **Hero** / **Format** — sibling per-game reference data (owned by the adapter; consumed by
-  [decks](decks.md) and events).
+  [decks](decks.md) and events). Heroes are derived from the synced card dataset.
 
 These are **global** (no `teamId`) but **game-filtered** — see
 [data-model](../architecture/data-model.md#global-vs-team-scoped). Pull the **exact** FaB field list from
@@ -71,7 +76,7 @@ the source schema at build time (phase-02); do not invent fields.
 
 | Action | Instance-admin | Team-admin | Member |
 |---|---|---|---|
-| Search / preview / view card detail | ✅ | ✅ | ✅ (own team's game) |
+| Search / preview a card (own team's game) | ✅ | ✅ | ✅ |
 | Trigger card-data sync | ✅ | ❌ | ❌ |
 
 ## API surface
@@ -79,8 +84,8 @@ the source schema at build time (phase-02); do not invent fields.
 Per [api-conventions](../architecture/api-conventions.md); reference endpoints are **game-filtered by the
 active team's `gameId`** (not `teamId`-scoped):
 
-- `GET /api/cards?query=&pitch=&formatId=&limit=&cursor=` — search/autocomplete (cursor-paginated).
-- `GET /api/cards/:cardId` — card detail.
+- `GET /api/cards?query=&pitch=&limit=&cursor=` — search/autocomplete (keyset/cursor-paginated).
+- `GET /api/cards/:cardId` — a single card (404 for archived or another game's card).
 - `GET /api/formats` / `GET /api/heroes` — the active game's formats/identities (for pickers).
 - `GET /api/card-data/version` — current `sourceVersion` + last-synced timestamp + source attribution.
 - `POST /api/admin/card-data/sync` — trigger sync (instance-admin; idempotent upsert).
@@ -90,9 +95,9 @@ active team's `gameId`** (not `teamId`-scoped):
 Mobile-first (see [frontend](../architecture/frontend.md#card-ux)):
 
 - **Autocomplete card picker** (name + pitch for FaB) reused wherever a card is referenced.
-- **Hover/press preview** showing card image + key fields anywhere a card is referenced (suggestions,
-  game-plans, primers).
-- **Card detail** view: full fields, format legality, printings/artists.
+- **Hover/press preview** showing the card **image** (which conveys stats and text) with its name + pitch,
+  anywhere a card is referenced (suggestions, game-plans, primers). The image preview doubles as the "detail"
+  — there is no separate rich detail page in the lean model.
 - A visible **"card data as of …"** indicator with source attribution.
 - Card data is a good PWA offline-cache candidate (read-only) — see
   [frontend](../architecture/frontend.md).
