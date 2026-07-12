@@ -129,3 +129,47 @@ export {
   type RecognizedDeckUrl,
   type RecognizeDeckUrlResponse,
 } from "./decks.js";
+
+export { subjectTypeSchema, parseMentionHandles, type SubjectType } from "./collaboration.js";
+
+export {
+  commentBodySchema,
+  createCommentSchema,
+  updateCommentSchema,
+  commentThreadQuerySchema,
+  commentAuthorSchema,
+  commentSchema,
+  commentThreadResponseSchema,
+  type CreateCommentInput,
+  type UpdateCommentInput,
+  type CommentThreadQuery,
+  type CommentAuthor,
+  type Comment,
+  type CommentThreadResponse,
+} from "./comments.js";
+
+export {
+  notificationTypeSchema,
+  notificationActorSchema,
+  notificationListQuerySchema,
+  notificationSchema,
+  notificationListResponseSchema,
+  type NotificationType,
+  type NotificationActor,
+  type NotificationListQuery,
+  type Notification,
+  type NotificationListResponse,
+} from "./notifications.js";
+
+export {
+  activityVerbSchema,
+  activityActorSchema,
+  activityQuerySchema,
+  activityEventSchema,
+  activityListResponseSchema,
+  type ActivityVerb,
+  type ActivityActor,
+  type ActivityQuery,
+  type ActivityEvent,
+  type ActivityListResponse,
+} from "./activity.js";
