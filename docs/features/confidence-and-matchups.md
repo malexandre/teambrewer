@@ -1,5 +1,14 @@
 # Feature: Confidence & Matchups
 
+> **⚠️ Reshaped by the meta-pivot ([ADR-0010](../decisions/0010-meta-as-organizing-hub.md)).** The
+> confidence-weight math ([ADR-0005](../decisions/0005-confidence-weight-model.md)) and the aggregation
+> helpers (`aggregateMatchup`, `trustIndicator`, coverage helpers in `packages/shared`) are **retained and
+> reused**, but the **standalone matchups/coverage tab is dropped**. Coverage becomes a **per-deck
+> "readiness vs the current meta"** section on the deck page: for each [Meta](metas.md) deck entry, the
+> weighted win rate + raw sample + thin-data flag, plus whether a matchup game-plan exists. The
+> confidence-weighted read below still holds; only its **feed** (the current meta's tiered deck list instead
+> of an event's gauntlet) and its **surface** (the deck page instead of a tab) change.
+
 ## Summary
 
 This is TeamBrewer's **signature feature**. Not all game results are equally trustworthy, so matchup win

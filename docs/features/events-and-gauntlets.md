@@ -1,5 +1,14 @@
 # Feature: Events & Gauntlets
 
+> **⚠️ Superseded by the meta-pivot ([ADR-0010](../decisions/0010-meta-as-organizing-hub.md)).** The
+> **gauntlet moves onto the [Meta](metas.md)** as a tiered opponent-deck list (`MetaDeckEntry` with a
+> `tier` replacing `expectedMetaShare %`); matchup **coverage becomes a per-deck readiness** view (see
+> [confidence-and-matchups.md](confidence-and-matchups.md)). The **Event** itself becomes lightweight and
+> social — `{ name, date, location?, description, metaId? }` + an RSVP (`going | interested`), dropping
+> status, importance, format, the gauntlet, deck selection, and the retrospective. The prose below
+> describes the superseded v1 event-centric design and is kept for history; the WS-1 foundation adds the
+> Meta/Task models alongside it, and later workstreams strip `EventsModule` and remove the gauntlet code.
+
 ## Summary
 
 The **Event** is TeamBrewer's central organizing concept: a target tournament defined by a format, a date,

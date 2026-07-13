@@ -22,15 +22,22 @@ team's data. This is a **security property**, not merely a UI filter. Formal dec
 | Create users / generate setup links | ✅ | ✅ (within own team) | ❌ |
 | Manage team membership & roles | ✅ | ✅ (own team) | ❌ |
 | Create/edit own decks, log games, comment, suggest | ✅ | ✅ | ✅ |
-| Manage events, gauntlets | ✅ | ✅ | any member creates/edits/deletes (shared team board) |
-| Manage assignments | ✅ | ✅ | create/edit own; admin can manage all |
+| Manage events | ✅ | ✅ | any member creates/edits/deletes (shared team board) |
+| Manage metas, meta deck entries | ✅ | ✅ | any member creates/edits/deletes (shared team board) |
+| Manage tasks | ✅ | ✅ | create/edit own; assignee + admin can manage; any member self-assigns |
 | Edit/delete others' content | ✅ | ✅ (moderation, own team) | ❌ |
 
-Ownership: a member controls their own decks/logs/suggestions; team-admins can moderate. **Events and
-gauntlets are the exception** — they are a **shared team board** with no per-row owner, so any member may
-create/edit/delete any of them (decided in phase-05; see
+Ownership: a member controls their own decks/logs/tasks; team-admins can moderate. **Events, and — since
+the meta-pivot ([ADR-0010](../decisions/0010-meta-as-organizing-hub.md)) — metas and their tiered deck
+entries, are the exception**: they are a **shared team board** with no per-row owner, so any member may
+create/edit/delete any of them (the events precedent from phase-05; see
 [events-and-gauntlets §Permissions](../features/events-and-gauntlets.md)). Exact per-action rules live in
 each feature spec.
+
+New team-owned models added by the meta-pivot foundation carry a non-null `teamId` and are scoped by
+construction through `TeamScopedPrisma` (`meta`, `metaDeckEntry`, `task` in `TEAM_OWNED_MODELS`). Their
+child rows — `DeckMeta` (deck↔meta join) and `TaskVote` (upvotes) — carry **no** `teamId`; each is reached
+only through its team-scoped parent, following the existing `Attendance`/`SuggestionVote` convention.
 
 ## Enforcement (the core of the design)
 

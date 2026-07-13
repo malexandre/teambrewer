@@ -1,6 +1,8 @@
 # ADR-0004: Event-centric organization
 
-- **Status:** Accepted (2026-07-11)
+- **Status:** **Superseded by [ADR-0010](0010-meta-as-organizing-hub.md)** (2026-07-13). Originally Accepted
+  (2026-07-11). The organizing hub moved from the **Event** to a team-scoped **Meta**; events are now
+  lightweight and social. This ADR is retained for history.
 - **Context:** Testing must be organized somehow — around formats, a flat library, or target tournaments.
   The user's goal is to find the best decks "for each important tournament," and pro prep is inherently
   event-shaped (see [`../domain/playtesting-methodology.md`](../domain/playtesting-methodology.md)).
