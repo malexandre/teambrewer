@@ -114,7 +114,10 @@ function resolveConfig() {
     );
   }
 
-  return config;
+  // `config` is the resolved subset the orchestrator itself needs; `fileValues`
+  // is the full ./.env so anything else the user set there (DISCORD_*, RATE_LIMIT_*,
+  // …) also reaches the child processes.
+  return { config, fileValues };
 }
 
 function renderEnvTemplate(config) {
@@ -218,8 +221,9 @@ function printSetupBanner(config, bootstrapOutput) {
 }
 
 async function main() {
-  const config = resolveConfig();
-  const childEnv = { ...process.env, ...config };
+  const { config, fileValues } = resolveConfig();
+  // Precedence: ./.env values < real shell environment < the resolved config.
+  const childEnv = { ...fileValues, ...process.env, ...config };
 
   step("Starting the local Postgres (Docker)");
   assertDockerAvailable(childEnv);

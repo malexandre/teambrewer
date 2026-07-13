@@ -79,6 +79,11 @@ The bootstrap is **idempotent**: re-running promotes an existing seed user to in
 reissues a setup link while no password is set, and simply reports "already set up" once a password
 exists.
 
+**Any other variable you add to `./.env` is passed through to the API too** — e.g. to enable Discord
+login (invitees can then choose password or Discord when they claim their invite), add
+`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `DISCORD_REDIRECT_URI` to `./.env` and restart
+`pnpm start`.
+
 ## Troubleshooting
 
 - **"Docker does not appear to be running"** — start Docker Desktop.
