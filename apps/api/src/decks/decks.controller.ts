@@ -17,6 +17,8 @@ import {
   type DeckDetail,
   type DeckListResponse,
   deckListQuerySchema,
+  type DeckMetaReadinessResponse,
+  deckMetaReadinessQuerySchema,
   deckStatusChangeSchema,
   type IterationEntry,
   type IterationEntryList,
@@ -87,6 +89,15 @@ export class DecksController {
   ): Promise<DeckDetail> {
     const { status } = deckStatusChangeSchema.parse(body);
     return this.decks.changeStatus(team, deckId, status);
+  }
+
+  @Get(":deckId/meta-readiness")
+  metaReadiness(
+    @CurrentTeam() team: TeamContext,
+    @Param("deckId") deckId: string,
+    @Query() query: unknown,
+  ): Promise<DeckMetaReadinessResponse> {
+    return this.decks.getMetaReadiness(team, deckId, deckMetaReadinessQuerySchema.parse(query));
   }
 
   @Get(":deckId/iteration-entries")

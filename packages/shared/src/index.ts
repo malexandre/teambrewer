@@ -389,6 +389,15 @@ export {
 } from "./metas.js";
 
 export {
+  deckMetaReadinessQuerySchema,
+  deckMetaReadinessRowSchema,
+  deckMetaReadinessResponseSchema,
+  type DeckMetaReadinessQuery,
+  type DeckMetaReadinessRow,
+  type DeckMetaReadinessResponse,
+} from "./meta-readiness.js";
+
+export {
   metaTierSchema,
   META_TIERS,
   META_TIER_LABELS,

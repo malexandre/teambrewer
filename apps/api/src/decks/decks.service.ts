@@ -6,16 +6,24 @@ import {
 } from "@nestjs/common";
 
 import {
+  aggregateMatchup,
   type CreateDeckInput,
   type DeckDetail,
   type DeckLinkedMeta,
   type DeckListQuery,
   type DeckListResponse,
+  type DeckMetaReadinessQuery,
+  type DeckMetaReadinessResponse,
+  type DeckMetaReadinessRow,
   type DeckStatus,
   type DeckSummary,
+  deriveGameOutcome,
   errorCode,
   type IterationEntry,
   type IterationEntryList,
+  type MatchupGame,
+  type MetaTier,
+  META_TIERS,
   type RecognizedDeckUrl,
   type UpdateDeckInput,
 } from "@teambrewer/shared";
@@ -50,6 +58,36 @@ interface DeckRow {
   archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** A meta deck entry, as loaded for a readiness read. */
+interface MetaEntryRow {
+  id: string;
+  tier: MetaTier;
+  referenceDeckId: string | null;
+  heroId: string | null;
+  archetypeLabel: string | null;
+  opponentSnapshotLabel: string;
+  createdAt: Date;
+}
+
+/** The side-B identity + confidence-weighted result fields of a game log, for readiness. */
+interface GameLogReadinessRow {
+  gamesWonA: number;
+  gamesWonB: number;
+  confidenceWeight: number;
+  opponentDeckId: string | null;
+  heroId: string | null;
+  archetypeLabel: string | null;
+}
+
+/** The current-meta candidate shape (adds `name` to the pure-rule fields) for readiness. */
+interface ReadinessMetaCandidate {
+  id: string;
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  createdAt: Date;
 }
 
 /** Fallback `source` label for a link no adapter recognized. */
@@ -231,6 +269,110 @@ export class DecksService {
     return toIterationEntry(entry);
   }
 
+  /**
+   * Per-deck **meta-readiness** (docs/features/decks.md): for each entry in the meta's
+   * deck list, our confidence-weighted read from the team's game logs where side A is
+   * this deck and side B matches the entry's target, plus whether a matchup game-plan
+   * exists for that pairing. Read-only from `GameLog` (still the source of truth); the
+   * math reuses the shared `aggregateMatchup` (draws counted in raw N only). The deck
+   * is validated visible/same-team (→ 404); the meta defaults to the current one, and
+   * a `metaId` for another team (or a missing/archived meta) is a 404. When no meta is
+   * current and none is requested, returns an empty read (graceful no-meta state).
+   *
+   * `metaId` on the game log is treated as an OPTIONAL narrowing and not required here
+   * (game-log meta wiring lands in WS-5): all reps of this deck against the target
+   * count, so readiness is meaningful before logs carry a meta.
+   */
+  async getMetaReadiness(
+    team: TeamContext,
+    deckId: string,
+    query: DeckMetaReadinessQuery,
+  ): Promise<DeckMetaReadinessResponse> {
+    const deck = await this.loadVisibleDeck(team, deckId);
+    const meta = await this.resolveReadinessMeta(query.metaId);
+    if (!meta) {
+      return { deckId, metaId: "", metaName: "", rows: [] };
+    }
+
+    const entries = (await this.scoped.db.metaDeckEntry.findMany({
+      where: { metaId: meta.id },
+      select: {
+        id: true,
+        tier: true,
+        referenceDeckId: true,
+        heroId: true,
+        archetypeLabel: true,
+        opponentSnapshotLabel: true,
+        createdAt: true,
+      },
+    })) as MetaEntryRow[];
+
+    const games = (await this.scoped.db.gameLog.findMany({
+      where: { deckId, archivedAt: null },
+      select: {
+        gamesWonA: true,
+        gamesWonB: true,
+        confidenceWeight: true,
+        opponentDeckId: true,
+        heroId: true,
+        archetypeLabel: true,
+      },
+    })) as GameLogReadinessRow[];
+
+    const planRefs = new Set(
+      (
+        (await this.scoped.db.matchupGamePlan.findMany({
+          where: { ourDeckId: deckId, formatId: deck.formatId, archivedAt: null },
+          select: { opponentRef: true },
+        })) as { opponentRef: string }[]
+      ).map((plan) => plan.opponentRef),
+    );
+
+    const rows = sortEntriesByTier(entries).map((entry) => {
+      const matched = games.filter((game) => gameMatchesEntry(game, entry)).map(toMatchupGame);
+      const aggregate = aggregateMatchup(matched);
+      const opponentRef = deriveEntryOpponentRef(entry);
+      return {
+        metaDeckEntryId: entry.id,
+        tier: entry.tier,
+        opponentSnapshotLabel: entry.opponentSnapshotLabel,
+        weightedWinRate: aggregate.weightedWinRate,
+        rawSampleCount: aggregate.rawSampleCount,
+        effectiveSample: aggregate.effectiveSample,
+        trustIndicator: aggregate.trustIndicator,
+        hasGamePlan: opponentRef !== null && planRefs.has(opponentRef),
+      } satisfies DeckMetaReadinessRow;
+    });
+
+    return { deckId, metaId: meta.id, metaName: meta.name, rows };
+  }
+
+  /**
+   * Resolve the meta for a readiness read: an explicit non-archived, same-team meta
+   * (→ 404 otherwise), or the current meta, or null when none is current.
+   */
+  private async resolveReadinessMeta(
+    metaId: string | undefined,
+  ): Promise<{ id: string; name: string } | null> {
+    if (metaId !== undefined) {
+      const meta = (await this.scoped.db.meta.findFirst({
+        where: { id: metaId, archivedAt: null },
+        select: { id: true, name: true },
+      })) as { id: string; name: string } | null;
+      if (!meta) {
+        throw new NotFoundException({
+          error: { code: errorCode.notFound, message: "Meta not found." },
+        });
+      }
+      return meta;
+    }
+    const candidates = (await this.scoped.db.meta.findMany({
+      where: { archivedAt: null },
+      select: { id: true, name: true, startDate: true, endDate: true, createdAt: true },
+    })) as ReadinessMetaCandidate[];
+    return resolveCurrentMeta(candidates, new Date());
+  }
+
   /** Best-effort deck-URL recognition (URL-pattern only, never a content fetch). */
   recognizeUrl(gameId: string, url: string): RecognizedDeckUrl {
     const entry = GAME_CATALOG.find((catalogEntry) => catalogEntry.id === gameId);
@@ -368,6 +510,58 @@ function toDeckSummary(deck: DeckRow): DeckSummary {
 
 function toDeckDetail(deck: DeckRow, linkedMetas: DeckLinkedMeta[]): DeckDetail {
   return { ...toDeckSummary(deck), notes: deck.notes, linkedMetas };
+}
+
+/** Order readiness rows by tier priority (as declared), then oldest entry first. */
+function sortEntriesByTier(entries: MetaEntryRow[]): MetaEntryRow[] {
+  return [...entries].sort((left, right) => {
+    const byTier = META_TIERS.indexOf(left.tier) - META_TIERS.indexOf(right.tier);
+    if (byTier !== 0) {
+      return byTier;
+    }
+    return left.createdAt.getTime() - right.createdAt.getTime();
+  });
+}
+
+/** Whether a game log's side-B identity matches a meta deck entry's single target form. */
+function gameMatchesEntry(game: GameLogReadinessRow, entry: MetaEntryRow): boolean {
+  if (entry.referenceDeckId !== null) {
+    return game.opponentDeckId === entry.referenceDeckId;
+  }
+  if (entry.heroId !== null) {
+    return game.heroId === entry.heroId;
+  }
+  if (entry.archetypeLabel !== null) {
+    return (
+      game.archetypeLabel !== null &&
+      game.archetypeLabel.trim().toLowerCase() === entry.archetypeLabel.trim().toLowerCase()
+    );
+  }
+  return false;
+}
+
+/**
+ * The normalized game-plan `opponentRef` for a meta deck entry's target, matching the
+ * game-plans keying (`hero:<id>` | `label:<lowercased>`). A reference-deck target has no
+ * game-plan opponent form (plans target a gauntlet entry / hero / archetype label, never
+ * a bare deck), so it returns null and never matches a plan.
+ */
+function deriveEntryOpponentRef(entry: MetaEntryRow): string | null {
+  if (entry.heroId !== null) {
+    return `hero:${entry.heroId}`;
+  }
+  if (entry.archetypeLabel !== null) {
+    return `label:${entry.archetypeLabel.trim().toLowerCase()}`;
+  }
+  return null;
+}
+
+/** Map a matched game log to the shared aggregation input (our-side outcome + weight). */
+function toMatchupGame(game: GameLogReadinessRow): MatchupGame {
+  return {
+    outcome: deriveGameOutcome({ gamesWonA: game.gamesWonA, gamesWonB: game.gamesWonB }),
+    weight: game.confidenceWeight,
+  };
 }
 
 function toIterationEntry(entry: {

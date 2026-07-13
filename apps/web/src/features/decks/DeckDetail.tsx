@@ -15,6 +15,7 @@ import { CommentThread } from "@/features/collaboration/CommentThread";
 
 import { GamePlanSection } from "@/features/gameplans/GamePlanSection";
 
+import { DeckReadinessSection } from "./DeckReadinessSection";
 import { DECK_VISIBILITY_LABELS } from "./deck-display";
 import { DeckForm } from "./DeckForm";
 import { DeckStatusControl } from "./DeckStatusControl";
@@ -156,6 +157,8 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
           <p className="whitespace-pre-wrap text-sm">{deck.notes}</p>
         </section>
       ) : null}
+
+      <DeckReadinessSection teamId={teamId} deckId={deck.id} />
 
       <IterationLog teamId={teamId} deckId={deck.id} canAddEntry={canModify} />
 

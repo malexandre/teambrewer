@@ -8,8 +8,11 @@ import {
   createDeck,
   createFormat,
   createGame,
+  createGameLog,
   createHero,
+  createMatchupGamePlan,
   createMeta,
+  createMetaDeckEntry,
   createTeam,
   createTestPrismaClient,
   createUser,
@@ -506,6 +509,138 @@ describe("Decks endpoints (integration)", () => {
         http().post(`/api/decks/${deck.id}/iteration-entries`),
       ).send({ body: "sneaky" });
       expect(response.status).toBe(403);
+    });
+  });
+
+  describe("GET /api/decks/:deckId/meta-readiness", () => {
+    it("computes the confidence-weighted read + plan presence for each meta deck entry", async () => {
+      const ourDeck = await createDeck(prisma, {
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+        name: "Ours",
+      });
+      const meta = await createMeta(prisma, { teamId: teamA.id, name: "July" });
+      const heroEntry = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        tier: "meta_defining",
+        heroId: fabHeroId,
+        opponentSnapshotLabel: "Dorinthea",
+      });
+      const archetypeEntry = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        tier: "contender",
+        archetypeLabel: "Aggro Red",
+        opponentSnapshotLabel: "Aggro Red",
+      });
+
+      // vs the hero: 2 wins, 1 loss, 1 draw — all weight 1. The draw counts only in
+      // raw N (excluded from the rate + effective sample). → rate 2/3, rawN 4, eff 3.
+      const winVsHero = { gamesWonA: 2, gamesWonB: 1 };
+      const lossVsHero = { gamesWonA: 0, gamesWonB: 2 };
+      const drawVsHero = { gamesWonA: 1, gamesWonB: 1 };
+      for (const result of [winVsHero, winVsHero, lossVsHero, drawVsHero]) {
+        await createGameLog(prisma, {
+          teamId: teamA.id,
+          loggedById: memberA.id,
+          formatId: fabFormatId,
+          pilotUserId: memberA.id,
+          deckId: ourDeck.id,
+          heroId: fabHeroId,
+          confidenceWeight: 1,
+          ...result,
+        });
+      }
+      // vs the archetype (matched case-insensitively): a single win.
+      await createGameLog(prisma, {
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        pilotUserId: memberA.id,
+        deckId: ourDeck.id,
+        archetypeLabel: "aggro red",
+        confidenceWeight: 1,
+        gamesWonA: 2,
+        gamesWonB: 0,
+      });
+      // A game-plan exists for the hero matchup only.
+      await createMatchupGamePlan(prisma, {
+        teamId: teamA.id,
+        ourDeckId: ourDeck.id,
+        formatId: fabFormatId,
+        updatedById: memberA.id,
+        opponentHeroId: fabHeroId,
+      });
+
+      const response = await asMemberA(
+        http().get(`/api/decks/${ourDeck.id}/meta-readiness`).query({ metaId: meta.id }),
+      );
+      expect(response.status).toBe(200);
+      expect(response.body.metaId).toBe(meta.id);
+      // Rows are tier-ordered: meta_defining (hero) before contender (archetype).
+      const [heroRow, archetypeRow] = response.body.rows;
+      expect(heroRow.metaDeckEntryId).toBe(heroEntry.id);
+      expect(heroRow.weightedWinRate).toBeCloseTo(0.6667, 4);
+      expect(heroRow.rawSampleCount).toBe(4);
+      expect(heroRow.effectiveSample).toBe(3);
+      expect(heroRow.trustIndicator).toBe("low");
+      expect(heroRow.hasGamePlan).toBe(true);
+
+      expect(archetypeRow.metaDeckEntryId).toBe(archetypeEntry.id);
+      expect(archetypeRow.weightedWinRate).toBe(1);
+      expect(archetypeRow.rawSampleCount).toBe(1);
+      expect(archetypeRow.hasGamePlan).toBe(false);
+    });
+
+    it("defaults to the current meta and returns an empty read when none is current", async () => {
+      const ourDeck = await createDeck(prisma, {
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+      });
+      // No meta at all → graceful empty read (no 404).
+      const empty = await asMemberA(http().get(`/api/decks/${ourDeck.id}/meta-readiness`));
+      expect(empty.status).toBe(200);
+      expect(empty.body.metaId).toBe("");
+      expect(empty.body.rows).toEqual([]);
+
+      // A current meta (default window contains today) is picked up without a metaId.
+      const meta = await createMeta(prisma, { teamId: teamA.id, name: "Current" });
+      await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        heroId: fabHeroId,
+        opponentSnapshotLabel: "Dorinthea",
+      });
+      const withCurrent = await asMemberA(http().get(`/api/decks/${ourDeck.id}/meta-readiness`));
+      expect(withCurrent.status).toBe(200);
+      expect(withCurrent.body.metaId).toBe(meta.id);
+      expect(withCurrent.body.rows).toHaveLength(1);
+    });
+
+    it("does not read another team's deck readiness (cross-tenant → 404)", async () => {
+      const bDeck = await createDeck(prisma, {
+        teamId: teamB.id,
+        ownerId: memberB.id,
+        formatId: fabFormatId,
+      });
+      const response = await asMemberA(http().get(`/api/decks/${bDeck.id}/meta-readiness`));
+      expect(response.status).toBe(404);
+    });
+
+    it("rejects a metaId from another team (cross-tenant → 404)", async () => {
+      const ourDeck = await createDeck(prisma, {
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+      });
+      const foreignMeta = await createMeta(prisma, { teamId: teamB.id });
+      const response = await asMemberA(
+        http().get(`/api/decks/${ourDeck.id}/meta-readiness`).query({ metaId: foreignMeta.id }),
+      );
+      expect(response.status).toBe(404);
     });
   });
 

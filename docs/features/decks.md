@@ -32,6 +32,13 @@ Reference decks represent opponent/meta archetypes for gauntlets.
   **defaults to linking the current meta** (editable); the deck detail lists its linked metas. The join is
   `DeckMeta` (see [metas.md](metas.md)); the API accepts `metaIds` on create/update (omitting it on create
   keeps the current-meta default, an explicit set — even empty — overrides it) and returns `linkedMetas`.
+- As a **member**, I can see a deck's **readiness vs the meta** on its detail page: one row per meta deck
+  entry with a confidence-weighted win rate + raw sample + a thin-data badge, and whether a matchup
+  game-plan exists (Tier-1 archetypes with no plan are flagged). This is a read-only derivation from
+  `GameLog` (reusing the kept matchup math — see [confidence-and-matchups.md](confidence-and-matchups.md)),
+  served by `GET /api/decks/:deckId/meta-readiness?metaId=` (defaults to the current meta). Game logs match
+  an entry when side A is this deck and side B matches the entry's target (reference deck / hero /
+  archetype label); a game log's optional `metaId` is not required (a later narrowing).
 
 ## Data
 
