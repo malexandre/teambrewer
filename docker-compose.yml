@@ -23,9 +23,24 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
+      NODE_ENV: production
       API_PORT: 3000
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
       DATABASE_URL: postgresql://teambrewer:${POSTGRES_PASSWORD:-teambrewer}@postgres:5432/teambrewer
+      # Required. Generate with `openssl rand -base64 32` and set in .env.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      # Public HTTPS URL the app is reached at (behind the TLS front proxy).
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:8080}
+      # Optional Discord SSO (ADR-0009); leave blank to disable.
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI:-}
+      # Rate-limit overrides (optional; code defaults apply when unset).
+      RATE_LIMIT_DEFAULT_LIMIT: ${RATE_LIMIT_DEFAULT_LIMIT:-300}
+      RATE_LIMIT_STRICT_LIMIT: ${RATE_LIMIT_STRICT_LIMIT:-20}
+      RATE_LIMIT_EXPENSIVE_LIMIT: ${RATE_LIMIT_EXPENSIVE_LIMIT:-60}
+      RATE_LIMIT_AUTH_MAX: ${RATE_LIMIT_AUTH_MAX:-300}
+      RATE_LIMIT_AUTH_SIGN_IN_MAX: ${RATE_LIMIT_AUTH_SIGN_IN_MAX:-10}
     depends_on:
       postgres:
         condition: service_healthy

@@ -19,6 +19,7 @@ sessions. **Read the relevant documents here before implementing anything.**
 | [`features/`](features/) | One spec per feature module (purpose, user stories, rules, edge cases) | You're implementing or changing a feature |
 | [`architecture/`](architecture/) | Tech stack, data model, multi-tenancy, API conventions, security, frontend, testing, game abstraction | You're making a technical decision |
 | [`decisions/`](decisions/) | Architecture Decision Records (ADRs) — the *why* behind the big calls | You want the rationale or are tempted to reverse a decision |
+| [`ops/`](ops/self-hosting.md) | Self-hosting runbook — deploy, TLS via a front proxy, env config, DB backup/restore | You're deploying or operating an instance |
 | [`plans/`](plans/README.md) | The modular, multi-session implementation roadmap | You're about to build a phase |
 
 ## The 60-second summary

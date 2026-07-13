@@ -16,4 +16,8 @@ ENV NODE_ENV=production
 # pnpm's symlink layout intact). Leaner production pruning is a phase-13 concern.
 COPY --from=build /repo ./
 EXPOSE 3000
-CMD ["node", "apps/api/dist/main.js"]
+# Apply pending migrations (idempotent, safe to re-run) before starting the
+# server, so a fresh `docker compose up` provisions the schema. Prisma reads the
+# config + DATABASE_URL from apps/api; `migrate deploy` never generates new
+# migrations, only applies committed ones.
+CMD ["sh", "-c", "cd apps/api && node_modules/.bin/prisma migrate deploy && cd /repo && exec node apps/api/dist/main.js"]
