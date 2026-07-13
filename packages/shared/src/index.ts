@@ -55,6 +55,8 @@ export {
   myTeamsResponseSchema,
   teamMemberSchema,
   teamMemberListSchema,
+  candidateUserSchema,
+  candidateUserListSchema,
   teamSummarySchema,
   teamListSchema,
   type CreateTeamInput,
@@ -64,9 +66,18 @@ export {
   type MyTeamsResponse,
   type TeamMember,
   type TeamMemberList,
+  type CandidateUser,
+  type CandidateUserList,
   type TeamSummary,
   type TeamList,
 } from "./teams.js";
+
+export {
+  gameSummarySchema,
+  gameSummaryListSchema,
+  type GameSummary,
+  type GameSummaryList,
+} from "./games.js";
 
 export {
   cardSummarySchema,

@@ -13,9 +13,11 @@ import {
   useAddMember,
   useAdminMembers,
   useAdminTeams,
+  useCandidateUsers,
   useChangeRole,
   useCreateTeam,
   useCreateUser,
+  useGameCatalog,
   useGenerateLink,
   useRemoveMember,
   useResetTwoFactor,
@@ -50,13 +52,20 @@ function CopyableLink({ link }: { link: GeneratedLink }) {
 
 function InstanceTeamsSection() {
   const teams = useAdminTeams(true);
+  const games = useGameCatalog();
   const createTeam = useCreateTeam();
   const [name, setName] = useState("");
-  const [gameId, setGameId] = useState("flesh-and-blood");
+  const [gameId, setGameId] = useState("");
+  const gameOptions = games.data?.data ?? [];
+  // Default to the first supported game once the catalog loads.
+  const selectedGameId = gameId || gameOptions[0]?.id || "";
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    createTeam.mutate({ name, gameId }, { onSuccess: () => setName("") });
+    if (!selectedGameId) {
+      return;
+    }
+    createTeam.mutate({ name, gameId: selectedGameId }, { onSuccess: () => setName("") });
   }
 
   return (
@@ -78,14 +87,22 @@ function InstanceTeamsSection() {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="team-game">Game</Label>
-            <Input
+            <select
               id="team-game"
-              value={gameId}
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={selectedGameId}
               onChange={(event) => setGameId(event.target.value)}
+              disabled={gameOptions.length === 0}
               required
-            />
+            >
+              {gameOptions.map((game) => (
+                <option key={game.id} value={game.id}>
+                  {game.name}
+                </option>
+              ))}
+            </select>
           </div>
-          <Button type="submit" disabled={createTeam.isPending}>
+          <Button type="submit" disabled={createTeam.isPending || !selectedGameId}>
             Create team
           </Button>
         </form>
@@ -170,24 +187,40 @@ function CreateUserForm({ teamId }: { teamId: string }) {
 
 function AddExistingMemberForm({ teamId }: { teamId: string }) {
   const addMember = useAddMember(teamId);
+  const candidates = useCandidateUsers(teamId);
   const [username, setUsername] = useState("");
   const [role, setRole] = useState<TeamRole>("member");
+  const candidateOptions = candidates.data?.data ?? [];
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    if (!username) {
+      return;
+    }
     addMember.mutate({ username, role }, { onSuccess: () => setUsername("") });
   }
 
   return (
     <form className="flex flex-wrap items-end gap-2" onSubmit={submit}>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="add-existing-username">Existing username</Label>
-        <Input
+        <Label htmlFor="add-existing-username">Existing account</Label>
+        <select
           id="add-existing-username"
+          className="h-9 min-w-56 rounded-md border border-input bg-background px-2 text-sm"
           value={username}
           onChange={(event) => setUsername(event.target.value)}
+          disabled={candidateOptions.length === 0}
           required
-        />
+        >
+          <option value="" disabled>
+            {candidateOptions.length === 0 ? "No accounts available" : "Select an account…"}
+          </option>
+          {candidateOptions.map((candidate) => (
+            <option key={candidate.id} value={candidate.username}>
+              {candidate.displayName} (@{candidate.username})
+            </option>
+          ))}
+        </select>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="add-existing-role">Role</Label>
@@ -201,7 +234,7 @@ function AddExistingMemberForm({ teamId }: { teamId: string }) {
           <option value="team_admin">Team admin</option>
         </select>
       </div>
-      <Button type="submit" disabled={addMember.isPending}>
+      <Button type="submit" disabled={addMember.isPending || !username}>
         Add member
       </Button>
       {addMember.isError ? (

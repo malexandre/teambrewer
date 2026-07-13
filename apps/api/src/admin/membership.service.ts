@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 
 import {
+  type CandidateUser,
   type CreateMembershipInput,
   errorCode,
   type TeamMember,
@@ -51,6 +52,28 @@ export class MembershipService {
       },
     });
     return memberships.map(toTeamMember);
+  }
+
+  /**
+   * List accounts that are NOT yet members of `teamId`, offered when adding an
+   * existing member. Returns only the identity fields the admin UI already shows
+   * (id/username/displayName) — no other PII. Only users that carry a username
+   * are eligible, since the add-member flow resolves the chosen user by username.
+   */
+  async listCandidateUsers(teamId: string): Promise<CandidateUser[]> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        username: { not: null },
+        memberships: { none: { teamId } },
+      },
+      orderBy: { displayName: "asc" },
+      select: { id: true, username: true, displayName: true },
+    });
+    return users
+      .filter((user): user is { id: string; username: string; displayName: string } =>
+        Boolean(user.username),
+      )
+      .map((user) => ({ id: user.id, username: user.username, displayName: user.displayName }));
   }
 
   async addMember(teamId: string, input: CreateMembershipInput): Promise<TeamMember> {

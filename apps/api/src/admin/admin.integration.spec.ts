@@ -265,6 +265,59 @@ describe("Admin endpoints (integration)", () => {
     });
   });
 
+  describe("candidate users (add-existing-member select)", () => {
+    it("lists accounts not already in the team, excluding its members", async () => {
+      const response = await http()
+        .get(`/api/admin/teams/${world.teamA.id}/members/candidate-users`)
+        .set("x-test-user-id", world.teamAdminA.id);
+      expect(response.status).toBe(200);
+      const usernames = response.body.data.map((user: { username: string }) => user.username);
+      // Members of team A are excluded; everyone else with a username is offered.
+      expect(usernames).not.toContain("admin_alpha");
+      expect(usernames).not.toContain("member_alpha");
+      expect(usernames).toContain("member_bravo");
+      expect(usernames).toContain("instance_admin");
+      // Only the non-PII identity fields are exposed.
+      expect(response.body.data[0]).toEqual({
+        id: expect.any(String),
+        username: expect.any(String),
+        displayName: expect.any(String),
+      });
+    });
+
+    it("forbids a plain member from listing candidate users (403)", async () => {
+      const response = await http()
+        .get(`/api/admin/teams/${world.teamA.id}/members/candidate-users`)
+        .set("x-test-user-id", world.memberA.id);
+      expect(response.status).toBe(403);
+    });
+
+    it("forbids a team-admin of A from listing team B's candidates (cross-team, 403)", async () => {
+      const response = await http()
+        .get(`/api/admin/teams/${world.teamB.id}/members/candidate-users`)
+        .set("x-test-user-id", world.teamAdminA.id);
+      expect(response.status).toBe(403);
+    });
+
+    it("lets an instance-admin list any team's candidates", async () => {
+      const response = await http()
+        .get(`/api/admin/teams/${world.teamB.id}/members/candidate-users`)
+        .set("x-test-user-id", world.instanceAdmin.id)
+        .set("x-test-instance-admin", "true");
+      expect(response.status).toBe(200);
+      const usernames = response.body.data.map((user: { username: string }) => user.username);
+      expect(usernames).not.toContain("member_bravo");
+      expect(usernames).toContain("member_alpha");
+    });
+
+    it("requires authentication (401)", async () => {
+      const response = await http().get(
+        `/api/admin/teams/${world.teamA.id}/members/candidate-users`,
+      );
+      expect(response.status).toBe(401);
+    });
+  });
+
   describe("invite link revocation", () => {
     it("revokes a member's outstanding invite link so it can no longer be used", async () => {
       const inviteTokens = new InviteTokenService(prisma as unknown as PrismaService);

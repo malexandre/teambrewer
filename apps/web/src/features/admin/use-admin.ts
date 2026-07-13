@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type AdminCreateUserInput,
   adminCreateUserResponseSchema,
+  candidateUserListSchema,
   type CreateTeamInput,
+  gameSummaryListSchema,
   type GeneratedLink,
   generatedLinkSchema,
   teamListSchema,
@@ -19,6 +21,26 @@ export function useAdminTeams(enabled: boolean) {
     queryKey: queryKeys.adminTeams(),
     queryFn: () => apiClient.get("/admin/teams", { schema: teamListSchema }),
     enabled,
+  });
+}
+
+/** The global supported-games catalog — drives the team-create Game select. */
+export function useGameCatalog() {
+  return useQuery({
+    queryKey: queryKeys.gameCatalog(),
+    queryFn: () => apiClient.get("/games", { schema: gameSummaryListSchema }),
+  });
+}
+
+/** Accounts not yet in the team — drives the add-existing-member select. */
+export function useCandidateUsers(teamId: string | undefined) {
+  return useQuery({
+    queryKey: teamId ? queryKeys.adminCandidateUsers(teamId) : ["admin", "candidate-users", "none"],
+    queryFn: () =>
+      apiClient.get(`/admin/teams/${teamId}/members/candidate-users`, {
+        schema: candidateUserListSchema,
+      }),
+    enabled: Boolean(teamId),
   });
 }
 
@@ -42,6 +64,8 @@ export function useAdminMembers(teamId: string | undefined) {
 function invalidateTeam(queryClient: ReturnType<typeof useQueryClient>, teamId: string) {
   void queryClient.invalidateQueries({ queryKey: queryKeys.adminMembers(teamId) });
   void queryClient.invalidateQueries({ queryKey: queryKeys.members(teamId) });
+  // Membership changes shift who is (not) already a member, so the candidate pool changes too.
+  void queryClient.invalidateQueries({ queryKey: queryKeys.adminCandidateUsers(teamId) });
 }
 
 export function useCreateUser(teamId: string) {

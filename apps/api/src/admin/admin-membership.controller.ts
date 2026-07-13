@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 
 import {
+  type CandidateUserList,
   createMembershipSchema,
   type TeamMember,
   type TeamMemberList,
@@ -33,6 +34,12 @@ export class AdminMembershipController {
   @Get()
   async list(@Param("teamId") teamId: string): Promise<TeamMemberList> {
     return { data: await this.membership.listMembers(teamId) };
+  }
+
+  /** Accounts not yet in this team — the choices for adding an existing member. */
+  @Get("candidate-users")
+  async listCandidateUsers(@Param("teamId") teamId: string): Promise<CandidateUserList> {
+    return { data: await this.membership.listCandidateUsers(teamId) };
   }
 
   @Post()

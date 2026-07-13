@@ -17,6 +17,7 @@ import { EventsModule } from "./events/events.module.js";
 import { GameConfigModule } from "./game-config/game-config.module.js";
 import { GamePlansModule } from "./game-plans/game-plans.module.js";
 import { GameLogsModule } from "./game-logs/game-logs.module.js";
+import { GamesModule } from "./games/games.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { MeModule } from "./me/me.module.js";
 import { MetasModule } from "./metas/metas.module.js";
@@ -43,6 +44,7 @@ import { TenancyModule } from "./tenancy/tenancy.module.js";
     EventsModule,
     GameConfigModule,
     GameLogsModule,
+    GamesModule,
     CollaborationModule,
     GamePlansModule,
     MetasModule,

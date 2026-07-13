@@ -75,6 +75,24 @@ export const teamMemberListSchema = z.object({
 });
 export type TeamMemberList = z.infer<typeof teamMemberListSchema>;
 
+/**
+ * A user who is NOT yet a member of a given team, offered as a choice when
+ * adding an existing account (`GET /api/admin/teams/:teamId/candidate-users`).
+ * Deliberately carries only the fields the admin add-member UI already shows —
+ * no other PII.
+ */
+export const candidateUserSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  displayName: displayNameSchema,
+});
+export type CandidateUser = z.infer<typeof candidateUserSchema>;
+
+export const candidateUserListSchema = z.object({
+  data: z.array(candidateUserSchema),
+});
+export type CandidateUserList = z.infer<typeof candidateUserListSchema>;
+
 /** A team as seen by an instance-admin managing the instance. */
 export const teamSummarySchema = z.object({
   id: z.string(),

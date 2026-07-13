@@ -14,6 +14,11 @@ export const queryKeys = {
 
   adminTeams: () => ["admin", "teams"] as const,
   adminMembers: (teamId: string) => ["admin", teamId, "members"] as const,
+  /** Accounts not yet in the team — choices for the add-existing-member select. */
+  adminCandidateUsers: (teamId: string) => ["admin", teamId, "candidate-users"] as const,
+
+  /** The global supported-games catalog (GET /api/games); not team-scoped. */
+  gameCatalog: () => ["games", "catalog"] as const,
 
   /**
    * Card reference data, keyed by the active team first so it is fetched for (and
