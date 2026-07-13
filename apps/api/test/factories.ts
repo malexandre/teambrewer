@@ -774,6 +774,86 @@ export async function createRetrospective(
 }
 
 /**
+ * Metas fixtures (meta-pivot redesign, WS-2). Team-owned; permissions are a shared
+ * team board (no owner column). A meta needs a `teamId`; a deck entry needs its
+ * `metaId`/`teamId`, a `tier`, and exactly one target form plus its derived
+ * `opponentSnapshotLabel`. Everything else defaults so isolation tests build one in
+ * a single call.
+ */
+
+type MetaTierValue = "meta_defining" | "contender" | "counter_meta" | "fringe";
+
+export interface CreateMetaOptions {
+  teamId: string;
+  name?: string;
+  startDate?: Date;
+  endDate?: Date;
+  description?: string;
+  archivedAt?: Date | null;
+}
+
+export interface TestMeta {
+  id: string;
+  teamId: string;
+  name: string;
+}
+
+export async function createMeta(
+  prisma: PrismaClient,
+  options: CreateMetaOptions,
+): Promise<TestMeta> {
+  const suffix = randomUUID().slice(0, 8);
+  const created = await prisma.meta.create({
+    data: {
+      teamId: options.teamId,
+      name: options.name ?? `Meta ${suffix}`,
+      startDate: options.startDate ?? new Date("2026-07-01T00:00:00.000Z"),
+      endDate: options.endDate ?? new Date("2026-08-01T00:00:00.000Z"),
+      description: options.description ?? "",
+      archivedAt: options.archivedAt ?? null,
+    },
+  });
+  return { id: created.id, teamId: created.teamId, name: created.name };
+}
+
+export interface CreateMetaDeckEntryOptions {
+  metaId: string;
+  teamId: string;
+  tier?: MetaTierValue;
+  referenceDeckId?: string | null;
+  heroId?: string | null;
+  archetypeLabel?: string | null;
+  opponentSnapshotLabel?: string;
+  notes?: string;
+}
+
+export async function createMetaDeckEntry(
+  prisma: PrismaClient,
+  options: CreateMetaDeckEntryOptions,
+): Promise<{ id: string; metaId: string; teamId: string; tier: string }> {
+  const archetypeLabel =
+    options.archetypeLabel ?? (options.referenceDeckId || options.heroId ? null : "Aggro Red");
+  const created = await prisma.metaDeckEntry.create({
+    data: {
+      metaId: options.metaId,
+      teamId: options.teamId,
+      tier: options.tier ?? "contender",
+      referenceDeckId: options.referenceDeckId ?? null,
+      heroId: options.heroId ?? null,
+      archetypeLabel,
+      opponentSnapshotLabel: options.opponentSnapshotLabel ?? archetypeLabel ?? "Target",
+      notes: options.notes ?? "",
+    },
+  });
+  return {
+    id: created.id,
+    metaId: created.metaId,
+    teamId: created.teamId,
+    tier: created.tier,
+  };
+}
+
+/**
  * The canonical two-team world for isolation tests: an instance-admin, plus
  * team A (with a team-admin and a member) and team B (with its own member).
  * `memberA` belongs only to team A and must never be able to reach team B.
