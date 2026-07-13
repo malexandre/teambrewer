@@ -6,11 +6,11 @@ import { createDatabaseClient, resetDatabase } from "../../test/database.js";
 import {
   addMembership,
   createDeck,
-  createEvent,
   createFormat,
   createGame,
   createGameLog,
   createHero,
+  createMeta,
   createTeam,
   createTestPrismaClient,
   createUser,
@@ -26,7 +26,7 @@ import type { PrismaClient } from "../generated/prisma/client.js";
  * Endpoint tests for game logging. The critical properties are the
  * server-authoritative confidence weight (never client-supplied), tenant isolation
  * (a team never reaches another team's logs, and a log cannot reference another
- * team's deck/event), the result/best-of and opponent-identity rules, logger/admin
+ * team's deck/meta), the result/best-of and opponent-identity rules, logger/admin
  * ownership on edits, and the aggregation feed (raw N + Σ weights) phase-07 builds
  * on. A two-team Flesh and Blood world plus a Riftbound game backs the suite.
  */
@@ -242,13 +242,82 @@ describe("Game-log endpoints (integration)", () => {
       expect(response.status).toBe(422);
     });
 
-    it("rejects an event belonging to another team (cross-team FK, 422)", async () => {
-      const eventB = await createEvent(prisma, { teamId: teamB.id, formatId: fabFormatId });
+    it("rejects a supplied meta belonging to another team (cross-team, 404)", async () => {
+      const metaB = await createMeta(prisma, { teamId: teamB.id });
       const response = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        eventId: eventB.id,
+        metaId: metaB.id,
       });
-      expect(response.status).toBe(422);
+      expect(response.status).toBe(404);
+    });
+
+    it("auto-suggests the meta whose window contains playedAt when metaId is omitted", async () => {
+      // Two same-team metas: only the July window contains the played-at date; the
+      // later-starting August window (latest startDate) must not win here.
+      const julyMeta = await createMeta(prisma, {
+        teamId: teamA.id,
+        startDate: new Date("2026-07-01T00:00:00.000Z"),
+        endDate: new Date("2026-07-31T00:00:00.000Z"),
+      });
+      await createMeta(prisma, {
+        teamId: teamA.id,
+        startDate: new Date("2026-08-01T00:00:00.000Z"),
+        endDate: new Date("2026-08-31T00:00:00.000Z"),
+      });
+      const response = await asMemberA(http().post("/api/game-logs")).send({
+        ...validGame(),
+        playedAt: "2026-07-15",
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.metaId).toBe(julyMeta.id);
+    });
+
+    it("auto-suggest picks the latest-starting window on overlap", async () => {
+      await createMeta(prisma, {
+        teamId: teamA.id,
+        startDate: new Date("2026-07-01T00:00:00.000Z"),
+        endDate: new Date("2026-08-31T00:00:00.000Z"),
+      });
+      const fresherMeta = await createMeta(prisma, {
+        teamId: teamA.id,
+        startDate: new Date("2026-07-10T00:00:00.000Z"),
+        endDate: new Date("2026-08-31T00:00:00.000Z"),
+      });
+      const response = await asMemberA(http().post("/api/game-logs")).send({
+        ...validGame(),
+        playedAt: "2026-07-15",
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.metaId).toBe(fresherMeta.id);
+    });
+
+    it("records no meta when metaId is null even if a window would match", async () => {
+      await createMeta(prisma, {
+        teamId: teamA.id,
+        startDate: new Date("2026-07-01T00:00:00.000Z"),
+        endDate: new Date("2026-07-31T00:00:00.000Z"),
+      });
+      const response = await asMemberA(http().post("/api/game-logs")).send({
+        ...validGame(),
+        playedAt: "2026-07-15",
+        metaId: null,
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.metaId).toBeNull();
+    });
+
+    it("auto-suggests null when no meta window contains playedAt", async () => {
+      await createMeta(prisma, {
+        teamId: teamA.id,
+        startDate: new Date("2026-01-01T00:00:00.000Z"),
+        endDate: new Date("2026-01-31T00:00:00.000Z"),
+      });
+      const response = await asMemberA(http().post("/api/game-logs")).send({
+        ...validGame(),
+        playedAt: "2026-07-15",
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.metaId).toBeNull();
     });
 
     it("persists impressive/underperforming cards with role and side", async () => {
@@ -304,8 +373,8 @@ describe("Game-log endpoints (integration)", () => {
   });
 
   describe("GET /api/game-logs", () => {
-    it("lists only the team's logs and filters by deck, hero, pilot, and event", async () => {
-      const event = await createEvent(prisma, { teamId: teamA.id, formatId: fabFormatId });
+    it("lists only the team's logs and filters by deck, hero, pilot, and meta", async () => {
+      const meta = await createMeta(prisma, { teamId: teamA.id });
       await createGameLog(prisma, {
         teamId: teamA.id,
         loggedById: memberA.id,
@@ -313,7 +382,7 @@ describe("Game-log endpoints (integration)", () => {
         pilotUserId: memberA.id,
         deckId: deckA.id,
         heroId: fabHeroId,
-        eventId: event.id,
+        metaId: meta.id,
       });
       await createGameLog(prisma, {
         teamId: teamA.id,
@@ -345,8 +414,8 @@ describe("Game-log endpoints (integration)", () => {
       const byPilot = await asMemberA(http().get(`/api/game-logs?pilotUserId=${memberA2.id}`));
       expect(byPilot.body.data).toHaveLength(1);
 
-      const byEvent = await asMemberA(http().get(`/api/game-logs?eventId=${event.id}`));
-      expect(byEvent.body.data).toHaveLength(1);
+      const byMeta = await asMemberA(http().get(`/api/game-logs?metaId=${meta.id}`));
+      expect(byMeta.body.data).toHaveLength(1);
     });
   });
 

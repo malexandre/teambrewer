@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { useDecks } from "@/features/decks/use-decks";
-import { useEvents } from "@/features/events/use-events";
+import { useCurrentMeta, useMetas } from "@/features/metas/use-metas";
 import { useMembers } from "@/features/teams/use-members";
 import { ApiError } from "@/lib/api-client";
 
@@ -66,7 +66,8 @@ export function GameLogWizard({
   const { data: teamDecks } = useDecks(teamId, {});
   const { data: referenceDecks } = useDecks(teamId, { isReference: true });
   const { data: members } = useMembers(teamId);
-  const { data: events } = useEvents(teamId, {});
+  const { data: metas } = useMetas(teamId);
+  const { data: currentMeta, isPending: currentMetaPending } = useCurrentMeta(teamId);
 
   const initialOpponent = opponentStateFromLog(gameLog);
 
@@ -80,8 +81,7 @@ export function GameLogWizard({
         gameLog.underperformingCards.length > 0 ||
         gameLog.learnings.trim().length > 0 ||
         Boolean(gameLog.winType) ||
-        Boolean(gameLog.lossReason) ||
-        Boolean(gameLog.eventId)
+        Boolean(gameLog.lossReason)
       : false,
   );
 
@@ -109,7 +109,14 @@ export function GameLogWizard({
   const [learnings, setLearnings] = useState(gameLog?.learnings ?? "");
   const [winType, setWinType] = useState<WinType | "">(gameLog?.winType ?? "");
   const [lossReason, setLossReason] = useState<LossReason | "">(gameLog?.lossReason ?? "");
-  const [eventId, setEventId] = useState(gameLog?.eventId ?? "");
+  // The meta this game counts toward. `undefined` = not yet initialized (create mode,
+  // before the current meta resolves) → the payload omits `metaId` and the server
+  // auto-suggests from `playedAt`. `""` = the member explicitly chose "No meta" → the
+  // payload sends `metaId: null`. A concrete id is sent as-is. On edit it seeds from
+  // the stored meta (its auto-suggested value included).
+  const [metaId, setMetaId] = useState<string | undefined>(
+    gameLog ? (gameLog.metaId ?? "") : undefined,
+  );
   const [impressiveCards, setImpressiveCards] = useState<GameLogCardInput[]>(
     gameLog?.impressiveCards.map((entry) => ({ cardId: entry.card.id, side: entry.side })) ?? [],
   );
@@ -151,6 +158,18 @@ export function GameLogWizard({
       setGamesWonB(0);
     }
   }, [defaultBestOf, isEditing]);
+
+  // In create mode, default the meta link to the current meta once it resolves (mirrors
+  // the server's auto-suggest for a game played today), leaving the member free to
+  // change or clear it. `""` when no meta is current. Never runs on edit.
+  useEffect(() => {
+    if (isEditing || metaId !== undefined) return;
+    if (currentMeta) {
+      setMetaId(currentMeta.id);
+    } else if (!currentMetaPending) {
+      setMetaId("");
+    }
+  }, [isEditing, metaId, currentMeta, currentMetaPending]);
 
   function setFactor<Value extends string>(
     field: ConfidenceFactorField<Value>,
@@ -290,7 +309,8 @@ export function GameLogWizard({
       learnings,
       impressiveCards,
       underperformingCards,
-      ...(eventId ? { eventId } : {}),
+      // Omit while uninitialized (server auto-suggests); send null when explicitly cleared.
+      ...(metaId === undefined ? {} : { metaId: metaId === "" ? null : metaId }),
       ...(winType ? { winType } : {}),
       ...(lossReason ? { lossReason } : {}),
     };
@@ -301,7 +321,7 @@ export function GameLogWizard({
   const deckOptions = teamDecks?.data ?? [];
   const referenceDeckOptions = referenceDecks?.data ?? [];
   const memberOptions = members?.data ?? [];
-  const eventOptions = events?.data ?? [];
+  const metaOptions = metas?.data ?? [];
 
   return (
     <div className="flex flex-col gap-5">
@@ -380,9 +400,9 @@ export function GameLogWizard({
           memberOptions={memberOptions}
           externalOpponentName={externalOpponentName}
           setExternalOpponentName={setExternalOpponentName}
-          eventId={eventId}
-          setEventId={setEventId}
-          eventOptions={eventOptions}
+          metaId={metaId ?? ""}
+          setMetaId={setMetaId}
+          metaOptions={metaOptions}
           winType={winType}
           setWinType={setWinType}
           lossReason={lossReason}

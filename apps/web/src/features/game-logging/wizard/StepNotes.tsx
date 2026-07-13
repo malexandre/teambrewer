@@ -1,9 +1,9 @@
 import {
   type CardSummary,
-  type EventSummary,
   type GameLogCardInput,
   type LossReason,
   lossReasonSchema,
+  type MetaSummary,
   type TeamMember,
   type WinType,
   winTypeSchema,
@@ -32,9 +32,9 @@ export function StepNotes({
   memberOptions,
   externalOpponentName,
   setExternalOpponentName,
-  eventId,
-  setEventId,
-  eventOptions,
+  metaId,
+  setMetaId,
+  metaOptions,
   winType,
   setWinType,
   lossReason,
@@ -58,9 +58,9 @@ export function StepNotes({
   memberOptions: TeamMember[];
   externalOpponentName: string;
   setExternalOpponentName: (name: string) => void;
-  eventId: string;
-  setEventId: (eventId: string) => void;
-  eventOptions: EventSummary[];
+  metaId: string;
+  setMetaId: (metaId: string) => void;
+  metaOptions: MetaSummary[];
   winType: WinType | "";
   setWinType: (winType: WinType | "") => void;
   lossReason: LossReason | "";
@@ -120,17 +120,17 @@ export function StepNotes({
         ) : null}
 
         <div className="flex flex-col gap-1">
-          <Label htmlFor="game-event">Event (optional)</Label>
+          <Label htmlFor="game-meta">Meta (optional)</Label>
           <select
-            id="game-event"
+            id="game-meta"
             className={SELECT_CLASS}
-            value={eventId}
-            onChange={(event) => setEventId(event.target.value)}
+            value={metaId}
+            onChange={(event) => setMetaId(event.target.value)}
           >
-            <option value="">No event</option>
-            {eventOptions.map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.name}
+            <option value="">No meta</option>
+            {metaOptions.map((meta) => (
+              <option key={meta.id} value={meta.id}>
+                {meta.name}
               </option>
             ))}
           </select>

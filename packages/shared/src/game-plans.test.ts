@@ -13,14 +13,6 @@ describe("createMatchupGamePlanSchema", () => {
     body: "Mulligan for Command and Conquer; sequence attacks before defense reactions.",
   };
 
-  it("accepts a plan targeting exactly one opponent form (gauntlet entry)", () => {
-    const parsed = createMatchupGamePlanSchema.parse({
-      ...base,
-      opponentGauntletEntryId: "gauntlet_1",
-    });
-    expect(parsed.opponentGauntletEntryId).toBe("gauntlet_1");
-  });
-
   it("accepts a plan targeting a bare hero", () => {
     const parsed = createMatchupGamePlanSchema.parse({ ...base, opponentHeroId: "hero_1" });
     expect(parsed.opponentHeroId).toBe("hero_1");

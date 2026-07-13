@@ -491,7 +491,6 @@ model Event {
 
   gauntletEntries GauntletEntry[]
   attendances     Attendance[]
-  gameLogs        GameLog[]
   deckSelections  DeckSelection[]
   retrospective   Retrospective?
 
@@ -523,8 +522,6 @@ model GauntletEntry {
   team          Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
   referenceDeck Deck? @relation(fields: [referenceDeckId], references: [id], onDelete: SetNull)
   hero          Hero? @relation(fields: [heroId], references: [id], onDelete: SetNull)
-
-  matchupGamePlans MatchupGamePlan[]
 
   @@index([eventId])
   @@index([teamId])
@@ -621,7 +618,6 @@ model GameLog {
   teamId     String   @map("team_id")
   loggedById String   @map("logged_by_id")
   formatId   String   @map("format_id")
-  eventId    String?  @map("event_id")
   metaId     String?  @map("meta_id")
   playedAt   DateTime @map("played_at")
 
@@ -658,7 +654,6 @@ model GameLog {
   team          Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
   loggedBy      User          @relation("GameLogLoggedBy", fields: [loggedById], references: [id], onDelete: Cascade)
   format        Format        @relation(fields: [formatId], references: [id])
-  event         Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
   meta          Meta?         @relation(fields: [metaId], references: [id], onDelete: SetNull)
   pilot         User          @relation("GameLogPilot", fields: [pilotUserId], references: [id], onDelete: Cascade)
   deck          Deck          @relation("GameLogDeck", fields: [deckId], references: [id], onDelete: Cascade)
@@ -669,7 +664,6 @@ model GameLog {
 
   @@index([teamId])
   @@index([teamId, formatId])
-  @@index([teamId, eventId])
   @@index([teamId, metaId])
   @@index([teamId, deckId])
   @@index([teamId, heroId])
@@ -824,13 +818,12 @@ model ActivityEvent {
 // team-scoped parent event, like Attendance. Key cards are no longer a structured
 // child table (meta-pivot redesign, WS-4): they live inline in the plan `body` as
 // +[[cardId]] tokens (see packages/shared/src/card-tokens.ts). The opponent is
-// exactly one of a gauntlet entry,
-// a bare hero, or a free-text archetype label; opponentSnapshotLabel is a
-// server-derived human label resolved at write time that survives deletion of the
-// referenced gauntlet entry/hero, and opponentRef is a normalized key
-// (gauntlet:<id> | hero:<id> | label:<lowercased>) so the one-canonical-plan
-// uniqueness can be enforced across the polymorphic target (Postgres treats NULLs
-// as distinct, so a unique index over the three nullable columns would not).
+// exactly one of a bare hero or a free-text archetype label; opponentSnapshotLabel
+// is a server-derived human label resolved at write time that survives deletion of
+// the referenced hero, and opponentRef is a normalized key
+// (hero:<id> | label:<lowercased>) so the one-canonical-plan uniqueness can be
+// enforced across the polymorphic target (Postgres treats NULLs as distinct, so a
+// unique index over the two nullable columns would not).
 // ---------------------------------------------------------------------------
 
 /// A written, living guide for one matchup (our deck × an opponent archetype) —
@@ -841,7 +834,6 @@ model MatchupGamePlan {
   teamId                  String    @map("team_id")
   ourDeckId               String    @map("our_deck_id")
   formatId                String    @map("format_id")
-  opponentGauntletEntryId String?   @map("opponent_gauntlet_entry_id")
   opponentHeroId          String?   @map("opponent_hero_id")
   opponentArchetypeLabel  String?   @map("opponent_archetype_label")
   opponentRef             String    @map("opponent_ref")
@@ -855,7 +847,6 @@ model MatchupGamePlan {
   team                  Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
   ourDeck               Deck           @relation(fields: [ourDeckId], references: [id], onDelete: Cascade)
   format                Format         @relation(fields: [formatId], references: [id])
-  opponentGauntletEntry GauntletEntry? @relation(fields: [opponentGauntletEntryId], references: [id], onDelete: SetNull)
   opponentHero          Hero?          @relation(fields: [opponentHeroId], references: [id], onDelete: SetNull)
   updatedBy             User           @relation("MatchupGamePlanUpdatedBy", fields: [updatedById], references: [id], onDelete: Cascade)
 

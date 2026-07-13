@@ -26,6 +26,7 @@ import {
 import { CollaborationActivityService } from "../collaboration/activity.service.js";
 import { decodeKeysetCursor, encodeKeysetCursor } from "../common/keyset-cursor.js";
 import { assertFormatInGame, assertHeroInGame } from "../common/reference-data-guards.js";
+import { resolveCurrentMeta } from "../metas/current-meta.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 import { canModifyGameLog } from "./game-log-authorization.js";
@@ -36,7 +37,7 @@ interface GameLogRow {
   teamId: string;
   loggedById: string;
   formatId: string;
-  eventId: string | null;
+  metaId: string | null;
   playedAt: Date;
   pilotUserId: string;
   deckId: string;
@@ -102,7 +103,7 @@ export class GameLogsService {
 
     const andClauses: Record<string, unknown>[] = [];
     if (query.formatId) andClauses.push({ formatId: query.formatId });
-    if (query.eventId) andClauses.push({ eventId: query.eventId });
+    if (query.metaId) andClauses.push({ metaId: query.metaId });
     if (query.deckId) {
       andClauses.push({ OR: [{ deckId: query.deckId }, { opponentDeckId: query.deckId }] });
     }
@@ -153,9 +154,8 @@ export class GameLogsService {
   async create(team: TeamContext, input: CreateGameLogInput): Promise<GameLogDetail> {
     await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
     this.assertResultConsistent(input.bestOf, input.result);
-    if (input.eventId !== undefined) {
-      await this.assertEventInTeam(input.eventId);
-    }
+    const playedAt = input.playedAt ? new Date(input.playedAt) : new Date();
+    const metaId = await this.resolveMetaId(input.metaId, playedAt);
     await this.assertTeamMember(input.sideA.pilotUserId, "Our pilot is not a member of this team.");
     await this.assertTeamDeck(input.sideA.deckId, "Our deck does not belong to this team.");
     const sideB = await this.resolveSideB(team.gameId, input.sideB);
@@ -174,8 +174,8 @@ export class GameLogsService {
         teamId: team.teamId,
         loggedById: team.userId,
         formatId: input.formatId,
-        eventId: input.eventId ?? null,
-        playedAt: input.playedAt ? new Date(input.playedAt) : new Date(),
+        metaId,
+        playedAt,
         pilotUserId: input.sideA.pilotUserId,
         deckId: input.sideA.deckId,
         opponentPilotUserId: sideB.opponentPilotUserId,
@@ -220,11 +220,11 @@ export class GameLogsService {
       await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
       data["formatId"] = input.formatId;
     }
-    if (input.eventId !== undefined) {
-      if (input.eventId !== null) {
-        await this.assertEventInTeam(input.eventId);
+    if (input.metaId !== undefined) {
+      if (input.metaId !== null) {
+        await this.assertMetaInTeam(input.metaId);
       }
-      data["eventId"] = input.eventId;
+      data["metaId"] = input.metaId;
     }
     if (input.playedAt !== undefined) data["playedAt"] = new Date(input.playedAt);
     if (input.sideA !== undefined) {
@@ -355,19 +355,39 @@ export class GameLogsService {
     }
   }
 
-  /** Reject an `eventId` that does not belong to the team (cross-team FK → 422). */
-  private async assertEventInTeam(eventId: string): Promise<void> {
-    const event = await this.scoped.db.event.findFirst({
-      where: { id: eventId },
+  /**
+   * Resolve the meta a created log counts toward. When the client supplies a `metaId`
+   * it is honored (a supplied id is validated same-team; `null` records no meta). When
+   * omitted (`undefined`), the meta whose window contains `playedAt` is auto-suggested
+   * via the shared current-meta rule (latest `startDate` wins on overlap; null if none).
+   */
+  private async resolveMetaId(
+    suppliedMetaId: string | null | undefined,
+    playedAt: Date,
+  ): Promise<string | null> {
+    if (suppliedMetaId === null) {
+      return null;
+    }
+    if (suppliedMetaId !== undefined) {
+      await this.assertMetaInTeam(suppliedMetaId);
+      return suppliedMetaId;
+    }
+    // Auto-suggest from the (team-scoped, non-archived) metas as of playedAt.
+    const candidates = (await this.scoped.db.meta.findMany({
+      where: { archivedAt: null },
+      select: { id: true, startDate: true, endDate: true, createdAt: true },
+    })) as { id: string; startDate: Date; endDate: Date; createdAt: Date }[];
+    return resolveCurrentMeta(candidates, playedAt)?.id ?? null;
+  }
+
+  /** Reject a `metaId` that does not belong to the team (cross-team FK → 404). */
+  private async assertMetaInTeam(metaId: string): Promise<void> {
+    const meta = await this.scoped.db.meta.findFirst({
+      where: { id: metaId },
       select: { id: true },
     });
-    if (!event) {
-      throw new UnprocessableEntityException({
-        error: {
-          code: errorCode.domainRuleViolation,
-          message: "Event does not belong to this team.",
-        },
-      });
+    if (!meta) {
+      throw metaNotFound();
     }
   }
 
@@ -553,12 +573,18 @@ function gameLogNotFound(): NotFoundException {
   });
 }
 
+function metaNotFound(): NotFoundException {
+  return new NotFoundException({
+    error: { code: errorCode.notFound, message: "Meta not found." },
+  });
+}
+
 function toGameLogSummary(row: GameLogRow): GameLogSummary {
   return {
     id: row.id,
     loggedById: row.loggedById,
     formatId: row.formatId,
-    eventId: row.eventId,
+    metaId: row.metaId,
     playedAt: row.playedAt.toISOString(),
     sideA: { pilotUserId: row.pilotUserId, deckId: row.deckId },
     sideB: {

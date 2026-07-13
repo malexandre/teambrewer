@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 
 import { useHeroes } from "@/features/cards/use-heroes";
 import { useDecks } from "@/features/decks/use-decks";
-import { useEvents } from "@/features/events/use-events";
+import { useMetas } from "@/features/metas/use-metas";
 import { useMembers } from "@/features/teams/use-members";
 
 import {
@@ -40,7 +40,7 @@ export function GameList({ teamId }: { teamId: string | undefined }) {
   const { data: decks } = useDecks(teamId, {});
   const { data: heroes } = useHeroes(teamId);
   const { data: members } = useMembers(teamId);
-  const { data: events } = useEvents(teamId, {});
+  const { data: metas } = useMetas(teamId);
 
   const maps: GameLogLabelMaps = useMemo(
     () => ({
@@ -53,7 +53,7 @@ export function GameList({ teamId }: { teamId: string | undefined }) {
 
   const deckOptions = decks?.data ?? [];
   const heroOptions = heroes?.data ?? [];
-  const eventOptions = events?.data ?? [];
+  const metaOptions = metas?.data ?? [];
 
   return (
     <section className="flex flex-col gap-3">
@@ -90,16 +90,16 @@ export function GameList({ teamId }: { teamId: string | undefined }) {
         </select>
         <select
           className={SELECT_CLASS}
-          value={filters.eventId ?? ""}
+          value={filters.metaId ?? ""}
           onChange={(event) =>
-            setFilters((current) => withFilter(current, "eventId", event.target.value))
+            setFilters((current) => withFilter(current, "metaId", event.target.value))
           }
-          aria-label="Filter by event"
+          aria-label="Filter by meta"
         >
-          <option value="">All events</option>
-          {eventOptions.map((event) => (
-            <option key={event.id} value={event.id}>
-              {event.name}
+          <option value="">All metas</option>
+          {metaOptions.map((meta) => (
+            <option key={meta.id} value={meta.id}>
+              {meta.name}
             </option>
           ))}
         </select>

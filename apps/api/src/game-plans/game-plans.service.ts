@@ -34,7 +34,6 @@ interface GamePlanRow {
   teamId: string;
   ourDeckId: string;
   formatId: string;
-  opponentGauntletEntryId: string | null;
   opponentHeroId: string | null;
   opponentArchetypeLabel: string | null;
   opponentRef: string;
@@ -49,7 +48,6 @@ interface GamePlanRow {
 
 /** The resolved opponent columns + normalized key + human snapshot label, ready to persist. */
 interface ResolvedOpponent {
-  opponentGauntletEntryId: string | null;
   opponentHeroId: string | null;
   opponentArchetypeLabel: string | null;
   opponentRef: string;
@@ -140,7 +138,6 @@ export class GamePlansService {
         updatedById: team.userId,
         ourDeckId: input.ourDeckId,
         formatId: input.formatId,
-        opponentGauntletEntryId: opponent.opponentGauntletEntryId,
         opponentHeroId: opponent.opponentHeroId,
         opponentArchetypeLabel: opponent.opponentArchetypeLabel,
         opponentRef: opponent.opponentRef,
@@ -216,52 +213,20 @@ export class GamePlansService {
   /**
    * Resolve the single opponent target (already exactly-one-of by the schema) into its
    * persisted columns, a normalized `opponentRef` key (so uniqueness holds across the
-   * polymorphic target), and a human `opponentSnapshotLabel`. A gauntlet entry must
-   * belong to the team (→ 422); a hero must belong to the team's game (→ 404).
+   * polymorphic target), and a human `opponentSnapshotLabel`. A hero must belong to the
+   * team's game (→ 404).
    */
   private async resolveOpponent(
     gameId: string,
     input: {
-      opponentGauntletEntryId?: string | undefined;
       opponentHeroId?: string | undefined;
       opponentArchetypeLabel?: string | undefined;
     },
   ): Promise<ResolvedOpponent> {
     const empty = {
-      opponentGauntletEntryId: null,
       opponentHeroId: null,
       opponentArchetypeLabel: null,
     };
-
-    if (input.opponentGauntletEntryId !== undefined) {
-      const entry = (await this.scoped.db.gauntletEntry.findFirst({
-        where: { id: input.opponentGauntletEntryId },
-        include: {
-          referenceDeck: { select: { name: true } },
-          hero: { select: { name: true } },
-        },
-      })) as {
-        referenceDeck: { name: string } | null;
-        hero: { name: string } | null;
-        archetypeLabel: string | null;
-      } | null;
-      if (!entry) {
-        throw new UnprocessableEntityException({
-          error: {
-            code: errorCode.domainRuleViolation,
-            message: "The gauntlet entry does not belong to this team.",
-          },
-        });
-      }
-      const label =
-        entry.referenceDeck?.name ?? entry.hero?.name ?? entry.archetypeLabel ?? "Gauntlet target";
-      return {
-        ...empty,
-        opponentGauntletEntryId: input.opponentGauntletEntryId,
-        opponentRef: `gauntlet:${input.opponentGauntletEntryId}`,
-        opponentSnapshotLabel: label,
-      };
-    }
 
     if (input.opponentHeroId !== undefined) {
       await assertHeroInGame(this.scoped.db, gameId, input.opponentHeroId);
@@ -336,7 +301,6 @@ function toMatchupGamePlan(row: GamePlanRow): MatchupGamePlan {
     ourDeckId: row.ourDeckId,
     ourDeckName: row.ourDeck.name,
     formatId: row.formatId,
-    opponentGauntletEntryId: row.opponentGauntletEntryId,
     opponentHeroId: row.opponentHeroId,
     opponentArchetypeLabel: row.opponentArchetypeLabel,
     opponentRef: row.opponentRef,

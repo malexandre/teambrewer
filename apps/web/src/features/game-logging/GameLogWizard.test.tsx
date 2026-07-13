@@ -93,7 +93,10 @@ function mockApi(options: { onCreate?: (body: unknown) => void } = {}) {
         ],
       });
     }
-    if (url.includes("/api/events")) {
+    if (url.includes("/api/metas/current")) {
+      return json({}, 404);
+    }
+    if (url.includes("/api/metas")) {
       return json({ data: [], nextCursor: null });
     }
     if (url.includes("/api/decks")) {
@@ -128,7 +131,7 @@ function mockApi(options: { onCreate?: (body: unknown) => void } = {}) {
           id: "game-new",
           loggedById: "user-me",
           formatId: "fmt-cc",
-          eventId: null,
+          metaId: null,
           playedAt: "2026-07-12T00:00:00.000Z",
           sideA: { pilotUserId: "user-me", deckId: "deck-ours" },
           sideB: {
@@ -264,7 +267,7 @@ describe("GameLogWizard", () => {
       id: "game-existing",
       loggedById: "user-me",
       formatId: "fmt-cc",
-      eventId: null,
+      metaId: null,
       playedAt: "2026-07-10T00:00:00.000Z",
       sideA: { pilotUserId: "user-me", deckId: "deck-ours" },
       sideB: {

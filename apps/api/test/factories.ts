@@ -433,7 +433,7 @@ export interface CreateGameLogOptions {
   formatId: string;
   pilotUserId: string;
   deckId: string;
-  eventId?: string | null;
+  metaId?: string | null;
   playedAt?: Date;
   opponentPilotUserId?: string | null;
   externalOpponentName?: string | null;
@@ -473,7 +473,7 @@ export async function createGameLog(
       teamId: options.teamId,
       loggedById: options.loggedById,
       formatId: options.formatId,
-      eventId: options.eventId ?? null,
+      metaId: options.metaId ?? null,
       playedAt: options.playedAt ?? new Date("2026-07-01T00:00:00.000Z"),
       pilotUserId: options.pilotUserId,
       deckId: options.deckId,
@@ -618,7 +618,6 @@ export interface CreateMatchupGamePlanOptions {
   formatId: string;
   updatedById: string;
   opponentHeroId?: string | null;
-  opponentGauntletEntryId?: string | null;
   opponentArchetypeLabel?: string | null;
   opponentRef?: string;
   opponentSnapshotLabel?: string;
@@ -630,31 +629,21 @@ export async function createMatchupGamePlan(
   prisma: PrismaClient,
   options: CreateMatchupGamePlanOptions,
 ): Promise<{ id: string; teamId: string; ourDeckId: string; opponentRef: string }> {
-  const label =
-    options.opponentArchetypeLabel ??
-    (options.opponentHeroId
-      ? "Hero"
-      : options.opponentGauntletEntryId
-        ? "Gauntlet target"
-        : "Aggro Red");
+  const label = options.opponentArchetypeLabel ?? (options.opponentHeroId ? "Hero" : "Aggro Red");
   const opponentRef =
     options.opponentRef ??
-    (options.opponentGauntletEntryId
-      ? `gauntlet:${options.opponentGauntletEntryId}`
-      : options.opponentHeroId
-        ? `hero:${options.opponentHeroId}`
-        : `label:${(options.opponentArchetypeLabel ?? "Aggro Red").trim().toLowerCase()}`);
+    (options.opponentHeroId
+      ? `hero:${options.opponentHeroId}`
+      : `label:${(options.opponentArchetypeLabel ?? "Aggro Red").trim().toLowerCase()}`);
   const created = await prisma.matchupGamePlan.create({
     data: {
       teamId: options.teamId,
       ourDeckId: options.ourDeckId,
       formatId: options.formatId,
       updatedById: options.updatedById,
-      opponentGauntletEntryId: options.opponentGauntletEntryId ?? null,
       opponentHeroId: options.opponentHeroId ?? null,
       opponentArchetypeLabel:
-        options.opponentArchetypeLabel ??
-        (options.opponentHeroId || options.opponentGauntletEntryId ? null : "Aggro Red"),
+        options.opponentArchetypeLabel ?? (options.opponentHeroId ? null : "Aggro Red"),
       opponentRef,
       opponentSnapshotLabel: options.opponentSnapshotLabel ?? label,
       body: options.body ?? "Mulligan aggressively; race the clock.",

@@ -7,10 +7,8 @@ import {
   addMembership,
   createCard,
   createDeck,
-  createEvent,
   createFormat,
   createGame,
-  createGauntletEntry,
   createHero,
   createMatchupGamePlan,
   createTeam,
@@ -185,25 +183,6 @@ describe("Game-plans endpoints (integration)", () => {
         formatId: riftFormatId,
       });
       expect(response.status).toBe(404);
-    });
-
-    it("resolves a gauntlet-entry opponent to its archetype label", async () => {
-      const event = await createEvent(prisma, { teamId: teamA.id, formatId: fabFormatId });
-      const entry = await createGauntletEntry(prisma, {
-        eventId: event.id,
-        teamId: teamA.id,
-        archetypeLabel: "Aggro Fai",
-      });
-      const response = await asMemberA(http().post("/api/game-plans")).send({
-        ourDeckId: deckA.id,
-        formatId: fabFormatId,
-        opponentGauntletEntryId: entry.id,
-        body: "Play to the board; respect Fai's on-hits.",
-      });
-      expect(response.status).toBe(201);
-      expect(response.body.opponentGauntletEntryId).toBe(entry.id);
-      expect(response.body.opponentSnapshotLabel).toBe("Aggro Fai");
-      expect(response.body.opponentRef).toBe(`gauntlet:${entry.id}`);
     });
   });
 

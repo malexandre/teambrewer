@@ -12,7 +12,7 @@ import { queryKeys } from "@/lib/query-keys";
 /** The filters the game-log list supports (a subset of the API query params). */
 export interface GameFilters {
   formatId?: string;
-  eventId?: string;
+  metaId?: string;
   deckId?: string;
   heroId?: string;
   pilotUserId?: string;
@@ -22,7 +22,7 @@ export interface GameFilters {
 function toKeyFilters(filters: GameFilters): Record<string, string> {
   const keyFilters: Record<string, string> = {};
   if (filters.formatId) keyFilters["formatId"] = filters.formatId;
-  if (filters.eventId) keyFilters["eventId"] = filters.eventId;
+  if (filters.metaId) keyFilters["metaId"] = filters.metaId;
   if (filters.deckId) keyFilters["deckId"] = filters.deckId;
   if (filters.heroId) keyFilters["heroId"] = filters.heroId;
   if (filters.pilotUserId) keyFilters["pilotUserId"] = filters.pilotUserId;
@@ -32,7 +32,7 @@ function toKeyFilters(filters: GameFilters): Record<string, string> {
 function toQueryString(filters: GameFilters): string {
   const params = new URLSearchParams();
   if (filters.formatId) params.set("formatId", filters.formatId);
-  if (filters.eventId) params.set("eventId", filters.eventId);
+  if (filters.metaId) params.set("metaId", filters.metaId);
   if (filters.deckId) params.set("deckId", filters.deckId);
   if (filters.heroId) params.set("heroId", filters.heroId);
   if (filters.pilotUserId) params.set("pilotUserId", filters.pilotUserId);

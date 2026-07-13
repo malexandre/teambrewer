@@ -36,14 +36,9 @@ export const gamePlanBodySchema = z
 // --- Opponent target (exactly one form) -------------------------------------
 
 /** The opponent target forms; exactly one must be provided on a game-plan. */
-const opponentRefKeys = [
-  "opponentGauntletEntryId",
-  "opponentHeroId",
-  "opponentArchetypeLabel",
-] as const;
+const opponentRefKeys = ["opponentHeroId", "opponentArchetypeLabel"] as const;
 
 function countPresentOpponentRefs(value: {
-  opponentGauntletEntryId?: unknown;
   opponentHeroId?: unknown;
   opponentArchetypeLabel?: unknown;
 }): number {
@@ -53,24 +48,22 @@ function countPresentOpponentRefs(value: {
 // --- Inputs -----------------------------------------------------------------
 
 /**
- * Create-game-plan input. Names exactly one opponent target form — a gauntlet entry,
- * a bare hero, or a free-text archetype label — plus our deck, the format, and the
- * body (key cards live inline in the body as `+[[cardId]]` tokens). `teamId`,
- * `updatedById`, and the derived `opponentSnapshotLabel` are server-stamped and
- * omitted; unknown keys are stripped.
+ * Create-game-plan input. Names exactly one opponent target form — a bare hero or a
+ * free-text archetype label — plus our deck, the format, and the body (key cards live
+ * inline in the body as `+[[cardId]]` tokens). `teamId`, `updatedById`, and the derived
+ * `opponentSnapshotLabel` are server-stamped and omitted; unknown keys are stripped.
  */
 export const createMatchupGamePlanSchema = z
   .object({
     ourDeckId: z.string().min(1, "A deck is required."),
     formatId: z.string().min(1, "A format is required."),
-    opponentGauntletEntryId: z.string().min(1).optional(),
     opponentHeroId: z.string().min(1).optional(),
     opponentArchetypeLabel: archetypeLabelSchema.optional(),
     body: gamePlanBodySchema,
   })
   .refine((value) => countPresentOpponentRefs(value) === 1, {
     message:
-      "A game-plan must reference exactly one opponent target: a gauntlet entry, a hero, or an archetype label.",
+      "A game-plan must reference exactly one opponent target: a hero or an archetype label.",
   });
 export type CreateMatchupGamePlanInput = z.infer<typeof createMatchupGamePlanSchema>;
 
@@ -93,7 +86,7 @@ export type UpdateMatchupGamePlanInput = z.infer<typeof updateMatchupGamePlanSch
 /**
  * Query parameters for `GET /api/game-plans`. Values arrive as strings, so `limit` is
  * coerced. Archived plans are excluded server-side. `opponentRef` is a normalized key
- * (`gauntlet:<id>` | `hero:<id>` | `label:<lowercased>`) matching how plans are keyed.
+ * (`hero:<id>` | `label:<lowercased>`) matching how plans are keyed.
  */
 export const matchupGamePlanListQuerySchema = z.object({
   ourDeckId: z.string().optional(),
@@ -117,16 +110,15 @@ export type GamePlanUser = z.infer<typeof gamePlanUserSchema>;
 /**
  * A matchup game-plan as returned by the API. The opponent is exposed both as its live
  * reference ids (any may be null) and as `opponentSnapshotLabel` — a human label
- * resolved server-side at write time that survives deletion of a referenced gauntlet
- * entry or hero. `opponentRef` is the normalized key used for the canonical-plan
- * constraint and list filtering. Key cards are inline `+[[cardId]]` tokens in `body`.
+ * resolved server-side at write time that survives deletion of a referenced hero.
+ * `opponentRef` is the normalized key used for the canonical-plan constraint and list
+ * filtering. Key cards are inline `+[[cardId]]` tokens in `body`.
  */
 export const matchupGamePlanSchema = z.object({
   id: z.string(),
   ourDeckId: z.string(),
   ourDeckName: z.string(),
   formatId: z.string(),
-  opponentGauntletEntryId: z.string().nullable(),
   opponentHeroId: z.string().nullable(),
   opponentArchetypeLabel: z.string().nullable(),
   opponentRef: z.string(),

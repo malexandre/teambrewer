@@ -263,7 +263,9 @@ export type GameSideB = z.infer<typeof gameSideBSchema>;
 export const createGameLogSchema = z
   .object({
     formatId: z.string().min(1, "A format is required."),
-    eventId: z.string().min(1).optional(),
+    // The meta this game counts toward. Omitting it lets the server auto-suggest the
+    // meta whose window contains `playedAt`; an explicit `null` records no meta.
+    metaId: z.string().min(1).nullable().optional(),
     playedAt: playedAtSchema.optional(),
     sideA: gameSideASchema,
     sideB: gameSideBSchema,
@@ -294,13 +296,13 @@ export type CreateGameLogInput = z.infer<typeof createGameLogSchema>;
 /**
  * Update-game-log input. Partial and `.strict()`; `confidenceWeight` is never
  * accepted. `confidenceFactors` may be a partial change (merged server-side, which
- * re-derives the weight). `eventId`/`winType`/`lossReason` accept `null` to clear.
+ * re-derives the weight). `metaId`/`winType`/`lossReason` accept `null` to clear.
  * result↔bestOf consistency is re-checked server-side against the merged values.
  */
 export const updateGameLogSchema = z
   .object({
     formatId: z.string().min(1).optional(),
-    eventId: z.string().min(1).nullable().optional(),
+    metaId: z.string().min(1).nullable().optional(),
     playedAt: playedAtSchema.optional(),
     sideA: gameSideASchema.optional(),
     sideB: gameSideBSchema.optional(),
@@ -327,7 +329,7 @@ export type UpdateGameLogInput = z.infer<typeof updateGameLogSchema>;
  */
 export const gameLogListQuerySchema = z.object({
   formatId: z.string().optional(),
-  eventId: z.string().optional(),
+  metaId: z.string().optional(),
   deckId: z.string().optional(),
   heroId: z.string().optional(),
   pilotUserId: z.string().optional(),
@@ -352,7 +354,7 @@ export const gameLogSummarySchema = z.object({
   id: z.string(),
   loggedById: z.string(),
   formatId: z.string(),
-  eventId: z.string().nullable(),
+  metaId: z.string().nullable(),
   playedAt: z.string(),
   sideA: gameSideASchema,
   sideB: gameSideBResponseSchema,
