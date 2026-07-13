@@ -243,16 +243,6 @@ describe("Riftbound cross-game acceptance (integration)", () => {
         .send({ assigneeId: riftboundTeammate.id, deckId: ourDeckId, opponentHeroId: legendId }),
     );
     expect(assignment.status).toBe(201);
-
-    // Knowledge — a primer.
-    const primer = await asRiftboundMember(
-      request(app.getHttpServer()).post("/api/primers").send({
-        title: "Beating Ionia Control",
-        kind: "matchup",
-        body: "Apply early pressure; bait the counterspell.",
-      }),
-    );
-    expect(primer.status).toBe(201);
   });
 
   it("isolates a Riftbound team from a Flesh and Blood team on the same instance", async () => {

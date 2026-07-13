@@ -18,11 +18,5 @@ export const ACTIVITY_VERB_LABELS: Record<ActivityVerb, string> = {
   test_assignment_status_changed: "changed an assignment's status",
   matchup_game_plan_created: "wrote a game-plan",
   matchup_game_plan_updated: "updated a game-plan",
-  primer_created: "wrote a primer",
-  primer_updated: "updated a primer",
-  decision_recorded: "recorded a decision",
-  decision_updated: "updated a decision",
-  poll_created: "created a poll",
-  poll_closed: "closed a poll",
   commented: "commented",
 };
