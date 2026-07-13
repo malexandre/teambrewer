@@ -22,6 +22,7 @@ import { MeModule } from "./me/me.module.js";
 import { MetasModule } from "./metas/metas.module.js";
 import { OnboardingModule } from "./onboarding/onboarding.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
+import { TasksModule } from "./tasks/tasks.module.js";
 import { TenancyModule } from "./tenancy/tenancy.module.js";
 import { TestingQueueModule } from "./testing-queue/testing-queue.module.js";
 
@@ -47,6 +48,7 @@ import { TestingQueueModule } from "./testing-queue/testing-queue.module.js";
     TestingQueueModule,
     GamePlansModule,
     MetasModule,
+    TasksModule,
   ],
   providers: [
     // The uniform error envelope (api-conventions.md) is applied to every route.

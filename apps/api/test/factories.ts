@@ -854,6 +854,70 @@ export async function createMetaDeckEntry(
 }
 
 /**
+ * Tasks fixtures (meta-pivot redesign, WS-3). Team-owned; the single unit of testing
+ * work merging the old card-test suggestions + test assignments. A task needs a
+ * `teamId` and an `authorId`; everything else defaults so isolation tests build one
+ * in a single call. `TaskVote` is scoped transitively through its parent task.
+ */
+
+type TaskStatusValue = "proposed" | "assigned" | "finished" | "abandoned";
+
+export interface CreateTaskOptions {
+  teamId: string;
+  authorId: string;
+  title?: string;
+  description?: string;
+  deckId?: string | null;
+  status?: TaskStatusValue;
+  assigneeId?: string | null;
+  report?: string;
+  archivedAt?: Date | null;
+}
+
+export interface TestTask {
+  id: string;
+  teamId: string;
+  authorId: string;
+  status: string;
+}
+
+export async function createTask(
+  prisma: PrismaClient,
+  options: CreateTaskOptions,
+): Promise<TestTask> {
+  const suffix = randomUUID().slice(0, 8);
+  const created = await prisma.task.create({
+    data: {
+      teamId: options.teamId,
+      authorId: options.authorId,
+      title: options.title ?? `Task ${suffix}`,
+      description: options.description ?? "",
+      deckId: options.deckId ?? null,
+      status: options.status ?? "proposed",
+      assigneeId: options.assigneeId ?? null,
+      report: options.report ?? "",
+      archivedAt: options.archivedAt ?? null,
+    },
+  });
+  return {
+    id: created.id,
+    teamId: created.teamId,
+    authorId: created.authorId,
+    status: created.status,
+  };
+}
+
+export async function createTaskVote(
+  prisma: PrismaClient,
+  options: { taskId: string; userId: string },
+): Promise<{ id: string; taskId: string; userId: string }> {
+  const created = await prisma.taskVote.create({
+    data: { taskId: options.taskId, userId: options.userId },
+  });
+  return { id: created.id, taskId: created.taskId, userId: created.userId };
+}
+
+/**
  * The canonical two-team world for isolation tests: an instance-admin, plus
  * team A (with a team-admin and a member) and team B (with its own member).
  * `memberA` belongs only to team A and must never be able to reach team B.
