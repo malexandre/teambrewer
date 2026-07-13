@@ -8,7 +8,6 @@ import { AuthModule } from "./auth/auth.module.js";
 import { LocalBootstrapModule } from "./bootstrap/local-bootstrap.module.js";
 import { CardsModule } from "./cards/cards.module.js";
 import { CollaborationModule } from "./collaboration/collaboration.module.js";
-import { DashboardModule } from "./dashboard/dashboard.module.js";
 import { DecksModule } from "./decks/decks.module.js";
 import { DomainExceptionFilter } from "./common/domain-exception.filter.js";
 import { OriginCheckGuard } from "./common/origin-check.guard.js";
@@ -54,7 +53,6 @@ import { TestingQueueModule } from "./testing-queue/testing-queue.module.js";
     PrimersModule,
     DecisionsModule,
     PollsModule,
-    DashboardModule,
   ],
   providers: [
     // The uniform error envelope (api-conventions.md) is applied to every route.

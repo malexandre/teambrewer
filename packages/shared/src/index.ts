@@ -453,27 +453,6 @@ export {
 } from "./decisions.js";
 
 export {
-  gameOutcomeSchema,
-  rankedPrioritySchema,
-  rankTestingPriorities,
-  dashboardUpcomingEventSchema,
-  dashboardRecentResultSchema,
-  dashboardMeResponseSchema,
-  dashboardTeamQuerySchema,
-  dashboardCoverageGapSchema,
-  dashboardTeamResponseSchema,
-  type TestingPriorityMatchup,
-  type RankTestingPrioritiesInput,
-  type RankedPriority,
-  type DashboardUpcomingEvent,
-  type DashboardRecentResult,
-  type DashboardMeResponse,
-  type DashboardTeamQuery,
-  type DashboardCoverageGap,
-  type DashboardTeamResponse,
-} from "./dashboard.js";
-
-export {
   pollStatusSchema,
   pollStatusTransitions,
   allowedNextPollStatuses,
