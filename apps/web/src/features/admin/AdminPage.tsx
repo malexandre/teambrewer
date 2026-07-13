@@ -1,5 +1,5 @@
 import type { GeneratedLink, TeamRole } from "@teambrewer/shared";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -364,101 +364,111 @@ function MembersAdmin({ teamId }: { teamId: string }) {
 }
 
 /**
- * The accounts + membership controls for one team. Reused for any team an
- * instance-admin selects and for a team-admin's own (active) team.
+ * Resolves which team the admin acts on, then renders its section(s): an
+ * instance-admin picks any team (TeamAdminGuard grants management, not data,
+ * access — see multi-tenancy.md); a team-admin acts on their active team;
+ * anyone else is told they administer nothing. Shared by the Accounts and
+ * Members admin sub-pages so both scope to the same team-selection behaviour.
  */
-function TeamAdminPanel({ teamId }: { teamId: string }) {
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Create a new account</h3>
-        <CreateUserForm teamId={teamId} />
-      </div>
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Add an existing member</h3>
-        <AddExistingMemberForm teamId={teamId} />
-      </div>
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Members</h3>
-        <MembersAdmin teamId={teamId} />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Instance-admins administer any team's accounts + members without being a
- * member of it (TeamAdminGuard grants management, not data, access — see
- * multi-tenancy.md). The team to manage is chosen here, independent of the
- * membership-derived active team.
- */
-function InstanceTeamManagement() {
-  const teams = useAdminTeams(true);
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
-  const list = teams.data?.data ?? [];
-  const activeId = selectedTeamId ?? list[0]?.id ?? null;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Manage a team</CardTitle>
-        <CardDescription>
-          Manage accounts and members of any team — you need not be a member (instance admin).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-6">
-        {list.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No teams yet. Create one above.</p>
-        ) : (
-          <>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="manage-team">Team</Label>
-              <select
-                id="manage-team"
-                className="h-9 max-w-xs rounded-md border border-input bg-background px-2 text-sm"
-                value={activeId ?? ""}
-                onChange={(event) => setSelectedTeamId(event.target.value)}
-              >
-                {list.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {activeId ? <TeamAdminPanel teamId={activeId} /> : null}
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-export function AdminPage() {
+function AdminTeamScope({
+  description,
+  children,
+}: {
+  description: string;
+  children: (teamId: string) => ReactNode;
+}) {
   const { data: user } = useCurrentUser();
   const { activeTeam } = useActiveTeam();
-  const administersActiveTeam = activeTeam?.role === "team_admin";
+  const isInstanceAdmin = Boolean(user?.isInstanceAdmin);
+  const teams = useAdminTeams(isInstanceAdmin);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
+  if (isInstanceAdmin) {
+    const list = teams.data?.data ?? [];
+    const activeId = selectedTeamId ?? list[0]?.id ?? null;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage a team</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          {list.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No teams yet. Create one under Teams.</p>
+          ) : (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="manage-team">Team</Label>
+                <select
+                  id="manage-team"
+                  className="h-9 max-w-xs rounded-md border border-input bg-background px-2 text-sm"
+                  value={activeId ?? ""}
+                  onChange={(event) => setSelectedTeamId(event.target.value)}
+                >
+                  {list.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {activeId ? children(activeId) : null}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (activeTeam?.role === "team_admin") {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{activeTeam.name}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>{children(activeTeam.teamId)}</CardContent>
+      </Card>
+    );
+  }
+
+  return <p className="text-sm text-muted-foreground">You do not administer any team.</p>;
+}
+
+/** Admin › Teams — instance-only team creation and the team list. */
+export function AdminTeamsPage() {
+  const { data: user } = useCurrentUser();
+  if (!user?.isInstanceAdmin) {
+    return <p className="text-sm text-muted-foreground">Only instance admins can create teams.</p>;
+  }
+  return <InstanceTeamsSection />;
+}
+
+/** Admin › Accounts — create accounts and share setup links for a team. */
+export function AdminAccountsPage() {
   return (
-    <div className="flex flex-col gap-6">
-      {user?.isInstanceAdmin ? (
-        <>
-          <InstanceTeamsSection />
-          <InstanceTeamManagement />
-        </>
-      ) : administersActiveTeam && activeTeam ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{activeTeam.name} — accounts & members</CardTitle>
-            <CardDescription>Create accounts and manage membership for this team.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TeamAdminPanel teamId={activeTeam.teamId} />
-          </CardContent>
-        </Card>
-      ) : (
-        <p className="text-sm text-muted-foreground">You do not administer any team.</p>
+    <AdminTeamScope description="Create accounts and share setup links for this team.">
+      {(teamId) => <CreateUserForm teamId={teamId} />}
+    </AdminTeamScope>
+  );
+}
+
+/** Admin › Members — add existing accounts to a team and manage their roles. */
+export function AdminMembersPage() {
+  return (
+    <AdminTeamScope description="Add existing accounts and manage roles for this team.">
+      {(teamId) => (
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-medium">Add an existing member</h3>
+            <AddExistingMemberForm teamId={teamId} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-medium">Members</h3>
+            <MembersAdmin teamId={teamId} />
+          </div>
+        </div>
       )}
-    </div>
+    </AdminTeamScope>
   );
 }

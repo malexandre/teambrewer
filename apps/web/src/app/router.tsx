@@ -1,7 +1,13 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  redirect,
+} from "@tanstack/react-router";
 
 import { SettingsPage } from "@/features/account/SettingsPage";
-import { AdminPage } from "@/features/admin/AdminPage";
+import { AdminAccountsPage, AdminMembersPage, AdminTeamsPage } from "@/features/admin/AdminPage";
 import { AppChrome } from "@/features/app/AppChrome";
 import { DeckDetailPage } from "@/features/decks/DeckDetailPage";
 import { DecksPage } from "@/features/decks/DecksPage";
@@ -137,10 +143,31 @@ const tasksRoute = createRoute({
   component: TasksPage,
 });
 
-const adminRoute = createRoute({
+// Bare `/admin` redirects to the first sub-page so old links keep working.
+const adminIndexRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/admin",
-  component: AdminPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/admin/teams" });
+  },
+});
+
+const adminTeamsRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/admin/teams",
+  component: AdminTeamsPage,
+});
+
+const adminAccountsRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/admin/accounts",
+  component: AdminAccountsPage,
+});
+
+const adminMembersRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/admin/members",
+  component: AdminMembersPage,
 });
 
 const settingsRoute = createRoute({
@@ -164,7 +191,10 @@ const routeTree = rootRoute.addChildren([
     gamesRoute,
     gameDetailRoute,
     tasksRoute,
-    adminRoute,
+    adminIndexRoute,
+    adminTeamsRoute,
+    adminAccountsRoute,
+    adminMembersRoute,
     settingsRoute,
   ]),
 ]);

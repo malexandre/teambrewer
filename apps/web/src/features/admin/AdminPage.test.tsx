@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ActiveTeamProvider } from "@/features/teams/active-team";
 
-import { AdminPage } from "./AdminPage";
+import { AdminAccountsPage, AdminMembersPage, AdminTeamsPage } from "./AdminPage";
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -117,7 +117,7 @@ afterEach(() => {
 describe("AdminPage", () => {
   it("lets an instance-admin with no membership pick a team and manage its members", async () => {
     mockApi(INSTANCE_ADMIN);
-    renderPage(<AdminPage />);
+    renderPage(<AdminMembersPage />);
 
     // The team picker offers the teams the admin created.
     expect(await screen.findByRole("option", { name: "Rosette" })).toBeInTheDocument();
@@ -134,7 +134,7 @@ describe("AdminPage", () => {
 
   it("posts the selected candidate's username to the add-member endpoint", async () => {
     const { addBodies } = mockApi(INSTANCE_ADMIN);
-    renderPage(<AdminPage />);
+    renderPage(<AdminMembersPage />);
 
     await screen.findByRole("option", { name: "Rosette" });
     await userEvent.selectOptions(await screen.findByLabelText("Existing account"), "carol");
@@ -145,7 +145,7 @@ describe("AdminPage", () => {
 
   it("offers the game catalog as a select in the team-create form", async () => {
     mockApi(INSTANCE_ADMIN);
-    renderPage(<AdminPage />);
+    renderPage(<AdminTeamsPage />);
 
     const gameSelect = await screen.findByLabelText("Game");
     expect(gameSelect).toBeInstanceOf(HTMLSelectElement);
@@ -153,9 +153,17 @@ describe("AdminPage", () => {
     expect(screen.getByRole("option", { name: "Riftbound" })).toBeInTheDocument();
   });
 
+  it("renders the create-account form under Accounts for an instance-admin", async () => {
+    mockApi(INSTANCE_ADMIN);
+    renderPage(<AdminAccountsPage />);
+
+    await screen.findByRole("option", { name: "Rosette" });
+    expect(await screen.findByRole("button", { name: "Create account" })).toBeInTheDocument();
+  });
+
   it("tells a non-admin they administer no team", async () => {
     mockApi(PLAIN_MEMBER);
-    renderPage(<AdminPage />);
+    renderPage(<AdminMembersPage />);
 
     expect(await screen.findByText(/do not administer/i)).toBeInTheDocument();
   });
