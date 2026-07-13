@@ -63,6 +63,19 @@ export const queryKeys = {
   gameConfig: (teamId: string) => [teamId, "game-config"] as const,
 
   /**
+   * Metas & their tiered deck lists (meta-pivot redesign), keyed by the active team
+   * first so switching teams yields a different cache entry and one team's metas
+   * never bleed into another's. `filters` keys each list variant; `currentMeta` is
+   * its own key (distinct from a meta whose id is "current"); the deck-entry list is
+   * keyed under its meta.
+   */
+  metas: (teamId: string, filters: Record<string, string>) => [teamId, "metas", filters] as const,
+  meta: (teamId: string, metaId: string) => [teamId, "meta", metaId] as const,
+  currentMeta: (teamId: string) => [teamId, "current-meta"] as const,
+  metaDeckEntries: (teamId: string, metaId: string) =>
+    [teamId, "meta", metaId, "deck-entries"] as const,
+
+  /**
    * Collaboration keys, all team-scoped (teamId first) so switching teams yields
    * a different cache entry and one team's discussion/awareness never bleeds into
    * another's. Comments are keyed by their polymorphic subject; notifications are

@@ -9,6 +9,8 @@ import { EventDetailPage } from "@/features/events/EventDetailPage";
 import { EventsPage } from "@/features/events/EventsPage";
 import { GameDetailPage } from "@/features/game-logging/GameDetailPage";
 import { GamesPage } from "@/features/game-logging/GamesPage";
+import { MetaDetailPage } from "@/features/metas/MetaDetailPage";
+import { MetasPage } from "@/features/metas/MetasPage";
 import { AssignmentsPage } from "@/features/testing-queue/AssignmentsPage";
 import { ClaimPage } from "@/features/auth/ClaimPage";
 import { LoginPage } from "@/features/auth/LoginPage";
@@ -84,6 +86,21 @@ const deckDetailRoute = createRoute({
   },
 });
 
+const metasRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/metas",
+  component: MetasPage,
+});
+
+const metaDetailRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/metas/$metaId",
+  component: function MetaDetailRoute() {
+    const { metaId } = metaDetailRoute.useParams();
+    return <MetaDetailPage metaId={metaId} />;
+  },
+});
+
 const eventsRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/events",
@@ -140,6 +157,8 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     decksRoute,
     deckDetailRoute,
+    metasRoute,
+    metaDetailRoute,
     eventsRoute,
     eventDetailRoute,
     gamesRoute,
