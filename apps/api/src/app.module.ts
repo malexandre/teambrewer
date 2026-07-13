@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
 import { AdminModule } from "./admin/admin.module.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { LocalBootstrapModule } from "./bootstrap/local-bootstrap.module.js";
 import { CardsModule } from "./cards/cards.module.js";
 import { CollaborationModule } from "./collaboration/collaboration.module.js";
 import { DashboardModule } from "./dashboard/dashboard.module.js";
@@ -34,6 +35,7 @@ import { TestingQueueModule } from "./testing-queue/testing-queue.module.js";
     ThrottlerModule.forRoot(THROTTLER_OPTIONS),
     PrismaModule,
     AuthModule,
+    LocalBootstrapModule,
     TenancyModule,
     AdminModule,
     MeModule,

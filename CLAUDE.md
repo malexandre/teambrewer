@@ -352,7 +352,12 @@ With mise activated in your shell, `pnpm`/`node` resolve to these pinned version
 ## Commands
 
 - `pnpm install` — install workspace dependencies
-- `pnpm dev` — run web + api in watch mode
+- `pnpm start` — **one-command local dev**: boots a local Postgres in Docker (persisted to the gitignored
+  `./.docker-data/`), migrates + seeds it, syncs cards on first run, bootstraps an instance-admin (identity
+  from `SEED_ADMIN_*` in `./.env`, auto-created on first run), prints that admin's **setup link**, and runs
+  web + api in watch mode. See [`docs/ops/local-development.md`](docs/ops/local-development.md).
+- `pnpm db:down` — stop the local dev Postgres (data persists in `./.docker-data/`)
+- `pnpm dev` — run web + api in watch mode (assumes a running, migrated, seeded database)
 - `pnpm build` — build all packages (shared → api/web, topological)
 - `pnpm test` — run unit/integration tests (Vitest; api integration uses Testcontainers Postgres)
 - `pnpm test:e2e` — run end-to-end tests (Playwright; needs Docker — spins up a Testcontainers Postgres and the API)
@@ -364,6 +369,8 @@ With mise activated in your shell, `pnpm`/`node` resolve to these pinned version
 - `pnpm --filter @teambrewer/api db:seed` — seed the network-free reference catalog (games + formats)
 - `pnpm --filter @teambrewer/api card:sync` — sync card data from the sanctioned open source (all games, or
   one: `card:sync <gameId>`); requires a built API (`pnpm --filter @teambrewer/api build`) since it runs `dist/`
+- `pnpm --filter @teambrewer/api bootstrap:local` — idempotently ensure the local instance-admin exists and
+  print its setup link (identity from `SEED_ADMIN_*`); requires a built API. Normally invoked by `pnpm start`.
 - `docker compose up --build` — run the full self-hosted stack (web on `WEB_PORT`, default 8080)
 
 Keep this section in sync with reality as phases land.

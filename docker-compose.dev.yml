@@ -1,0 +1,29 @@
+# Local development database only.
+#
+# Unlike docker-compose.yml (the full self-hosted stack), this file runs *just*
+# Postgres so the API and web app can run natively (`pnpm dev`) with hot reload.
+# It is orchestrated by `pnpm start` (scripts/start-local.mjs). See
+# docs/ops/local-development.md.
+#
+# The data lives in a bind mount under ./.docker-data/postgres (gitignored), so
+# it survives `docker compose ... stop`/`down` and container removal. Delete that
+# folder to reset the local database from scratch.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: teambrewer-dev-db
+    environment:
+      POSTGRES_USER: teambrewer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-teambrewer}
+      POSTGRES_DB: teambrewer
+    # 5432/5433 are commonly taken by other local projects; publish on 5434 by
+    # default so DATABASE_URL points at localhost:${DEV_DB_PORT}.
+    ports:
+      - "${DEV_DB_PORT:-5434}:5432"
+    volumes:
+      - ./.docker-data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U teambrewer -d teambrewer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

@@ -9,6 +9,8 @@
     "pnpm": ">=11.11.0"
   },
   "scripts": {
+    "start": "node scripts/start-local.mjs",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "build": "pnpm --recursive --if-present build",
     "test": "pnpm --recursive --if-present test",
