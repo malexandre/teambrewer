@@ -88,6 +88,9 @@ model User {
   updatedGamePlans            MatchupGamePlan[]    @relation("MatchupGamePlanUpdatedBy")
   deckSelections              DeckSelection[]
   authoredRetrospectives      Retrospective[]
+  authoredTasks               Task[]               @relation("TaskAuthor")
+  assignedTasks               Task[]               @relation("TaskAssignee")
+  taskVotes                   TaskVote[]
 
   @@map("user")
 }
@@ -185,6 +188,9 @@ model Team {
   testAssignments     TestAssignment[]
   matchupGamePlans    MatchupGamePlan[]
   retrospectives      Retrospective[]
+  metas               Meta[]
+  metaDeckEntries     MetaDeckEntry[]
+  tasks               Task[]
 
   @@index([gameId])
   @@map("team")
@@ -300,6 +306,7 @@ model Hero {
   gameLogs         GameLog[]
   testAssignments  TestAssignment[]
   matchupGamePlans MatchupGamePlan[]
+  metaDeckEntries  MetaDeckEntry[]
 
   @@unique([gameId, externalId])
   @@index([gameId, name])
@@ -401,14 +408,17 @@ model Deck {
   hero   Hero?  @relation(fields: [heroId], references: [id])
   owner  User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
-  iterationEntries       DeckIterationEntry[]
-  gauntletEntries        GauntletEntry[]
-  gameLogsAsDeck         GameLog[]            @relation("GameLogDeck")
-  gameLogsAsOpponentDeck GameLog[]            @relation("GameLogOpponentDeck")
-  cardTestSuggestions    CardTestSuggestion[]
-  testAssignments        TestAssignment[]
-  matchupGamePlans       MatchupGamePlan[]
-  deckSelections         DeckSelection[]
+  iterationEntries         DeckIterationEntry[]
+  gauntletEntries          GauntletEntry[]
+  gameLogsAsDeck           GameLog[]            @relation("GameLogDeck")
+  gameLogsAsOpponentDeck   GameLog[]            @relation("GameLogOpponentDeck")
+  cardTestSuggestions      CardTestSuggestion[]
+  testAssignments          TestAssignment[]
+  matchupGamePlans         MatchupGamePlan[]
+  deckSelections           DeckSelection[]
+  deckMetas                DeckMeta[]
+  referenceDeckMetaEntries MetaDeckEntry[]
+  tasks                    Task[]
 
   @@index([teamId])
   @@index([teamId, status])
@@ -626,6 +636,7 @@ model GameLog {
   loggedById String   @map("logged_by_id")
   formatId   String   @map("format_id")
   eventId    String?  @map("event_id")
+  metaId     String?  @map("meta_id")
   playedAt   DateTime @map("played_at")
 
   // side A — our side
@@ -662,6 +673,7 @@ model GameLog {
   loggedBy      User          @relation("GameLogLoggedBy", fields: [loggedById], references: [id], onDelete: Cascade)
   format        Format        @relation(fields: [formatId], references: [id])
   event         Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  meta          Meta?         @relation(fields: [metaId], references: [id], onDelete: SetNull)
   pilot         User          @relation("GameLogPilot", fields: [pilotUserId], references: [id], onDelete: Cascade)
   deck          Deck          @relation("GameLogDeck", fields: [deckId], references: [id], onDelete: Cascade)
   opponentPilot User?         @relation("GameLogOpponentPilot", fields: [opponentPilotUserId], references: [id], onDelete: SetNull)
@@ -672,6 +684,7 @@ model GameLog {
   @@index([teamId])
   @@index([teamId, formatId])
   @@index([teamId, eventId])
+  @@index([teamId, metaId])
   @@index([teamId, deckId])
   @@index([teamId, heroId])
   @@index([teamId, pilotUserId])
@@ -1048,4 +1061,168 @@ model Retrospective {
 
   @@index([teamId])
   @@map("retrospective")
+}
+
+// ---------------------------------------------------------------------------
+// Metas (meta-pivot redesign, WS-1 foundation). The Meta is the team's lightweight
+// organizing hub for a metagame window (supersedes the event-as-hub model — see
+// docs/decisions/0010-meta-as-organizing-hub.md). A Meta is a dated window with a
+// tiered list of opponent decks (the reshaped gauntlet). Decks link to metas via an
+// explicit join; game logs may optionally carry a metaId. See
+// docs/features/metas.md and docs/architecture/data-model.md.
+//
+// Permissions are a shared team board (like events): any member may create/edit/
+// delete any meta or meta deck entry (no owner column). Meta and MetaDeckEntry carry
+// teamId and are team-scoped by construction; DeckMeta carries no teamId — it is
+// reached only through its team-scoped parents (the deck / the meta).
+// ---------------------------------------------------------------------------
+
+/// A meta deck entry's tier — how central the archetype is to the current field.
+enum MetaTier {
+  meta_defining
+  contender
+  counter_meta
+  fringe
+}
+
+/// A team's metagame window: a named, dated span with a tiered opponent-deck list.
+/// "Current meta" = the meta whose [startDate, endDate] contains today (latest
+/// startDate wins on overlap; resolved server-side). Soft-deleted via archivedAt.
+model Meta {
+  id          String    @id @default(cuid())
+  teamId      String    @map("team_id")
+  name        String
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime  @map("end_date")
+  description String    @default("")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  metaDeckEntries MetaDeckEntry[]
+  deckMetas       DeckMeta[]
+  gameLogs        GameLog[]
+
+  @@index([teamId])
+  @@index([teamId, startDate])
+  @@map("meta")
+}
+
+/// One tiered entry in a meta's opponent-deck list (the reshaped gauntlet). Names
+/// exactly one target form — a reference deck (a Deck where isReference is true), a
+/// bare hero, or a free-text archetype label — plus its tier. opponentSnapshotLabel
+/// is a server-derived human label resolved at write time that survives deletion of
+/// the referenced deck/hero. The exactly-one-target rule is enforced server-side.
+model MetaDeckEntry {
+  id                    String   @id @default(cuid())
+  metaId                String   @map("meta_id")
+  teamId                String   @map("team_id")
+  tier                  MetaTier
+  referenceDeckId       String?  @map("reference_deck_id")
+  heroId                String?  @map("hero_id")
+  archetypeLabel        String?  @map("archetype_label")
+  opponentSnapshotLabel String   @map("opponent_snapshot_label")
+  notes                 String   @default("")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  meta          Meta  @relation(fields: [metaId], references: [id], onDelete: Cascade)
+  team          Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  referenceDeck Deck? @relation(fields: [referenceDeckId], references: [id], onDelete: SetNull)
+  hero          Hero? @relation(fields: [heroId], references: [id], onDelete: SetNull)
+
+  @@index([teamId])
+  @@index([metaId])
+  @@map("meta_deck_entry")
+}
+
+/// Explicit many-to-many join between a deck and a meta (a deck can belong to many
+/// metas; deck-create defaults to linking the current meta). No teamId — it is
+/// reached only through its team-scoped parents (like Attendance through its event).
+model DeckMeta {
+  id        String   @id @default(cuid())
+  deckId    String   @map("deck_id")
+  metaId    String   @map("meta_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  meta Meta @relation(fields: [metaId], references: [id], onDelete: Cascade)
+
+  @@unique([deckId, metaId])
+  @@index([metaId])
+  @@map("deck_meta")
+}
+
+// ---------------------------------------------------------------------------
+// Tasks (meta-pivot redesign, WS-1 foundation). A Task merges the old
+// CardTestSuggestion + TestAssignment into one free-form unit of testing work:
+// a title + prose description (with inline +[[cardId]] card tokens — no card FK
+// table), an optional deck link, upvotes, an assignee, and a guarded status
+// lifecycle whose `finished` state demands a report. Team-scoped by teamId; the
+// creator/assignee/team-admins moderate. Soft-deleted via archivedAt. See
+// docs/features/tasks.md and docs/architecture/data-model.md.
+//
+// Task carries teamId and is team-scoped by construction; TaskVote carries no
+// teamId — the row's existence is the upvote (upvote-only), reached only through
+// its team-scoped parent task (like SuggestionVote before it).
+// ---------------------------------------------------------------------------
+
+/// A task's lifecycle. Transitions are validated server-side (see the shared
+/// transition map): proposed → [assigned, abandoned], assigned → [finished,
+/// abandoned]; finished and abandoned are terminal. Moving to finished requires a
+/// non-empty report.
+enum TaskStatus {
+  proposed
+  assigned
+  finished
+  abandoned
+}
+
+/// A free-form unit of testing work. Linked cards live inline in `description` as
+/// +[[cardId]] tokens (no FK table). `report` records the durable conclusion set
+/// when the task is finished.
+model Task {
+  id          String     @id @default(cuid())
+  teamId      String     @map("team_id")
+  authorId    String     @map("author_id")
+  title       String
+  description String     @default("")
+  deckId      String?    @map("deck_id")
+  status      TaskStatus @default(proposed)
+  assigneeId  String?    @map("assignee_id")
+  report      String     @default("")
+  archivedAt  DateTime?  @map("archived_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  team     Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  author   User  @relation("TaskAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  deck     Deck? @relation(fields: [deckId], references: [id], onDelete: SetNull)
+  assignee User? @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  votes TaskVote[]
+
+  @@index([teamId])
+  @@index([teamId, status])
+  @@index([teamId, deckId])
+  @@index([teamId, assigneeId])
+  @@map("task")
+}
+
+/// One member's upvote on a task (one row per member per task). No teamId — reached
+/// only through its team-scoped parent task. The row's existence is the upvote.
+model TaskVote {
+  id        String   @id @default(cuid())
+  taskId    String   @map("task_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@map("task_vote")
 }

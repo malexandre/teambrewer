@@ -23,6 +23,9 @@ export const TEAM_OWNED_MODELS = new Set<string>([
   "testAssignment",
   "matchupGamePlan",
   "retrospective",
+  "meta",
+  "metaDeckEntry",
+  "task",
 ]);
 
 /** Read/aggregate methods whose `where` must include the active `teamId`. */
