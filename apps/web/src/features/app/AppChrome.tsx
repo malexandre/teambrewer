@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { clearPersistedQueryCache } from "@/app/query-persistence";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { NotificationCenter } from "@/features/collaboration/NotificationCenter";
@@ -21,7 +22,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await authClient.signOut();
-    await queryClient.invalidateQueries();
+    queryClient.clear();
+    // Drop the on-disk cache too so nothing survives for the next user on a
+    // shared device (tenant/privacy safety).
+    await clearPersistedQueryCache();
     await navigate({ to: "/login" });
   }
 

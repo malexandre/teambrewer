@@ -12,7 +12,7 @@ Related: [tech-stack](tech-stack.md) · [api-conventions](api-conventions.md) ·
 - **TanStack Query** — server-state cache, invalidation, optimistic updates.
 - **Tailwind CSS + shadcn/ui** — responsive, accessible, **ownable** components (code lives in our repo).
 - **Zod** (from `packages/shared`) — validate/parse API responses; infer types.
-- **PWA** — installable, offline-tolerant caching of card data and read-only views.
+- **PWA** (`vite-plugin-pwa` + Workbox) — installable, offline-tolerant. See [PWA & offline](#pwa--offline).
 
 ## Structure (feature-first)
 
@@ -61,10 +61,33 @@ when they grow. Mirror the backend module names and the [feature specs](../featu
 - **Hover/press preview** of a card's image anywhere a card is referenced (suggestions, game-plans,
   primers); the image is the detail (lean card model). See [card-database](../features/card-database.md).
 
+## PWA & offline
+
+Installable via a web-app manifest (icons, `standalone`, theme/background). The
+service worker (`vite-plugin-pwa`, `registerType: autoUpdate`) uses a **layered,
+tenancy-safe** caching strategy:
+
+- **App-shell precache** — the built assets + a navigation fallback, so the SPA
+  boots offline.
+- **Card art `CacheFirst`** — cross-origin card images (unique URL per card) are
+  cached at the SW layer; the biggest offline/perf win.
+- **Persisted TanStack Query cache (IndexedDB)** — read data (card reference data
+  and read-only views) survives a cold, offline reload. This is where offline
+  *data* lives, **not** the service worker: tenant-shared reference JSON
+  (`/api/cards`, `/api/formats`, `/api/heroes`) shares one URL across teams (the
+  game comes from `X-Team-Id`), so a URL-keyed SW cache could surface another
+  team's data — forbidden. The query cache is instead keyed by `[teamId, …]`, so
+  a persisted entry can only be re-read under the same team. Per-user/global keys
+  (`me`, `admin`) are **never** persisted, and the store is **cleared on sign-out**
+  so nothing survives for the next user on a shared device.
+
+Offline **writes** (a game-log queue) are a deliberate future enhancement, not in
+v1 (see the phase-13 plan).
+
 ## Accessibility & theming
 
 - Keyboard-navigable, ARIA-correct components (shadcn/ui/Radix baseline).
-- Light/dark theme.
+- Light/dark theme with a user-facing toggle (light / dark / system).
 
 ## Auth UX
 

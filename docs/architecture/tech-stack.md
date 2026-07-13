@@ -32,8 +32,9 @@ formal decision is [ADR-0001](../decisions/0001-tech-stack.md); this doc is the 
 TeamBrewer is an **internal, authenticated, API-consuming** app with **no SEO needs**. A Vite SPA builds
 to static assets that any web server (Nginx on a $5 VPS) can serve — no server runtime, no vendor
 coupling, minimal ops. Next.js's strengths (SSR/SEO, server components, Vercel integration) don't apply
-here and would add moving parts. The SPA is **PWA-enabled** for a good phone experience (installable,
-offline-tolerant caching of card data and read views).
+here and would add moving parts. The SPA is a **PWA** (via **`vite-plugin-pwa`** + Workbox) for a good
+phone experience — installable, with offline-tolerant caching (see [frontend.md](frontend.md#pwa--offline)
+for the layered strategy).
 
 ### Backend: NestJS over Fastify/Express
 The user prioritizes **modularity and human-readability**, and the app will be built **across many agent

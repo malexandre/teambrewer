@@ -32,12 +32,15 @@ export default defineConfig({
         ],
       },
       manifest: {
+        id: "/",
         name: "TeamBrewer",
         short_name: "TeamBrewer",
         description: "Competitive TCG team playtesting and deck selection.",
+        categories: ["productivity", "games", "utilities"],
         theme_color: "#0b0b0c",
         background_color: "#0b0b0c",
         display: "standalone",
+        orientation: "portrait-primary",
         start_url: "/",
         icons: [
           { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
