@@ -58,7 +58,10 @@ export class AuthService {
         name: input.displayName,
         email: AuthService.syntheticEmail(input.username),
         emailVerified: true,
-        username: input.username,
+        // Better Auth's username plugin resolves sign-in by the lowercased
+        // username, so the stored `username` must be normalised; the original
+        // casing is preserved in `displayUsername`.
+        username: input.username.toLowerCase(),
         displayUsername: input.username,
         displayName: input.displayName,
         isInstanceAdmin: input.isInstanceAdmin ?? false,

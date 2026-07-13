@@ -81,6 +81,30 @@ describe("AuthService", () => {
     expect(session?.user.id).toBe(userId);
   });
 
+  it("normalises the stored username so a mixed-case username can sign in", async () => {
+    // Better Auth's username plugin looks up by the lowercased username, so the
+    // `username` column must be normalised; `displayUsername` keeps the casing.
+    const { userId } = await service.provisionAccount({
+      username: "MixedCase",
+      displayName: "Mixed Case",
+      authMethod: "password_totp",
+    });
+    await service.setPassword(userId, "correct-horse-battery-staple");
+
+    const stored = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { username: true, displayUsername: true },
+    });
+    expect(stored.username).toBe("mixedcase");
+    expect(stored.displayUsername).toBe("MixedCase");
+
+    const { response } = await service.api.signInUsername({
+      body: { username: "MixedCase", password: "correct-horse-battery-staple" },
+      returnHeaders: true,
+    });
+    expect((response as { token?: string }).token).toBeTruthy();
+  });
+
   it("rejects sign-in with the wrong password", async () => {
     const { userId } = await service.provisionAccount({
       username: "caller",
