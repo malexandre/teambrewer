@@ -320,9 +320,8 @@ model Card {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  game                     Game                  @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameLogCards             GameLogCard[]
-  gamePlanKeyCards         MatchupGamePlanCard[]
+  game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameLogCards GameLogCard[]
 
   @@unique([gameId, externalId])
   @@index([gameId, name])
@@ -821,9 +820,11 @@ model ActivityEvent {
 // See docs/features/gameplans-and-deck-selection.md and docs/architecture/data-model.md.
 //
 // MatchupGamePlan and Retrospective carry teamId and are team-scoped by
-// construction. MatchupGamePlanCard (key cards) and DeckSelection carry no teamId —
-// each is reached only through its team-scoped parent (the game-plan / the event),
-// like GameLogCard and Attendance. The opponent is exactly one of a gauntlet entry,
+// construction. DeckSelection carries no teamId — it is reached only through its
+// team-scoped parent event, like Attendance. Key cards are no longer a structured
+// child table (meta-pivot redesign, WS-4): they live inline in the plan `body` as
+// +[[cardId]] tokens (see packages/shared/src/card-tokens.ts). The opponent is
+// exactly one of a gauntlet entry,
 // a bare hero, or a free-text archetype label; opponentSnapshotLabel is a
 // server-derived human label resolved at write time that survives deletion of the
 // referenced gauntlet entry/hero, and opponentRef is a normalized key
@@ -858,30 +859,10 @@ model MatchupGamePlan {
   opponentHero          Hero?          @relation(fields: [opponentHeroId], references: [id], onDelete: SetNull)
   updatedBy             User           @relation("MatchupGamePlanUpdatedBy", fields: [updatedById], references: [id], onDelete: Cascade)
 
-  keyCards MatchupGamePlanCard[]
-
   @@unique([teamId, ourDeckId, opponentRef, formatId])
   @@index([teamId])
   @@index([teamId, ourDeckId])
   @@map("matchup_game_plan")
-}
-
-/// A key card referenced by a game-plan (replacement set on update). Like
-/// GameLogCard it carries no teamId — reached only through its team-scoped parent
-/// game-plan. The referenced card must belong to the team's game.
-model MatchupGamePlanCard {
-  id         String   @id @default(cuid())
-  gamePlanId String   @map("game_plan_id")
-  cardId     String   @map("card_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  gamePlan MatchupGamePlan @relation(fields: [gamePlanId], references: [id], onDelete: Cascade)
-  card     Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
-
-  @@unique([gamePlanId, cardId])
-  @@index([gamePlanId])
-  @@index([cardId])
-  @@map("matchup_game_plan_card")
 }
 
 /// A member's committed deck for an event (one per event per member), plus free-text

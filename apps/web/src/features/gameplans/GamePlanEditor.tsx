@@ -1,9 +1,8 @@
-import type { CardSummary, MatchupGamePlan } from "@teambrewer/shared";
+import type { MatchupGamePlan } from "@teambrewer/shared";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { CardPicker } from "@/features/cards/CardPicker";
+import { MentionComposer } from "@/features/collaboration/MentionComposer";
 import { HeroPicker } from "@/features/decks/HeroPicker";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { ApiError } from "@/lib/api-client";
@@ -15,9 +14,11 @@ type OpponentKind = "hero" | "archetype";
 /**
  * Create/edit form for a matchup game-plan, surfaced from the deck detail page. On
  * create it names the opponent (a hero from the game's reference data, or a free-text
- * archetype label), the body, and the key cards. On edit the matchup key is immutable
- * (server-enforced), so only the body and key cards change. Key cards use the shared
- * `CardPicker` autocomplete; the chosen set is shown as a removable strip.
+ * archetype label) and the body. On edit the matchup key is immutable (server-enforced),
+ * so only the body changes. Key cards are referenced inline in the body via the shared
+ * {@link MentionComposer} with `+card` mentions on (type `+` to link a card) — there is
+ * no separate structured key-card strip (WS-4). The composer's submit is the form's
+ * submit; the body carries the plan.
  */
 export function GamePlanEditor({
   teamId,
@@ -37,43 +38,37 @@ export function GamePlanEditor({
   const [opponentKind, setOpponentKind] = useState<OpponentKind>("hero");
   const [heroId, setHeroId] = useState("");
   const [archetypeLabel, setArchetypeLabel] = useState("");
-  const [body, setBody] = useState(existing?.body ?? "");
-  const [keyCards, setKeyCards] = useState<CardSummary[]>(existing?.keyCards ?? []);
   const [validationError, setValidationError] = useState<string | null>(null);
+  // The body lives in the composer (uncontrolled); mirror the last submitted value so a
+  // validation/API failure can re-seed a remounted composer instead of dropping the text.
+  const [draftBody, setDraftBody] = useState(existing?.body ?? "");
+  const [composerKey, setComposerKey] = useState(0);
 
   const create = useCreateGamePlan(teamId);
   const update = useUpdateGamePlan(teamId, existing?.id ?? "");
   const pending = create.isPending || update.isPending;
 
-  function addKeyCard(card: CardSummary) {
-    setKeyCards((current) =>
-      current.some((entry) => entry.id === card.id) ? current : [...current, card],
-    );
-  }
-  function removeKeyCard(cardId: string) {
-    setKeyCards((current) => current.filter((entry) => entry.id !== cardId));
+  function restoreComposer(body: string) {
+    setDraftBody(body);
+    setComposerKey((key) => key + 1);
   }
 
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  function handleSubmit(body: string) {
     setValidationError(null);
-    if (body.trim().length === 0) {
-      setValidationError("A game-plan needs a body.");
-      return;
-    }
-    const keyCardIds = keyCards.map((card) => card.id);
 
     if (isEdit) {
-      update.mutate({ body, keyCardIds }, { onSuccess: onDone });
+      update.mutate({ body }, { onSuccess: onDone, onError: () => restoreComposer(body) });
       return;
     }
 
     if (opponentKind === "hero" && heroId === "") {
-      setValidationError("Choose an opponent hero, or switch to an archetype label.");
+      setValidationError("Choose an opponent, or switch to an archetype label.");
+      restoreComposer(body);
       return;
     }
     if (opponentKind === "archetype" && archetypeLabel.trim().length === 0) {
-      setValidationError("Enter an archetype label, or switch to a hero.");
+      setValidationError("Enter an archetype label, or switch to an opponent.");
+      restoreComposer(body);
       return;
     }
 
@@ -82,21 +77,19 @@ export function GamePlanEditor({
         ourDeckId: deckId,
         formatId,
         body,
-        keyCardIds,
         ...(opponentKind === "hero"
           ? { opponentHeroId: heroId }
           : { opponentArchetypeLabel: archetypeLabel.trim() }),
       },
-      { onSuccess: onDone },
+      { onSuccess: onDone, onError: () => restoreComposer(body) },
     );
   }
 
   const mutationError = create.error ?? update.error;
 
   return (
-    <form
+    <div
       className="flex flex-col gap-3 rounded-md border border-border p-3"
-      onSubmit={handleSubmit}
       aria-label={isEdit ? "Edit game-plan" : "New game-plan"}
     >
       {!isEdit ? (
@@ -132,37 +125,20 @@ export function GamePlanEditor({
       ) : null}
 
       <div className="flex flex-col gap-1">
-        <Label htmlFor="game-plan-body">Plan</Label>
-        <textarea
-          id="game-plan-body"
-          className="min-h-32 w-full rounded-md border border-input bg-background p-2 text-sm"
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          placeholder="Mulligan priorities, key sequencing, lines…"
+        <span className="text-sm font-medium">Plan</span>
+        <MentionComposer
+          key={composerKey}
+          teamId={teamId}
+          initialValue={draftBody}
+          submitLabel={isEdit ? "Save" : "Create game-plan"}
+          placeholder="Mulligan priorities, key sequencing, lines… Use + to link a card, @ to mention a teammate."
+          ariaLabel="Plan"
+          isPending={pending}
+          enableCardMentions
+          onSubmit={handleSubmit}
+          onCancel={onDone}
         />
       </div>
-
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium">Key cards</legend>
-        <CardPicker teamId={teamId} onSelect={addKeyCard} placeholder="Search a card…" />
-        {keyCards.length > 0 ? (
-          <ul className="flex flex-col gap-1">
-            {keyCards.map((card) => (
-              <li key={card.id} className="flex items-center justify-between gap-2 text-sm">
-                <span>{card.name}</span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => removeKeyCard(card.id)}
-                >
-                  Remove
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </fieldset>
 
       {validationError ? (
         <p role="alert" className="text-sm text-destructive">
@@ -176,15 +152,6 @@ export function GamePlanEditor({
             : "Could not save the game-plan."}
         </p>
       ) : null}
-
-      <div className="flex items-center gap-2">
-        <Button type="submit" size="sm" disabled={pending}>
-          {isEdit ? "Save" : "Create game-plan"}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onDone} disabled={pending}>
-          Cancel
-        </Button>
-      </div>
-    </form>
+    </div>
   );
 }

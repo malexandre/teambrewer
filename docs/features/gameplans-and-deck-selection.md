@@ -31,15 +31,18 @@ Exact entities from [data-model.md](../architecture/data-model.md) (all team-sco
 
 ### `MatchupGamePlan`
 `{ id, teamId, ourDeckId (→ Deck), opponentRef (gauntletEntryId | heroId | archetypeLabel), formatId,
-body (markdown), keyCards[] (→ Card), updatedBy }`
+body, updatedBy }`
 
 - A written, living guide for **one matchup**. FaB has **no MTG-style sideboards**; a game-plan captures
   the equipment/weapon/card choices, mulligan priorities, sequencing, and lines for that pairing (see
   [flesh-and-blood.md](../domain/flesh-and-blood.md)).
 - `opponentRef` is polymorphic, mirroring how the gauntlet and game logs identify the field: a specific
   `GauntletEntry`, a `Hero`, or a free-text `archetypeLabel`.
-- `keyCards[]` reference the global card database (link-only decks mean we reference cards, never a stored
-  list — [ADR-0002](../decisions/0002-decks-as-links.md)); rendered with hover/press preview.
+- **Key cards (meta-pivot redesign, WS-4):** referenced **inline in `body`** as `+[[cardId]]` tokens (the
+  shared `+card` mention model — see `packages/shared/src/card-tokens.ts`), not a structured chip list. They
+  resolve against the global card database (link-only decks mean we reference cards, never a stored list —
+  [ADR-0002](../decisions/0002-decks-as-links.md)) and render as inline chips with hover/press preview. The
+  old structured `MatchupGamePlanCard` child table was dropped.
 
 ### `DeckSelection`
 `{ id, eventId (→ Event), userId, deckId (→ Deck), locked, lockedAt?, reasoning }`
@@ -106,9 +109,9 @@ PATCH  /api/events/:eventId/retrospective/:retrospectiveId
 
 ## UI / UX (mobile-first)
 
-- **Game-plan view:** matchup header (our deck vs opponent archetype), rendered markdown body, a key-cards
-  strip with hover/press card previews, and an inline comment thread. Reachable from the deck page, the
-  event's gauntlet, and the matchup matrix cell.
+- **Game-plan view:** matchup header (our deck vs opponent archetype), the body rendered with inline
+  `+[[cardId]]` card chips (hover/press card previews), and an inline comment thread. Reachable from the
+  deck page.
 - **Deck selection:** on the event page, a compact "My pick" card (deck autocomplete + reasoning) plus a
   team roster list showing everyone's selection and lock state; a lock badge when locked.
 - **Retrospective:** long-form markdown editor with `resultsSummary` / `learnings` sections; read view
@@ -117,7 +120,7 @@ PATCH  /api/events/:eventId/retrospective/:retrospectiveId
 ## Tenancy & permissions
 
 Follows [multi-tenancy.md](../architecture/multi-tenancy.md): every row carries `teamId`; all queries are
-scoped to the verified active team. `ourDeckId`, `deckId`, `keyCards`, and any `GauntletEntry`/`Event`
+scoped to the verified active team. `ourDeckId`, `deckId`, and any `GauntletEntry`/`Event`
 foreign keys must belong to the **same team** — cross-team references are rejected. Locking/unlocking is
 team-admin only; members edit only their own selection.
 

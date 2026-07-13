@@ -44,8 +44,7 @@ const plan = {
   opponentArchetypeLabel: null,
   opponentRef: "hero:hero-1",
   opponentSnapshotLabel: "Briar",
-  body: "Race the clock; keep Command and Conquer for the on-hit.",
-  keyCards: [{ id: "card-1", name: "Command and Conquer", pitch: 1, imageUrl: null }],
+  body: "Race the clock; keep +[[card-1]] for the on-hit.",
   updatedBy: { userId: "user-1", username: "alice", displayName: "Alice" },
   archivedAt: null,
   createdAt: "2026-07-12T00:00:00.000Z",
@@ -59,6 +58,9 @@ function mockApi(): void {
     if (url.endsWith("/api/me")) return json(CURRENT_USER);
     if (url.includes("/api/heroes")) {
       return json({ data: [{ id: "hero-1", name: "Briar", classes: [], talents: [] }] });
+    }
+    if (url.includes("/api/cards/card-1")) {
+      return json({ id: "card-1", name: "Command and Conquer", pitch: 1, imageUrl: null });
     }
     if (url.includes("/api/game-plans")) {
       return json({ data: [plan], nextCursor: null });
@@ -82,7 +84,7 @@ afterEach(() => {
 });
 
 describe("GamePlanSection", () => {
-  it("renders the deck's plans with the matchup header, body, and key cards", async () => {
+  it("renders the deck's plans with the matchup header, body, and inline card chips", async () => {
     mockApi();
     renderSection(
       <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
@@ -90,10 +92,11 @@ describe("GamePlanSection", () => {
 
     expect(await screen.findByText("vs Briar")).toBeInTheDocument();
     expect(screen.getByText(/Race the clock/)).toBeInTheDocument();
-    expect(screen.getByText("Command and Conquer")).toBeInTheDocument();
+    // The +[[card-1]] token resolves to an inline "+Command and Conquer" chip.
+    expect(await screen.findByText(/Command and Conquer/)).toBeInTheDocument();
   });
 
-  it("reveals the editor with the plan body field and an opponent toggle when writing", async () => {
+  it("reveals the editor with the plan body composer and an opponent toggle when writing", async () => {
     mockApi();
     renderSection(
       <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
@@ -102,9 +105,8 @@ describe("GamePlanSection", () => {
     await screen.findByText("vs Briar");
     await userEvent.click(screen.getByRole("button", { name: "Write a game-plan" }));
 
+    // The body is a +card-enabled composer (type + to link a card inline).
     expect(screen.getByLabelText("Plan")).toBeInTheDocument();
-    // The card autocomplete is present for key cards.
-    expect(screen.getByRole("combobox", { name: "Search cards" })).toBeInTheDocument();
     // Switching the opponent to an archetype label reveals the free-text field.
     await userEvent.click(screen.getByRole("button", { name: "Archetype label" }));
     expect(screen.getByLabelText("Archetype label")).toBeInTheDocument();

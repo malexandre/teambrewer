@@ -2,7 +2,7 @@ import type { MatchupGamePlan } from "@teambrewer/shared";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { CardPreview } from "@/features/cards/CardPreview";
+import { CardRichText } from "@/features/cards/CardRichText";
 import { CommentThread } from "@/features/collaboration/CommentThread";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
@@ -11,10 +11,10 @@ import { GamePlanEditor } from "./GamePlanEditor";
 import { useArchiveGamePlan } from "./use-game-plan-mutations";
 
 /**
- * A single matchup game-plan: the "our deck vs opponent" header, the pre-wrapped plan
- * body, a key-cards strip with hover/press card previews, and an on-demand discussion
- * thread. Any member may edit in place (matchup key immutable); only a team-admin may
- * archive (server-enforced), so the Archive control shows for admins only.
+ * A single matchup game-plan: the "our deck vs opponent" header, the plan body rendered
+ * with inline `+[[cardId]]` card chips ({@link CardRichText}), and an on-demand
+ * discussion thread. Any member may edit in place (matchup key immutable); only a
+ * team-admin may archive (server-enforced), so the Archive control shows for admins only.
  */
 export function GamePlanCard({
   teamId,
@@ -67,22 +67,7 @@ export function GamePlanCard({
         </span>
       </div>
 
-      <p className="whitespace-pre-wrap text-sm">{gamePlan.body}</p>
-
-      {gamePlan.keyCards.length > 0 ? (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Key cards
-          </span>
-          <ul className="flex flex-wrap gap-2">
-            {gamePlan.keyCards.map((card) => (
-              <li key={card.id} className="text-sm">
-                <CardPreview card={card} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <CardRichText teamId={teamId} body={gamePlan.body} className="whitespace-pre-wrap text-sm" />
 
       <p className="text-xs text-muted-foreground">Updated by {gamePlan.updatedBy.displayName}</p>
 

@@ -17,17 +17,13 @@ describe("createMatchupGamePlanSchema", () => {
     const parsed = createMatchupGamePlanSchema.parse({
       ...base,
       opponentGauntletEntryId: "gauntlet_1",
-      keyCardIds: ["card_1", "card_2"],
     });
     expect(parsed.opponentGauntletEntryId).toBe("gauntlet_1");
-    expect(parsed.keyCardIds).toEqual(["card_1", "card_2"]);
   });
 
   it("accepts a plan targeting a bare hero", () => {
     const parsed = createMatchupGamePlanSchema.parse({ ...base, opponentHeroId: "hero_1" });
     expect(parsed.opponentHeroId).toBe("hero_1");
-    // keyCardIds defaults to an empty list when omitted.
-    expect(parsed.keyCardIds).toEqual([]);
   });
 
   it("accepts a plan targeting a free-text archetype label", () => {
@@ -58,16 +54,6 @@ describe("createMatchupGamePlanSchema", () => {
     ).toThrow();
   });
 
-  it("rejects duplicate key card ids", () => {
-    expect(() =>
-      createMatchupGamePlanSchema.parse({
-        ...base,
-        opponentHeroId: "hero_1",
-        keyCardIds: ["card_1", "card_1"],
-      }),
-    ).toThrow();
-  });
-
   it("strips a client-supplied teamId / updatedBy", () => {
     const parsed = createMatchupGamePlanSchema.parse({
       ...base,
@@ -83,12 +69,6 @@ describe("createMatchupGamePlanSchema", () => {
 describe("updateMatchupGamePlanSchema", () => {
   it("accepts a body-only update", () => {
     expect(updateMatchupGamePlanSchema.parse({ body: "Revised line." }).body).toBe("Revised line.");
-  });
-
-  it("accepts a key-cards-only update (replacement set)", () => {
-    expect(updateMatchupGamePlanSchema.parse({ keyCardIds: ["card_9"] }).keyCardIds).toEqual([
-      "card_9",
-    ]);
   });
 
   it("rejects an empty update", () => {

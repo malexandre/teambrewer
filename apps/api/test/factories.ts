@@ -623,7 +623,6 @@ export interface CreateMatchupGamePlanOptions {
   opponentRef?: string;
   opponentSnapshotLabel?: string;
   body?: string;
-  keyCardIds?: string[];
   archivedAt?: Date | null;
 }
 
@@ -660,9 +659,6 @@ export async function createMatchupGamePlan(
       opponentSnapshotLabel: options.opponentSnapshotLabel ?? label,
       body: options.body ?? "Mulligan aggressively; race the clock.",
       archivedAt: options.archivedAt ?? null,
-      ...(options.keyCardIds
-        ? { keyCards: { create: options.keyCardIds.map((cardId) => ({ cardId })) } }
-        : {}),
     },
   });
   return {

@@ -327,7 +327,6 @@ export {
 
 export {
   gamePlanBodySchema,
-  keyCardIdsSchema,
   createMatchupGamePlanSchema,
   updateMatchupGamePlanSchema,
   matchupGamePlanListQuerySchema,

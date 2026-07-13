@@ -113,17 +113,17 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
 
 ### Game-plans
 - **MatchupGamePlan** `{ id, teamId, ourDeckId, opponentRef (gauntletEntryId | heroId | archetypeLabel),
-  formatId, body, keyCards[] (→ Card), updatedBy, archivedAt? }` — one canonical plan per
+  formatId, body, updatedBy, archivedAt? }` — one canonical plan per
   `(teamId, ourDeckId, opponentRef, formatId)`. **Implementation note (phase-09):** `opponentRef` is
   persisted as three nullable columns **plus a derived, normalized `opponentRef` key string**
   (`gauntlet:<id>` | `hero:<id>` | `label:<lowercased>`) so the uniqueness constraint holds across the
   polymorphic target (Postgres treats NULLs as distinct); a derived `opponentSnapshotLabel` (like
   `TestAssignment`) survives deletion of the referenced gauntlet entry/hero. A duplicate create → `409`;
   editing updates in place and re-stamps `updatedBy`. Shared team knowledge (no owner): any member
-  creates/edits; **archive is team-admin only**. `keyCards[]` are a child model **`MatchupGamePlanCard`
-  `{ id, gamePlanId, cardId }`** (scoped transitively through the parent, like `GameLogCard`; update
-  replaces the set; `cardId` must belong to the team's game). A collaboration subject
-  (`subjectType: 'matchup_game_plan'`).
+  creates/edits; **archive is team-admin only**. **Key cards (meta-pivot redesign, WS-4):** the structured
+  `MatchupGamePlanCard` child table was dropped — key cards now live inline in `body` as `+[[cardId]]`
+  tokens (the shared `+card` mention model; see `packages/shared/src/card-tokens.ts`), resolved to card
+  chips at render time. A collaboration subject (`subjectType: 'matchup_game_plan'`).
 
 ### Collaboration (polymorphic — see collaboration-core spec)
 - **Comment** `{ id, teamId, authorId, subjectType, subjectId, body, parentCommentId?, archivedAt? }`

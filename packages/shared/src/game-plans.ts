@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { cardSummarySchema } from "./cards.js";
 import { archetypeLabelSchema } from "./events.js";
 
 /**
@@ -11,6 +10,10 @@ import { archetypeLabelSchema } from "./events.js";
  * sequencing, and lines; there are no MTG-style sideboards). There is one canonical
  * plan per `(ourDeckId, opponentRef, formatId)`.
  *
+ * Key cards are referenced inline in the `body` as `+[[cardId]]` tokens (see
+ * card-tokens.ts) — the meta-pivot redesign (WS-4) dropped the structured
+ * `MatchupGamePlanCard` chip list in favor of the shared `+card` mention model.
+ *
  * Tenancy: `teamId` and the author/updater (`updatedById`) are stamped server-side
  * from the verified request context; the derived `opponentSnapshotLabel` is resolved
  * from the referenced rows at write time. None of these are accepted from the client,
@@ -20,24 +23,15 @@ import { archetypeLabelSchema } from "./events.js";
 
 // --- Field schemas ----------------------------------------------------------
 
-/** The written plan body (markdown source, rendered as pre-wrapped text in the UI). */
+/**
+ * The written plan body. Rendered as pre-wrapped text with inline `+[[cardId]]`
+ * card tokens resolved to card chips at render time (see card-tokens.ts).
+ */
 export const gamePlanBodySchema = z
   .string()
   .trim()
   .min(1, "A game-plan needs a body.")
   .max(20000, "The game-plan body must be at most 20000 characters.");
-
-/**
- * The key cards referenced by a game-plan (link-only decks mean we reference cards,
- * never store a list — ADR-0002). A replacement set: distinct card ids, capped so the
- * strip stays readable. Each id is validated server-side against the team's game.
- */
-export const keyCardIdsSchema = z
-  .array(z.string().min(1))
-  .max(40, "A game-plan can reference at most 40 key cards.")
-  .refine((ids) => new Set(ids).size === ids.length, {
-    message: "Key cards must be distinct.",
-  });
 
 // --- Opponent target (exactly one form) -------------------------------------
 
@@ -61,7 +55,7 @@ function countPresentOpponentRefs(value: {
 /**
  * Create-game-plan input. Names exactly one opponent target form — a gauntlet entry,
  * a bare hero, or a free-text archetype label — plus our deck, the format, and the
- * body. `keyCardIds` is an optional replacement set (defaults to empty). `teamId`,
+ * body (key cards live inline in the body as `+[[cardId]]` tokens). `teamId`,
  * `updatedById`, and the derived `opponentSnapshotLabel` are server-stamped and
  * omitted; unknown keys are stripped.
  */
@@ -73,7 +67,6 @@ export const createMatchupGamePlanSchema = z
     opponentHeroId: z.string().min(1).optional(),
     opponentArchetypeLabel: archetypeLabelSchema.optional(),
     body: gamePlanBodySchema,
-    keyCardIds: keyCardIdsSchema.default([]),
   })
   .refine((value) => countPresentOpponentRefs(value) === 1, {
     message:
@@ -84,13 +77,12 @@ export type CreateMatchupGamePlanInput = z.infer<typeof createMatchupGamePlanSch
 /**
  * Update-game-plan input. Partial and `.strict()`. The matchup key (`ourDeckId`,
  * `formatId`, and the opponent target) is immutable — editing a plan revises its body
- * and key cards in place; to change the matchup, create a new plan. `keyCardIds`
- * replaces the whole set when present.
+ * in place (including its inline `+[[cardId]]` tokens); to change the matchup, create
+ * a new plan.
  */
 export const updateMatchupGamePlanSchema = z
   .object({
     body: gamePlanBodySchema.optional(),
-    keyCardIds: keyCardIdsSchema.optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
@@ -127,7 +119,7 @@ export type GamePlanUser = z.infer<typeof gamePlanUserSchema>;
  * reference ids (any may be null) and as `opponentSnapshotLabel` — a human label
  * resolved server-side at write time that survives deletion of a referenced gauntlet
  * entry or hero. `opponentRef` is the normalized key used for the canonical-plan
- * constraint and list filtering. `keyCards` are the resolved card summaries.
+ * constraint and list filtering. Key cards are inline `+[[cardId]]` tokens in `body`.
  */
 export const matchupGamePlanSchema = z.object({
   id: z.string(),
@@ -140,7 +132,6 @@ export const matchupGamePlanSchema = z.object({
   opponentRef: z.string(),
   opponentSnapshotLabel: z.string(),
   body: z.string(),
-  keyCards: z.array(cardSummarySchema),
   updatedBy: gamePlanUserSchema,
   archivedAt: z.string().nullable(),
   createdAt: z.string(),

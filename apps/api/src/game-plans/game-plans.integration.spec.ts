@@ -50,7 +50,6 @@ describe("Game-plans endpoints (integration)", () => {
   let deckB: TestDeck;
   let cardA: TestCard;
   let cardA2: TestCard;
-  let cardRift: TestCard;
 
   beforeAll(async () => {
     app = await createApiTestApp([AppModule]);
@@ -112,7 +111,6 @@ describe("Game-plans endpoints (integration)", () => {
     });
     cardA = await createCard(prisma, { name: "Command and Conquer" });
     cardA2 = await createCard(prisma, { name: "Snatch" });
-    cardRift = await createCard(prisma, { gameId: "riftbound", name: "Rift Bolt" });
   });
 
   const http = () => request(app.getHttpServer());
@@ -129,12 +127,12 @@ describe("Game-plans endpoints (integration)", () => {
     ourDeckId: deckA.id,
     formatId: fabFormatId,
     opponentHeroId: fabHeroId,
-    body: "Mulligan for Command and Conquer; sequence attacks before defense reactions.",
-    keyCardIds: [cardA.id],
+    // Key cards are referenced inline in the body as +[[cardId]] tokens (WS-4).
+    body: `Mulligan for +[[${cardA.id}]]; sequence attacks before defense reactions.`,
   });
 
   describe("POST /api/game-plans", () => {
-    it("creates a plan, stamping teamId/updatedBy server-side and resolving the opponent label + key cards", async () => {
+    it("creates a plan, stamping teamId/updatedBy server-side and resolving the opponent label", async () => {
       const response = await asMemberA(http().post("/api/game-plans")).send({
         ...validBody(),
         teamId: teamB.id,
@@ -145,8 +143,8 @@ describe("Game-plans endpoints (integration)", () => {
       expect(response.body.opponentSnapshotLabel).toBe("Dorinthea");
       expect(response.body.opponentRef).toBe(`hero:${fabHeroId}`);
       expect(response.body.updatedBy.userId).toBe(memberA.id);
-      expect(response.body.keyCards).toHaveLength(1);
-      expect(response.body.keyCards[0].name).toBe("Command and Conquer");
+      // The body carries the inline card token verbatim (resolved to a chip in the UI).
+      expect(response.body.body).toContain(`+[[${cardA.id}]]`);
     });
 
     it("rejects a second create for the same matchup key with 409", async () => {
@@ -171,14 +169,6 @@ describe("Game-plans endpoints (integration)", () => {
       });
       expect(response.status).toBe(422);
       expect(response.body.error.code).toBe("DOMAIN_RULE_VIOLATION");
-    });
-
-    it("rejects a key card from another game (cross-game FK → 422)", async () => {
-      const response = await asMemberA(http().post("/api/game-plans")).send({
-        ...validBody(),
-        keyCardIds: [cardRift.id],
-      });
-      expect(response.status).toBe(422);
     });
 
     it("rejects a hero from another game (→ 404)", async () => {
@@ -234,15 +224,13 @@ describe("Game-plans endpoints (integration)", () => {
       const created = await asMemberA(http().post("/api/game-plans")).send(validBody());
       const planId = created.body.id;
       const updated = await asMemberA2(http().patch(`/api/game-plans/${planId}`)).send({
-        body: "Revised: keep Snatch for the on-hit.",
-        keyCardIds: [cardA2.id],
+        body: `Revised: keep +[[${cardA2.id}]] for the on-hit.`,
       });
       expect(updated.status).toBe(200);
       expect(updated.body.id).toBe(planId);
       expect(updated.body.body).toContain("Revised");
+      expect(updated.body.body).toContain(`+[[${cardA2.id}]]`);
       expect(updated.body.updatedBy.userId).toBe(memberA2.id);
-      expect(updated.body.keyCards).toHaveLength(1);
-      expect(updated.body.keyCards[0].name).toBe("Snatch");
     });
   });
 

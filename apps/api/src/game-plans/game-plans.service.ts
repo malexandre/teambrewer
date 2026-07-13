@@ -28,11 +28,6 @@ interface UserRow {
   displayName: string;
 }
 
-/** A resolved key card, in game-plan display order. */
-interface KeyCardRow {
-  card: { id: string; name: string; pitch: number | null; imageUrl: string | null };
-}
-
 /** The persisted game-plan shape (with its relations) this service maps to the contract. */
 interface GamePlanRow {
   id: string;
@@ -50,7 +45,6 @@ interface GamePlanRow {
   updatedAt: Date;
   ourDeck: { name: string };
   updatedBy: UserRow;
-  keyCards: KeyCardRow[];
 }
 
 /** The resolved opponent columns + normalized key + human snapshot label, ready to persist. */
@@ -65,10 +59,6 @@ interface ResolvedOpponent {
 const GAME_PLAN_INCLUDE = {
   ourDeck: { select: { name: true } },
   updatedBy: { select: { id: true, username: true, displayName: true } },
-  keyCards: {
-    orderBy: { createdAt: "asc" },
-    include: { card: { select: { id: true, name: true, pitch: true, imageUrl: true } } },
-  },
 } as const;
 
 /**
@@ -130,17 +120,16 @@ export class GamePlansService {
   }
 
   /**
-   * Create a game-plan. Validates our deck + format belong to the team's game, resolves
-   * the single opponent target into its columns + normalized key + snapshot label, and
-   * validates the key cards belong to the game. Enforces one canonical plan per
-   * `(team, ourDeckId, opponentRef, formatId)` — a duplicate is a 409. Stamps
-   * `updatedById` from the verified context.
+   * Create a game-plan. Validates our deck + format belong to the team's game and
+   * resolves the single opponent target into its columns + normalized key + snapshot
+   * label. Enforces one canonical plan per `(team, ourDeckId, opponentRef, formatId)`
+   * — a duplicate is a 409. Stamps `updatedById` from the verified context. Key cards
+   * live inline in the body as `+[[cardId]]` tokens (no structured child table).
    */
   async create(team: TeamContext, input: CreateMatchupGamePlanInput): Promise<MatchupGamePlan> {
     await this.assertTeamDeck(input.ourDeckId);
     await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
     const opponent = await this.resolveOpponent(team.gameId, input);
-    await this.assertCardsInGame(team.gameId, input.keyCardIds);
     await this.assertNoDuplicatePlan(input.ourDeckId, opponent.opponentRef, input.formatId);
 
     const created = await this.scoped.db.matchupGamePlan.create({
@@ -157,7 +146,6 @@ export class GamePlansService {
         opponentRef: opponent.opponentRef,
         opponentSnapshotLabel: opponent.opponentSnapshotLabel,
         body: input.body,
-        keyCards: { create: input.keyCardIds.map((cardId) => ({ cardId })) },
       },
       select: { id: true },
     });
@@ -168,8 +156,8 @@ export class GamePlansService {
 
   /**
    * Edit a game-plan in place (any team member). The matchup key is immutable (rejected
-   * by the schema); `body`/`keyCards` update and `updatedBy` is re-stamped. `keyCards`
-   * replaces the whole set when present.
+   * by the schema); the `body` updates (including its inline `+[[cardId]]` tokens) and
+   * `updatedBy` is re-stamped.
    */
   async update(
     team: TeamContext,
@@ -178,24 +166,9 @@ export class GamePlansService {
   ): Promise<MatchupGamePlan> {
     await this.requireActiveGamePlanRow(gamePlanId);
 
-    if (input.keyCardIds !== undefined) {
-      await this.assertCardsInGame(team.gameId, input.keyCardIds);
-    }
-
     const data: Record<string, unknown> = { updatedById: team.userId };
     if (input.body !== undefined) data["body"] = input.body;
     await this.scoped.db.matchupGamePlan.updateMany({ where: { id: gamePlanId }, data });
-
-    if (input.keyCardIds !== undefined) {
-      // Replace the whole key-card set. The parent plan is already verified team-scoped,
-      // so deleting its transitive children by gamePlanId is safe.
-      await this.scoped.db.matchupGamePlanCard.deleteMany({ where: { gamePlanId } });
-      if (input.keyCardIds.length > 0) {
-        await this.scoped.db.matchupGamePlanCard.createMany({
-          data: input.keyCardIds.map((cardId) => ({ gamePlanId, cardId })),
-        });
-      }
-    }
 
     await this.recordActivity(team, gamePlanId, "matchup_game_plan_updated");
     return this.getGamePlan(gamePlanId);
@@ -349,26 +322,6 @@ export class GamePlansService {
       });
     }
   }
-
-  /** Reject a key card that does not belong to the team's game (cross-game FK → 422). */
-  private async assertCardsInGame(gameId: string, cardIds: string[]): Promise<void> {
-    for (const cardId of cardIds) {
-      // `card` is a global model; the scoping proxy passes this through untouched
-      // (matching assertHeroInGame), filtered explicitly by the team's game.
-      const card = await this.scoped.db.card.findFirst({
-        where: { id: cardId, gameId },
-        select: { id: true },
-      });
-      if (!card) {
-        throw new UnprocessableEntityException({
-          error: {
-            code: errorCode.domainRuleViolation,
-            message: "A key card does not belong to this team's game.",
-          },
-        });
-      }
-    }
-  }
 }
 
 function gamePlanNotFound(): NotFoundException {
@@ -389,12 +342,6 @@ function toMatchupGamePlan(row: GamePlanRow): MatchupGamePlan {
     opponentRef: row.opponentRef,
     opponentSnapshotLabel: row.opponentSnapshotLabel,
     body: row.body,
-    keyCards: row.keyCards.map((entry) => ({
-      id: entry.card.id,
-      name: entry.card.name,
-      pitch: entry.card.pitch,
-      imageUrl: entry.card.imageUrl,
-    })),
     updatedBy: {
       userId: row.updatedBy.id,
       username: row.updatedBy.username ?? "",
