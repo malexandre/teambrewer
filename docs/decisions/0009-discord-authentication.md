@@ -11,12 +11,17 @@
 - **Two login methods; each account uses exactly one:**
   1. **Password + TOTP 2FA** (+ backup codes) — TOTP is **mandatory** for these accounts (per ADR-0003).
   2. **Discord SSO** — sign in with Discord (OAuth2, `identify` scope only).
-- **A user picks one method; they are mutually exclusive for login.** A password account is not also a
-  Discord-login account, and vice-versa. Switching an account's method is an **admin-assisted** action.
+- **Each account uses exactly one method, and the _invitee_ chooses it at claim time.** The admin no
+  longer picks the method when creating the account (superseded 2026-07 — the admin found forcing the
+  choice upfront awkward). Instead the admin creates the account and shares **one method-agnostic invite
+  link**; the claim page offers *"set a password + TOTP"* or *"continue with Discord."* Whichever the
+  invitee completes **commits** that account's method — an account that has set a password can no longer be
+  claimed with Discord, and vice-versa (mutual exclusivity, now enforced at claim rather than creation).
+  Changing an account's method afterwards remains an **admin-assisted** action.
 - **Invite-only is preserved.** Discord login only works for an account an **admin has provisioned**.
   There is **no auto-provisioning**: a Discord user with no matching, admin-created account is rejected.
-  An admin either pre-binds the user's Discord ID or issues a single-use **Discord claim link** (no email,
-  shared manually like setup links) that binds the user's Discord identity on first authorization.
+  The unified invite link binds the user's Discord identity (and commits the method) on first authorization;
+  a legacy single-use **Discord claim link** is still accepted for the same binding.
 - **Optional identity link for password accounts:** a password+TOTP user MAY link a Discord account for
   **identity only** (recognizability, @mention mapping). This does **not** enable Discord login.
 - **Minimal data & standard hardening:** request only the `identify` scope (Discord user ID + username;

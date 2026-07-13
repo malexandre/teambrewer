@@ -1,6 +1,7 @@
-import { Body, Controller, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 
 import {
+  type InviteStatus,
   type OnboardingResult,
   resetPasswordSchema,
   setupPasswordSchema,
@@ -19,6 +20,11 @@ import { OnboardingService } from "./onboarding.service.js";
 @StrictRateLimit()
 export class OnboardingController {
   constructor(private readonly onboarding: OnboardingService) {}
+
+  @Get("invite/:token")
+  inspectInvite(@Param("token") token: string): Promise<InviteStatus> {
+    return this.onboarding.inspectInvite(token);
+  }
 
   @Post("setup/:token")
   setup(@Param("token") token: string, @Body() body: unknown): Promise<OnboardingResult> {

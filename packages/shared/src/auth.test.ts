@@ -115,22 +115,19 @@ describe("teamRoleSchema", () => {
 });
 
 describe("adminCreateUserSchema", () => {
-  it("parses a valid create-user payload without a body teamId", () => {
+  it("parses a valid create-user payload without a body teamId (no method — the invitee chooses)", () => {
     const parsed = adminCreateUserSchema.parse({
       username: "newmember",
       displayName: "New Member",
-      authMethod: "password_totp",
       role: "member",
     });
-    expect(parsed.authMethod).toBe("password_totp");
-    expect(parsed.role).toBe("member");
+    expect(parsed).toEqual({ username: "newmember", displayName: "New Member", role: "member" });
   });
 
   it("ignores any client-supplied teamId (scoping comes from context)", () => {
     const parsed = adminCreateUserSchema.parse({
       username: "newmember",
       displayName: "New Member",
-      authMethod: "discord",
       role: "team_admin",
       teamId: "team-should-be-ignored",
     });

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { BadRequestException, UnprocessableEntityException } from "@nestjs/common";
 import { Client } from "pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
@@ -125,8 +127,18 @@ describe("DiscordOAuthService", () => {
     expect(account).toBeNull();
   });
 
-  it("propagates method exclusivity: a password account cannot be claimed for Discord login", async () => {
+  it("propagates method exclusivity: an account that set a password cannot be claimed for Discord", async () => {
     const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
+    // A set password commits the account to that method; a later Discord claim is rejected.
+    await prisma.account.create({
+      data: {
+        id: randomUUID(),
+        userId: passwordUser.id,
+        providerId: "credential",
+        accountId: passwordUser.id,
+        password: "already-hashed",
+      },
+    });
     const token = await issueClaimToken(passwordUser.id);
     const service = createService(prisma, { discordUserId: "d", discordUsername: "d" });
     const started = service.start("claim", token);

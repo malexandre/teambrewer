@@ -20,11 +20,13 @@ manually (e.g. via Discord). Built on Better Auth. See [ADR-0003](../decisions/0
 
 ## User stories
 
-- As an **admin**, when I create a user I can choose their **login method** (password+TOTP or Discord SSO).
-- As an **instance-admin**, I can create a user account and get a copyable **setup link** (or **Discord
-  claim link**) to send them.
-- As a **team-admin**, I can create an account **for my own team** and generate its setup/claim link.
-- As a **new password user**, I can open a setup link to set my password, set up TOTP, and save my backup codes.
+- As an **admin**, when I create a user I do **not** pick their login method — I share one invite link and
+  the invitee chooses password+TOTP or Discord when they claim it (updated 2026-07; see ADR-0009).
+- As an **instance-admin**, I can create a user account and get a copyable **invite link** to send them.
+- As a **team-admin**, I can create an account **for my own team** and generate its invite link.
+- As an **invitee**, I open the invite link and choose to **set a password (then TOTP + backup codes)** or
+  **connect Discord** — whichever I complete commits my account's login method.
+- As an **admin**, I can **revoke** a user's outstanding invite link and **generate a new one** at any time.
 - As a **new Discord user**, I can open a claim link, authorize with Discord once, and thereafter **log in
   with Discord**.
 - As a **member**, I can log in with either my password + TOTP code, or with Discord — whichever my account uses.
@@ -104,8 +106,8 @@ Failed attempts are rate-limited; tenant/auth violations are logged without PII.
 
 | Action | Instance-admin | Team-admin | Member |
 |---|---|---|---|
-| Create user (choose login method) + generate setup/claim link | ✅ (any team) | ✅ (own team only) | ❌ |
-| Change a user's login method (issue setup/claim link) | ✅ | ✅ (own-team users) | ❌ |
+| Create user + generate/revoke invite link (invitee chooses method) | ✅ (any team) | ✅ (own team only) | ❌ |
+| Change a user's login method (re-issue an invite link) | ✅ | ✅ (own-team users) | ❌ |
 | Generate reset link for a user | ✅ | ✅ (own-team users) | ❌ |
 | Reset a user's 2FA | ✅ | ✅ (own-team users) | ❌ |
 | Revoke a user's sessions | ✅ | ✅ (own-team users) | ❌ |
@@ -158,8 +160,8 @@ Mobile-first (see [frontend](../architecture/frontend.md#auth-ux)):
   active team.
 - **Login:** offers **password + TOTP** (with a "use a backup code instead" affordance and "**ask your
   admin for a reset link**" messaging) and a **"Log in with Discord"** button; no email flows shown.
-- **Admin console:** create user (**choose login method**), copy setup / Discord-claim / reset link to
-  clipboard, reset 2FA, revoke sessions, change a user's method.
+- **Admin console:** create user (**invitee chooses method**), copy invite / reset link to clipboard,
+  **revoke** the invite link, generate a new one, reset 2FA, revoke sessions.
 - **Account settings:** (password accounts) change password, regenerate backup codes, **link/unlink Discord
   identity**; view/sign-out sessions.
 

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { ConflictException, UnprocessableEntityException } from "@nestjs/common";
 import { Client } from "pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
@@ -85,12 +87,45 @@ describe("DiscordAccountService", () => {
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
-    it("rejects binding when the target account is a password account (method exclusivity)", async () => {
-      const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
-      const token = await issueClaimToken(passwordUser.id);
+    it("claims an unclaimed account via the unified setup invite, committing Discord as the method", async () => {
+      // Provisioned with the placeholder method and no password set yet.
+      const user = await createUser(prisma, { authMethod: "password_totp" });
+      const { rawToken } = await inviteTokens.issue({ userId: user.id, purpose: "setup" });
+
+      const result = await service.bindClaim({
+        token: rawToken,
+        discordUserId: "discord-1500",
+        discordUsername: "Chooser",
+      });
+
+      expect(result.userId).toBe(user.id);
+      const stored = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { authMethod: true, discordUserId: true },
+      });
+      expect(stored).toEqual({ authMethod: "discord", discordUserId: "discord-1500" });
+      expect((await service.resolveLoginUser("discord-1500"))?.id).toBe(user.id);
+    });
+
+    it("rejects claiming with Discord once the account has set a password (one method per account)", async () => {
+      const user = await createUser(prisma, { authMethod: "password_totp" });
+      await prisma.account.create({
+        data: {
+          id: randomUUID(),
+          userId: user.id,
+          providerId: "credential",
+          accountId: user.id,
+          password: "already-hashed",
+        },
+      });
+      const { rawToken } = await inviteTokens.issue({ userId: user.id, purpose: "setup" });
 
       await expect(
-        service.bindClaim({ token, discordUserId: "discord-1003", discordUsername: "Gamma" }),
+        service.bindClaim({
+          token: rawToken,
+          discordUserId: "discord-1600",
+          discordUsername: "Late",
+        }),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
   });

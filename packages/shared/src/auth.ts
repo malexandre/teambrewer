@@ -79,6 +79,16 @@ export const resetPasswordSchema = z.object({
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
+/**
+ * Non-consuming validity check for an onboarding link (GET /api/onboarding/invite/:token),
+ * so the claim page can show "this link is no longer valid" on load rather than
+ * only failing on submit. Never reveals which account a token belongs to.
+ */
+export const inviteStatusSchema = z.object({
+  valid: z.boolean(),
+});
+export type InviteStatus = z.infer<typeof inviteStatusSchema>;
+
 /** Self-service password change for an authenticated password account. */
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -96,13 +106,13 @@ export type TeamRole = z.infer<typeof teamRoleSchema>;
 /**
  * Admin create-user payload. The target team comes from the verified `:teamId`
  * path parameter (admin routes are path-scoped — see phase-01 "Option C"), never
- * the body; `role` is the membership role granted in that team. Returns the user
- * and a setup link (password accounts) or a Discord claim link (Discord accounts).
+ * the body; `role` is the membership role granted in that team. The admin no
+ * longer chooses a login method — the invitee picks password or Discord when they
+ * claim the account (ADR-0009). Returns the user and a single unified invite link.
  */
 export const adminCreateUserSchema = z.object({
   username: usernameSchema,
   displayName: displayNameSchema,
-  authMethod: authMethodSchema,
   role: teamRoleSchema,
 });
 export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;

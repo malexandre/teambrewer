@@ -42,10 +42,13 @@ export class AdminUsersService {
   async createUser(teamId: string, input: AdminCreateUserInput): Promise<AdminCreateUserResponse> {
     let userId: string;
     try {
+      // The stored authMethod is a placeholder until the invitee claims the
+      // account; claiming with a password keeps it, claiming with Discord flips
+      // it to "discord" (ADR-0009 — the invitee chooses the login method).
       ({ userId } = await this.authService.provisionAccount({
         username: input.username,
         displayName: input.displayName,
-        authMethod: input.authMethod,
+        authMethod: "password_totp",
       }));
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -63,8 +66,8 @@ export class AdminUsersService {
       data: { teamId, userId, role: input.role },
     });
 
-    const purpose = input.authMethod === "discord" ? "discord_link" : "setup";
-    const link = await this.issueLink(userId, teamId, purpose);
+    // One method-agnostic invite; the claim page offers password or Discord.
+    const link = await this.issueLink(userId, teamId, "setup");
     const user = await this.loadSummary(userId);
     return { user, link };
   }
@@ -90,6 +93,12 @@ export class AdminUsersService {
       });
     }
     return this.issueLink(userId, teamId, "reset");
+  }
+
+  /** Invalidate the user's outstanding invite/recovery link(s). Mint a fresh one with generateSetupLink. */
+  async revokeInviteLinks(teamId: string, userId: string): Promise<void> {
+    await this.assertTeamMember(teamId, userId);
+    await this.inviteTokens.revoke(userId);
   }
 
   /** Clear TOTP + backup codes so the user re-enrolls (password accounts only). */

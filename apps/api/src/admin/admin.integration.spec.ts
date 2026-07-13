@@ -12,7 +12,9 @@ import {
 } from "../../test/factories.js";
 import { createApiTestApp } from "../../test/nest-app.js";
 import { AppModule } from "../app.module.js";
+import { InviteTokenService } from "../auth/invite-token.service.js";
 import type { PrismaClient } from "../generated/prisma/client.js";
+import type { PrismaService } from "../prisma/prisma.service.js";
 
 describe("Admin endpoints (integration)", () => {
   let app: INestApplication;
@@ -94,19 +96,15 @@ describe("Admin endpoints (integration)", () => {
   });
 
   describe("account management (TeamAdminGuard, Option C path)", () => {
-    it("lets a team-admin create a password account + membership and returns a setup link", async () => {
+    it("creates an account + membership and returns one unified invite link (invitee chooses method)", async () => {
       const response = await http()
         .post(`/api/admin/teams/${world.teamA.id}/users`)
         .set("x-test-user-id", world.teamAdminA.id)
-        .send({
-          username: "rookie",
-          displayName: "Rookie",
-          authMethod: "password_totp",
-          role: "member",
-        });
+        .send({ username: "rookie", displayName: "Rookie", role: "member" });
 
       expect(response.status).toBe(201);
-      expect(response.body.user).toMatchObject({ username: "rookie", authMethod: "password_totp" });
+      expect(response.body.user).toMatchObject({ username: "rookie" });
+      // A single method-agnostic invite — the invitee picks password or Discord on the claim page.
       expect(response.body.link.purpose).toBe("setup");
       expect(response.body.link.url).toContain("/setup/");
       const membership = await prisma.teamMembership.findFirst({
@@ -115,20 +113,21 @@ describe("Admin endpoints (integration)", () => {
       expect(membership?.role).toBe("member");
     });
 
-    it("returns a Discord claim link for a Discord account", async () => {
+    it("does not require (or accept) a login method at creation", async () => {
       const response = await http()
         .post(`/api/admin/teams/${world.teamA.id}/users`)
         .set("x-test-user-id", world.teamAdminA.id)
+        // authMethod is ignored if sent — the schema no longer carries it.
         .send({
-          username: "discordee",
-          displayName: "Discordee",
+          username: "chooser",
+          displayName: "Chooser",
           authMethod: "discord",
           role: "member",
         });
 
       expect(response.status).toBe(201);
-      expect(response.body.link.purpose).toBe("discord_link");
-      expect(response.body.link.url).toContain("/claim/");
+      expect(response.body.link.purpose).toBe("setup");
+      expect(response.body.link.url).toContain("/setup/");
     });
 
     it("forbids a plain member from creating accounts (403)", async () => {
@@ -263,6 +262,36 @@ describe("Admin endpoints (integration)", () => {
         .send({ username: "member_alpha", role: "member" });
       expect(response.status).toBe(201);
       expect(response.body).toMatchObject({ username: "member_alpha", role: "member" });
+    });
+  });
+
+  describe("invite link revocation", () => {
+    it("revokes a member's outstanding invite link so it can no longer be used", async () => {
+      const inviteTokens = new InviteTokenService(prisma as unknown as PrismaService);
+      const { rawToken } = await inviteTokens.issue({
+        userId: world.memberA.id,
+        teamId: world.teamA.id,
+        purpose: "setup",
+      });
+      expect((await http().get(`/api/onboarding/invite/${rawToken}`)).body).toEqual({
+        valid: true,
+      });
+
+      const revoke = await http()
+        .post(`/api/admin/teams/${world.teamA.id}/users/${world.memberA.id}/revoke-link`)
+        .set("x-test-user-id", world.teamAdminA.id);
+      expect(revoke.status).toBe(204);
+
+      expect((await http().get(`/api/onboarding/invite/${rawToken}`)).body).toEqual({
+        valid: false,
+      });
+    });
+
+    it("404s revoking links for a user who is not a member of the acting team", async () => {
+      const response = await http()
+        .post(`/api/admin/teams/${world.teamA.id}/users/${world.memberB.id}/revoke-link`)
+        .set("x-test-user-id", world.teamAdminA.id);
+      expect(response.status).toBe(404);
     });
   });
 

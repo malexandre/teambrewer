@@ -52,6 +52,12 @@ export class AdminUsersController {
     return this.adminUsers.generateResetLink(teamId, userId);
   }
 
+  @Post(":userId/revoke-link")
+  @HttpCode(204)
+  revokeLink(@Param("teamId") teamId: string, @Param("userId") userId: string): Promise<void> {
+    return this.adminUsers.revokeInviteLinks(teamId, userId);
+  }
+
   @Post(":userId/reset-2fa")
   @HttpCode(204)
   resetTwoFactor(@Param("teamId") teamId: string, @Param("userId") userId: string): Promise<void> {

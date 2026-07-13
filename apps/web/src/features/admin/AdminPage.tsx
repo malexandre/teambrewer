@@ -1,4 +1,4 @@
-import type { AuthMethod, GeneratedLink, TeamRole } from "@teambrewer/shared";
+import type { GeneratedLink, TeamRole } from "@teambrewer/shared";
 import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
   useGenerateLink,
   useRemoveMember,
   useResetTwoFactor,
+  useRevokeLink,
   useRevokeSessions,
 } from "./use-admin";
 
@@ -113,12 +114,11 @@ function CreateUserForm({ teamId }: { teamId: string }) {
   const createUser = useCreateUser(teamId);
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [authMethod, setAuthMethod] = useState<AuthMethod>("password_totp");
   const [role, setRole] = useState<TeamRole>("member");
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    createUser.mutate({ username, displayName, authMethod, role });
+    createUser.mutate({ username, displayName, role });
   }
 
   return (
@@ -141,18 +141,6 @@ function CreateUserForm({ teamId }: { teamId: string }) {
             onChange={(event) => setDisplayName(event.target.value)}
             required
           />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="new-method">Login method</Label>
-          <select
-            id="new-method"
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-            value={authMethod}
-            onChange={(event) => setAuthMethod(event.target.value as AuthMethod)}
-          >
-            <option value="password_totp">Password + TOTP</option>
-            <option value="discord">Discord</option>
-          </select>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="new-role">Role</Label>
@@ -230,6 +218,7 @@ function MembersAdmin({ teamId }: { teamId: string }) {
   const changeRole = useChangeRole(teamId);
   const removeMember = useRemoveMember(teamId);
   const generateLink = useGenerateLink(teamId);
+  const revokeLink = useRevokeLink(teamId);
   const resetTwoFactor = useResetTwoFactor(teamId);
   const revokeSessions = useRevokeSessions(teamId);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -272,6 +261,28 @@ function MembersAdmin({ teamId }: { teamId: string }) {
                 }
               >
                 {member.role === "team_admin" ? "Demote" : "Promote"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  run(
+                    generateLink
+                      .mutateAsync({ userId: member.userId, kind: "setup-link" })
+                      .then((generated) => setLink(generated)),
+                  )
+                }
+              >
+                New invite link
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => run(revokeLink.mutateAsync(member.userId).then(() => setLink(null)))}
+              >
+                Revoke link
               </Button>
               <Button
                 type="button"

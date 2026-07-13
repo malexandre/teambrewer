@@ -55,6 +55,27 @@ describe("Onboarding link consumption (integration)", () => {
     expect(credential?.password).toBeTruthy();
   });
 
+  it("reports an invite link valid on load and invalid once consumed", async () => {
+    const user = await createUser(prisma, { username: "peeker", authMethod: "password_totp" });
+    const { rawToken } = await inviteTokens.issue({ userId: user.id, purpose: "setup" });
+
+    const before = await http().get(`/api/onboarding/invite/${rawToken}`);
+    expect(before.status).toBe(200);
+    expect(before.body).toEqual({ valid: true });
+
+    await http().post(`/api/onboarding/setup/${rawToken}`).send({ password: STRONG_PASSWORD });
+
+    const after = await http().get(`/api/onboarding/invite/${rawToken}`);
+    expect(after.status).toBe(200);
+    expect(after.body).toEqual({ valid: false });
+  });
+
+  it("reports an unknown invite token as invalid without erroring (no enumeration)", async () => {
+    const response = await http().get("/api/onboarding/invite/not-a-real-token");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ valid: false });
+  });
+
   it("rejects a used or unknown setup token (400 INVALID_TOKEN, no enumeration)", async () => {
     const user = await createUser(prisma, { username: "abandoner" });
     const { rawToken } = await inviteTokens.issue({ userId: user.id, purpose: "setup" });

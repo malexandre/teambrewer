@@ -50,12 +50,13 @@ export class DiscordAccountService {
   ) {}
 
   /**
-   * Consume a `discord_link` claim token and bind the returned Discord identity
-   * to the provisioned account, enabling Discord login for it. The token is
+   * Consume a single-use invite/claim token (the unified `setup` invite, or a
+   * legacy `discord_link` claim link) and bind the returned Discord identity to
+   * the provisioned account, committing Discord as its login method. The token is
    * single-use even if binding fails afterwards (the admin regenerates it).
    */
   async bindClaim(input: BindClaimInput): Promise<{ userId: string }> {
-    const consumed = await this.inviteTokens.consume(input.token, "discord_link");
+    const consumed = await this.inviteTokens.consume(input.token, ["setup", "discord_link"]);
     if (!consumed.userId) {
       throw new UnprocessableEntityException({
         error: { code: errorCode.invalidToken, message: "This link is invalid or has expired." },
@@ -66,10 +67,12 @@ export class DiscordAccountService {
   }
 
   /**
-   * Attach a Discord identity to a `discord` account as its login identity,
-   * creating the Better Auth `account` link. Used by the claim flow (and any
-   * future admin pre-bind). Rejects a non-Discord account and a Discord id
-   * already linked elsewhere.
+   * Bind a Discord identity to an unclaimed account as its login identity,
+   * committing `authMethod = "discord"` and creating the Better Auth `account`
+   * link. The invitee chooses their method at claim time (ADR-0009), so this
+   * accepts an account whose method is still the placeholder — but rejects one
+   * that has already set a password (a claimed password account keeps its method;
+   * one account, one method). Also rejects a Discord id already linked elsewhere.
    */
   async bindLoginIdentity(
     userId: string,
@@ -86,11 +89,15 @@ export class DiscordAccountService {
           error: { code: errorCode.notFound, message: "Account not found." },
         });
       }
-      if (user.authMethod !== "discord") {
+      const passwordCredential = await transaction.account.findFirst({
+        where: { userId, providerId: "credential" },
+        select: { id: true },
+      });
+      if (passwordCredential) {
         throw new UnprocessableEntityException({
           error: {
             code: errorCode.loginMethodMismatch,
-            message: "This account does not use Discord to log in.",
+            message: "This account has already been set up with a password.",
           },
         });
       }
@@ -123,7 +130,7 @@ export class DiscordAccountService {
 
       await transaction.user.update({
         where: { id: userId },
-        data: { discordUserId, discordUsername },
+        data: { authMethod: "discord", discordUserId, discordUsername },
       });
       if (!existingLink) {
         await transaction.account.create({

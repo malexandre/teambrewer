@@ -37,6 +37,32 @@ describe("InviteTokenService", () => {
     expect(stored.usedAt).toBeNull();
   });
 
+  it("revoke invalidates outstanding links so they can no longer be consumed", async () => {
+    const { rawToken } = await service.issue({ userId, purpose: "setup" });
+
+    const revokedCount = await service.revoke(userId);
+    expect(revokedCount).toBe(1);
+
+    await expect(service.consume(rawToken, "setup")).rejects.toBeInstanceOf(
+      InvalidInviteTokenError,
+    );
+    // Idempotent: a second revoke touches nothing.
+    expect(await service.revoke(userId)).toBe(0);
+  });
+
+  it("inspect reports validity without consuming the token", async () => {
+    const { rawToken } = await service.issue({ userId, purpose: "setup" });
+
+    expect(await service.inspect(rawToken)).toEqual({ purpose: "setup" });
+    // Inspect must not consume: the token still works afterwards.
+    expect(await service.inspect(rawToken)).toEqual({ purpose: "setup" });
+
+    expect(await service.inspect("not-a-real-token")).toBeNull();
+
+    await service.consume(rawToken, "setup");
+    expect(await service.inspect(rawToken)).toBeNull();
+  });
+
   it("consumes a valid token exactly once", async () => {
     const { rawToken } = await service.issue({
       userId,

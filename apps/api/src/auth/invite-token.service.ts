@@ -93,15 +93,49 @@ export class InviteTokenService {
   }
 
   /**
+   * Invalidate every outstanding (unused) link for a user, whatever the purpose —
+   * an admin "revoke the invite/recovery link" action. Returns how many links were
+   * invalidated (0 if none were outstanding). Idempotent.
+   */
+  async revoke(userId: string, now: Date = new Date()): Promise<number> {
+    const result = await this.prisma.inviteToken.updateMany({
+      where: { userId, usedAt: null },
+      data: { usedAt: now },
+    });
+    return result.count;
+  }
+
+  /**
+   * Non-consuming validity check for the claim page: returns the token's purpose
+   * when it is currently usable (exists, unused, unexpired), else null. Never
+   * discloses which account a token belongs to (no enumeration).
+   */
+  async inspect(
+    rawToken: string,
+    now: Date = new Date(),
+  ): Promise<{ purpose: InviteTokenPurpose } | null> {
+    const tokenHash = InviteTokenService.hashToken(rawToken);
+    const token = await this.prisma.inviteToken.findUnique({
+      where: { tokenHash },
+      select: { purpose: true, usedAt: true, expiresAt: true },
+    });
+    if (!token || token.usedAt !== null || token.expiresAt.getTime() <= now.getTime()) {
+      return null;
+    }
+    return { purpose: token.purpose };
+  }
+
+  /**
    * Validate and atomically consume a token. Marks it used in the same query
    * that checks it is unused, so a token cannot be redeemed twice under a race.
    * Any failure throws {@link InvalidInviteTokenError} (no enumeration).
    */
   async consume(
     rawToken: string,
-    purpose: InviteTokenPurpose,
+    purpose: InviteTokenPurpose | InviteTokenPurpose[],
     now: Date = new Date(),
   ): Promise<ConsumedInviteToken> {
+    const acceptedPurposes = Array.isArray(purpose) ? purpose : [purpose];
     const tokenHash = InviteTokenService.hashToken(rawToken);
 
     const consumed = await this.prisma.$transaction(async (transaction) => {
@@ -110,7 +144,7 @@ export class InviteTokenService {
       });
       if (
         !token ||
-        token.purpose !== purpose ||
+        !acceptedPurposes.includes(token.purpose) ||
         token.usedAt !== null ||
         token.expiresAt.getTime() <= now.getTime()
       ) {

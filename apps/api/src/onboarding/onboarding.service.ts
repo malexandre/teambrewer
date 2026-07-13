@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 
-import { errorCode, type OnboardingResult } from "@teambrewer/shared";
+import { errorCode, type InviteStatus, type OnboardingResult } from "@teambrewer/shared";
 
 import { AuthService } from "../auth/auth.service.js";
 import { InviteTokenService } from "../auth/invite-token.service.js";
@@ -19,6 +19,12 @@ export class OnboardingService {
     private readonly authService: AuthService,
     private readonly inviteTokens: InviteTokenService,
   ) {}
+
+  /** Non-consuming validity check so the claim page can react on load, not just on submit. */
+  async inspectInvite(token: string): Promise<InviteStatus> {
+    const result = await this.inviteTokens.inspect(token);
+    return { valid: result !== null };
+  }
 
   /** Set the initial password for a new account. TOTP enrolment follows on the client. */
   async completeSetup(token: string, password: string): Promise<OnboardingResult> {

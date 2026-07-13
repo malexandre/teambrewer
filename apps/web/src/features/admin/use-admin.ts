@@ -102,6 +102,14 @@ export function useGenerateLink(teamId: string) {
   });
 }
 
+/** Invalidate a member's outstanding invite/recovery link(s). Mint a fresh one via useGenerateLink. */
+export function useRevokeLink(teamId: string) {
+  return useMutation({
+    mutationFn: (userId: string) =>
+      apiClient.post(`/admin/teams/${teamId}/users/${userId}/revoke-link`),
+  });
+}
+
 export function useResetTwoFactor(teamId: string) {
   return useMutation({
     mutationFn: (userId: string) =>
