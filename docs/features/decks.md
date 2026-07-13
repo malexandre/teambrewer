@@ -39,6 +39,10 @@ Reference decks represent opponent/meta archetypes for gauntlets.
   served by `GET /api/decks/:deckId/meta-readiness?metaId=` (defaults to the current meta). Game logs match
   an entry when side A is this deck and side B matches the entry's target (reference deck / hero /
   archetype label); a game log's optional `metaId` is not required (a later narrowing).
+- As a **member**, I can **"Add card idea"** from the deck page: it opens the shared **Task** form
+  (see [tasks.md](tasks.md)) pre-linked to this deck with a card-test title/description scaffold ready for
+  `+card` mentions — the same `POST /api/tasks` path as the tasks board, not a parallel one. The deck page
+  also lists the deck's existing tasks.
 
 ## Data
 

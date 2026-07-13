@@ -22,11 +22,17 @@ export function TaskForm({
   teamId,
   task,
   initialDeckId,
+  initialTitle,
+  initialDescription,
   onDone,
 }: {
   teamId: string | undefined;
   task?: Task;
   initialDeckId?: string;
+  /** A title scaffold for a new task (e.g. the "add card idea" affordance — WS-4). */
+  initialTitle?: string;
+  /** A description scaffold for a new task, ready for `+card` mentions. */
+  initialDescription?: string;
   onDone: () => void;
 }) {
   const isEdit = Boolean(task);
@@ -38,14 +44,16 @@ export function TaskForm({
   const members = memberData?.data ?? [];
   const decks = deckData?.data ?? [];
 
-  const [title, setTitle] = useState(task?.title ?? "");
+  const [title, setTitle] = useState(task?.title ?? initialTitle ?? "");
   const [deckId, setDeckId] = useState(task?.deckId ?? initialDeckId ?? "");
   const [assigneeId, setAssigneeId] = useState(task?.assignee?.userId ?? "");
   const [titleError, setTitleError] = useState(false);
   // The description lives in the composer (uncontrolled); we mirror the last
   // submitted value so a validation/API failure can re-seed a remounted composer
   // instead of silently dropping what the user typed.
-  const [draftDescription, setDraftDescription] = useState(task?.description ?? "");
+  const [draftDescription, setDraftDescription] = useState(
+    task?.description ?? initialDescription ?? "",
+  );
   const [composerKey, setComposerKey] = useState(0);
 
   const mutation = isEdit ? updateTask : createTask;

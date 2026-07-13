@@ -15,6 +15,7 @@ import { CommentThread } from "@/features/collaboration/CommentThread";
 
 import { GamePlanSection } from "@/features/gameplans/GamePlanSection";
 
+import { DeckCardIdeasSection } from "./DeckCardIdeasSection";
 import { DeckReadinessSection } from "./DeckReadinessSection";
 import { DECK_VISIBILITY_LABELS } from "./deck-display";
 import { DeckForm } from "./DeckForm";
@@ -168,6 +169,8 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
         formatId={deck.formatId}
         deckArchived={deck.archivedAt !== null}
       />
+
+      <DeckCardIdeasSection teamId={teamId} deckId={deck.id} deckName={deck.name} />
 
       <CommentThread teamId={teamId} subjectType="deck" subjectId={deck.id} canComment />
 
