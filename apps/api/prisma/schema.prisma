@@ -685,6 +685,9 @@ model GameLog {
   @@index([teamId, pilotUserId])
   @@index([teamId, opponentDeckId])
   @@index([teamId, opponentPilotUserId])
+  // Supports the game-log list's keyset order (played_at DESC, id DESC) within a
+  // team, so time-ordered pages scan the index instead of sorting (phase-13 perf).
+  @@index([teamId, playedAt(sort: Desc), id(sort: Desc)])
   @@map("game_log")
 }
 

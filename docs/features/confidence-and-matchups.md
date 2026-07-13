@@ -55,6 +55,16 @@ For a pairing `(ourDeck or ourHero) vs (opponentDeck or opponentHero/archetype)`
 Aggregation is derived from `GameLog` (the source of truth); it may be materialized later for performance
 but must stay consistent with the logs.
 
+**Performance (phase-13).** The reads stay **derived, not materialized** — the decision was
+*measure-first, indexes only*. The matchup service issues one `findMany` for the format's non-archived
+logs plus two batched identity lookups (decks, heroes) — **no N+1** — and aggregates in memory via the
+pure, unit-tested `aggregateMatchup` in `packages/shared` (so correctness is pinned regardless of storage).
+Team-scoped reads are covered by the `(teamId, formatId)` index; the game-log list's keyset order is
+covered by `(teamId, playedAt DESC, id DESC)`. Budget: hot list/matchup reads should stay well under a
+**p95 of ~300 ms** on a realistic team dataset (low thousands of logs). Introduce a materialized aggregate
+**only if** measurement shows this budget is exceeded — it would add a cache table plus write-path
+invalidation, and the pure aggregator gives it a clean regression target.
+
 ### Worked example
 
 Four games logged for **our Kassai** vs **opponent Fang**, best-of-1:
