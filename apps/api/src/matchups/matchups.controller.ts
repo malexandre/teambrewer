@@ -9,6 +9,7 @@ import {
   matchupQuerySchema,
 } from "@teambrewer/shared";
 
+import { ExpensiveOperationRateLimit } from "../common/throttling.js";
 import { CurrentTeam } from "../tenancy/current-team.decorator.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamContextGuard } from "../tenancy/team-context.guard.js";
@@ -32,7 +33,11 @@ export class MatchupsController {
     return this.matchups.list(team, matchupQuerySchema.parse(query));
   }
 
+  // The matrix and coverage reads full-scan the team's game logs for a format and
+  // aggregate in memory (docs/features/confidence-and-matchups.md); a tuned limit
+  // keeps a burst of these costly aggregations from degrading the instance.
   @Get("matrix")
+  @ExpensiveOperationRateLimit()
   matrix(
     @CurrentTeam() team: TeamContext,
     @Query() query: unknown,
@@ -41,6 +46,7 @@ export class MatchupsController {
   }
 
   @Get("coverage")
+  @ExpensiveOperationRateLimit()
   coverage(@Query() query: unknown): Promise<MatchupCoverageResponse> {
     return this.matchups.coverage(matchupCoverageQuerySchema.parse(query));
   }

@@ -10,6 +10,7 @@ import { CollaborationModule } from "./collaboration/collaboration.module.js";
 import { DashboardModule } from "./dashboard/dashboard.module.js";
 import { DecksModule } from "./decks/decks.module.js";
 import { DomainExceptionFilter } from "./common/domain-exception.filter.js";
+import { OriginCheckGuard } from "./common/origin-check.guard.js";
 import { THROTTLER_OPTIONS } from "./common/throttling.js";
 import { DiscordModule } from "./discord/discord.module.js";
 import { EventsModule } from "./events/events.module.js";
@@ -58,6 +59,8 @@ import { TestingQueueModule } from "./testing-queue/testing-queue.module.js";
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
     // Rate limiting (security.md); sensitive routes tighten it with StrictRateLimit.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // CSRF belt-and-braces: reject cross-origin cookie-authenticated mutations.
+    { provide: APP_GUARD, useClass: OriginCheckGuard },
   ],
 })
 export class AppModule {}

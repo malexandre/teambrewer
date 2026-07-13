@@ -70,11 +70,28 @@ sequenceDiagram
 
 - **Input validation** everywhere via shared Zod schemas ([api-conventions](api-conventions.md)).
 - **AuthZ on every endpoint** (authenticated + role + tenant). Default-deny.
-- **CSRF protection** for cookie-based auth; **CORS** locked to the app origin.
-- **Rate limiting** on auth, link generation/consumption, and expensive endpoints.
-- **Security headers** via Nginx/helmet (CSP, HSTS, X-Frame-Options, etc.).
+- **CSRF protection** for cookie-based auth is layered: session cookies are `SameSite` + `httpOnly`,
+  **CORS** is locked to the app origin (`WEB_ORIGIN`), and an `OriginCheckGuard` rejects any
+  **state-changing** (POST/PUT/PATCH/DELETE) request that carries a session cookie but whose `Origin`
+  (or `Referer` fallback) is not the app origin. Better Auth's own `/api/auth/*` routes ship their own
+  origin/CSRF protection. Requests without a session cookie are not CSRF-exploitable and are left to the
+  auth guards.
+- **Rate limiting** (all thresholds env-configurable — see `.env.example` `RATE_LIMIT_*`):
+  - Better Auth's own limiter guards `/api/auth/*` (login/TOTP), with a strict per-window cap on the
+    sign-in paths to blunt brute-forcing (`RATE_LIMIT_AUTH_*`).
+  - The Nest throttler guards everything else: a generous global default, a **strict** limit on link
+    generation + consumption and Discord OAuth start, and a tuned **expensive-operation** limit on the
+    matchup matrix/coverage reads and the admin card-data sync.
+- **Security headers** are set at two layers: **Nginx** (the edge) owns the SPA's **CSP** and, at the
+  TLS-terminating front proxy, **HSTS**; the **API** additionally sets `X-Content-Type-Options`,
+  `X-Frame-Options: DENY`, and `Referrer-Policy` via **helmet** (API CSP/HSTS are disabled there to avoid
+  drift — the API serves JSON only).
 - **Secrets** via environment variables / Docker secrets; never committed. `.env.example` documents them.
-- **No secrets or PII in logs.** Log tenant-violation attempts (without sensitive data) for audit.
+- **No secrets or PII in logs.** Tenant-violation attempts are logged for audit with **opaque IDs only**:
+  the `TeamContextGuard`/`TeamAdminGuard` log a forged-team (non-member) access as a warning, and the
+  `OriginCheckGuard` logs rejected cross-origin mutations. Cross-tenant resource reads deliberately return
+  **404 without a distinct log** to avoid confirming existence (enumeration-safety) — the forged active-team
+  is the logged signal.
 - **Dependencies:** keep updated; run dependency audits locally (`pnpm audit`), and in CI once a remote is configured.
 - **Prohibited data:** TeamBrewer never collects payment/financial data, government IDs, or similar.
 

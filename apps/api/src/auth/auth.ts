@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { twoFactor, username } from "better-auth/plugins";
 
+import { readPositiveIntegerEnv } from "../common/env.js";
 import type { PrismaClient } from "../generated/prisma/client.js";
 
 /**
@@ -31,10 +32,32 @@ export function createAuth(prisma: PrismaClient) {
   const discordClientSecret = process.env["DISCORD_CLIENT_SECRET"];
   const discordRedirectUri = process.env["DISCORD_REDIRECT_URI"];
 
+  // Rate limiting for the auth surface (security.md, phase-13). Better Auth's
+  // handlers are mounted outside the Nest pipeline, so the Nest throttler never
+  // sees them — Better Auth applies its own limiter, enabled here (it is off by
+  // default outside production) and env-configurable. A generous global auth
+  // limit plus a strict per-window cap on the sign-in paths (username + email)
+  // blunts credential brute-forcing. Windows are in seconds (Better Auth's unit).
+  const authWindowSeconds = readPositiveIntegerEnv("RATE_LIMIT_AUTH_WINDOW_SECONDS", 60);
+  const authMaxRequests = readPositiveIntegerEnv("RATE_LIMIT_AUTH_MAX", 300);
+  const signInWindowSeconds = readPositiveIntegerEnv("RATE_LIMIT_AUTH_SIGN_IN_WINDOW_SECONDS", 60);
+  const signInMaxRequests = readPositiveIntegerEnv("RATE_LIMIT_AUTH_SIGN_IN_MAX", 10);
+  const signInRule = { window: signInWindowSeconds, max: signInMaxRequests };
+
   return betterAuth({
     secret,
     baseURL: process.env["BETTER_AUTH_URL"] ?? "http://localhost:3000",
     database: prismaAdapter(prisma, { provider: "postgresql" }),
+    rateLimit: {
+      enabled: true,
+      window: authWindowSeconds,
+      max: authMaxRequests,
+      storage: "memory",
+      customRules: {
+        "/sign-in/username": signInRule,
+        "/sign-in/email": signInRule,
+      },
+    },
     emailAndPassword: {
       enabled: true,
       // Invite-only: no public sign-up. Accounts are admin-provisioned.

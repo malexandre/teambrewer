@@ -15,6 +15,14 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
   });
+
+  // TeamBrewer runs behind a TLS-terminating front proxy → our Nginx → the API
+  // (docs/architecture/security.md). Trust the proxy chain so `X-Forwarded-Proto`
+  // and the client IP are honored (correct HTTPS detection for secure cookies and
+  // accurate per-IP rate limiting). Only the reverse proxies reach the API on the
+  // internal Docker network, so trusting the chain is safe.
+  app.set("trust proxy", true);
+
   configureApp(app);
 
   // Locked to the web app origin; credentials allowed for the cookie-based

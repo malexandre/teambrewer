@@ -629,6 +629,15 @@ export default async function globalSetup(): Promise<void> {
       BETTER_AUTH_SECRET,
       BETTER_AUTH_URL: `http://localhost:${API_PORT}`,
       NODE_ENV: "test",
+      // Every journey runs in parallel against this one API from 127.0.0.1, so
+      // they share a rate-limit bucket. Raise the limits far above any single
+      // run so the security throttles never cause cross-journey flakiness (the
+      // limits themselves are unit/integration-tested elsewhere).
+      RATE_LIMIT_DEFAULT_LIMIT: "1000000",
+      RATE_LIMIT_STRICT_LIMIT: "1000000",
+      RATE_LIMIT_EXPENSIVE_LIMIT: "1000000",
+      RATE_LIMIT_AUTH_MAX: "1000000",
+      RATE_LIMIT_AUTH_SIGN_IN_MAX: "1000000",
     },
   });
   apiProcess.unref();
