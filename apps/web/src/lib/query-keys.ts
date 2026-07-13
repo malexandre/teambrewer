@@ -101,6 +101,14 @@ export const queryKeys = {
     [teamId, "test-assignments", filters] as const,
 
   /**
+   * Tasks (meta-pivot redesign), keyed by the active team first (teamId) so switching
+   * teams yields a different cache entry and one team's tasks never bleed into
+   * another's. `filters` keys each list variant (by deck/assignee/status).
+   */
+  tasks: (teamId: string, filters: Record<string, string>) => [teamId, "tasks", filters] as const,
+  task: (teamId: string, taskId: string) => [teamId, "task", taskId] as const,
+
+  /**
    * Game-plans, deck selection & retrospective (phase-09), keyed by the active team
    * first (teamId) so switching teams yields a different cache entry. Game-plan lists
    * are keyed by their filters (surfaced per-deck on the deck page); deck selection and

@@ -11,7 +11,7 @@ import { GameDetailPage } from "@/features/game-logging/GameDetailPage";
 import { GamesPage } from "@/features/game-logging/GamesPage";
 import { MetaDetailPage } from "@/features/metas/MetaDetailPage";
 import { MetasPage } from "@/features/metas/MetasPage";
-import { AssignmentsPage } from "@/features/testing-queue/AssignmentsPage";
+import { TasksPage } from "@/features/tasks/TasksPage";
 import { ClaimPage } from "@/features/auth/ClaimPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RequireAuth } from "@/features/auth/RequireAuth";
@@ -131,10 +131,10 @@ const gameDetailRoute = createRoute({
   },
 });
 
-const assignmentsRoute = createRoute({
+const tasksRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
-  path: "/assignments",
-  component: AssignmentsPage,
+  path: "/tasks",
+  component: TasksPage,
 });
 
 const adminRoute = createRoute({
@@ -163,7 +163,7 @@ const routeTree = rootRoute.addChildren([
     eventDetailRoute,
     gamesRoute,
     gameDetailRoute,
-    assignmentsRoute,
+    tasksRoute,
     adminRoute,
     settingsRoute,
   ]),
