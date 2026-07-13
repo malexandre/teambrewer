@@ -43,13 +43,18 @@ export function createAuth(prisma: PrismaClient) {
   const signInWindowSeconds = readPositiveIntegerEnv("RATE_LIMIT_AUTH_SIGN_IN_WINDOW_SECONDS", 60);
   const signInMaxRequests = readPositiveIntegerEnv("RATE_LIMIT_AUTH_SIGN_IN_MAX", 10);
   const signInRule = { window: signInWindowSeconds, max: signInMaxRequests };
+  // Enabling Better Auth's limiter also turns on its built-in strict per-path
+  // defaults (e.g. /two-factor/*). That protects production (per real client IP),
+  // but breaks the e2e suite where every parallel journey shares 127.0.0.1 — so
+  // it is disabled there via RATE_LIMIT_AUTH_ENABLED=false. Defaults to on.
+  const rateLimitEnabled = process.env["RATE_LIMIT_AUTH_ENABLED"] !== "false";
 
   return betterAuth({
     secret,
     baseURL: process.env["BETTER_AUTH_URL"] ?? "http://localhost:3000",
     database: prismaAdapter(prisma, { provider: "postgresql" }),
     rateLimit: {
-      enabled: true,
+      enabled: rateLimitEnabled,
       window: authWindowSeconds,
       max: authMaxRequests,
       storage: "memory",

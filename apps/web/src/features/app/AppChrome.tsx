@@ -8,6 +8,7 @@ import { useCurrentUser } from "@/features/auth/use-current-user";
 import { NotificationCenter } from "@/features/collaboration/NotificationCenter";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { TeamSelector } from "@/features/teams/TeamSelector";
+import { ThemeToggle } from "@/features/app/ThemeToggle";
 import { authClient } from "@/lib/auth-client";
 
 /** Header + navigation shared by every authenticated screen. */
@@ -79,6 +80,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
               Settings
             </Link>
             <NotificationCenter />
+            <ThemeToggle />
             <Button type="button" variant="ghost" size="sm" onClick={signOut}>
               Sign out
             </Button>

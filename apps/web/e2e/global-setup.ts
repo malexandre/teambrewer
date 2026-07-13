@@ -7,6 +7,8 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { Client } from "pg";
 
 import {
+  E2E_A11Y_SETUP_TOKEN,
+  E2E_A11Y_USER,
   E2E_COLLAB_AUTHOR,
   E2E_COLLAB_AUTHOR_SETUP_TOKEN,
   E2E_COLLAB_MENTIONED,
@@ -36,6 +38,8 @@ import {
   E2E_ONBOARDING_USER,
   E2E_REFERENCE,
   E2E_SETUP_TOKEN,
+  E2E_SMOKE_SETUP_TOKEN,
+  E2E_SMOKE_USER,
   E2E_TEAMS,
   E2E_TESTQUEUE_DECK_NAME,
   E2E_TESTQUEUE_SETUP_TOKEN,
@@ -164,6 +168,16 @@ async function seed(databaseUrl: string): Promise<void> {
     await addMembership(E2E_TEAMS.alpha.id, E2E_DASHBOARD_USER.id);
     await addMembership(E2E_TEAMS.bravo.id, E2E_DASHBOARD_USER.id);
 
+    // The accessibility-scan user belongs to both teams (alpha first -> default active).
+    await insertUser(E2E_A11Y_USER.id, E2E_A11Y_USER.username, E2E_A11Y_USER.displayName);
+    await addMembership(E2E_TEAMS.alpha.id, E2E_A11Y_USER.id);
+    await addMembership(E2E_TEAMS.bravo.id, E2E_A11Y_USER.id);
+
+    // The smoke-suite user belongs to both teams (alpha first -> default active).
+    await insertUser(E2E_SMOKE_USER.id, E2E_SMOKE_USER.username, E2E_SMOKE_USER.displayName);
+    await addMembership(E2E_TEAMS.alpha.id, E2E_SMOKE_USER.id);
+    await addMembership(E2E_TEAMS.bravo.id, E2E_SMOKE_USER.id);
+
     // Two collaboration teammates on alpha only (mentions resolve within a team).
     await insertUser(
       E2E_COLLAB_AUTHOR.id,
@@ -189,6 +203,8 @@ async function seed(databaseUrl: string): Promise<void> {
     await insertSetupToken(E2E_GAMEPLAN_USER.id, E2E_GAMEPLAN_SETUP_TOKEN);
     await insertSetupToken(E2E_KNOWLEDGE_USER.id, E2E_KNOWLEDGE_SETUP_TOKEN);
     await insertSetupToken(E2E_DASHBOARD_USER.id, E2E_DASHBOARD_SETUP_TOKEN);
+    await insertSetupToken(E2E_A11Y_USER.id, E2E_A11Y_SETUP_TOKEN);
+    await insertSetupToken(E2E_SMOKE_USER.id, E2E_SMOKE_SETUP_TOKEN);
   } finally {
     await client.end();
   }
@@ -638,6 +654,11 @@ export default async function globalSetup(): Promise<void> {
       RATE_LIMIT_EXPENSIVE_LIMIT: "1000000",
       RATE_LIMIT_AUTH_MAX: "1000000",
       RATE_LIMIT_AUTH_SIGN_IN_MAX: "1000000",
+      // Disable Better Auth's limiter here: it applies built-in strict per-path
+      // limits (e.g. /two-factor/*) that every parallel journey would blow past
+      // from the shared 127.0.0.1. Per-IP limiting is exercised by the API's own
+      // integration test instead.
+      RATE_LIMIT_AUTH_ENABLED: "false",
     },
   });
   apiProcess.unref();

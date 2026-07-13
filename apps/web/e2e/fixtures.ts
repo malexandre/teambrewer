@@ -163,6 +163,32 @@ export const E2E_DASHBOARD_DECK_NAME = "E2E Dashboard Deck";
 export const E2E_DASHBOARD_EVENT_NAME = "E2E Dashboard Cup";
 
 /**
+ * A dedicated onboardable user for the accessibility (axe) scan — independent of
+ * the other specs so it runs in parallel (own single-use token). Only needs to
+ * reach the read-only screens, so no extra seeded data.
+ */
+export const E2E_A11Y_USER = {
+  id: "e2e-user-a11y",
+  username: "a11y_user",
+  displayName: "A11y User",
+};
+export const E2E_A11Y_SETUP_TOKEN = "e2e-a11y-setup-token";
+
+/**
+ * A dedicated onboardable user for the critical-path smoke suite — independent of
+ * the other specs (own single-use token). Belongs to both teams (alpha first →
+ * default active) to exercise the create-a-deck → team-switch isolation path.
+ */
+export const E2E_SMOKE_USER = {
+  id: "e2e-user-smoke",
+  username: "smoke_user",
+  displayName: "Smoke User",
+};
+export const E2E_SMOKE_SETUP_TOKEN = "e2e-smoke-setup-token";
+/** The deck the smoke suite creates on alpha and confirms is absent on bravo. */
+export const E2E_SMOKE_DECK_NAME = "E2E Smoke Deck";
+
+/**
  * Reference data for the specs. `formatName` comes from the network-free `db:seed`
  * (games + formats); `heroName` is a single hero the events e2e global-setup inserts
  * after the seed (heroes normally come from the network card sync, skipped in e2e).
