@@ -90,17 +90,6 @@ export const queryKeys = {
     [teamId, "activity", filters] as const,
 
   /**
-   * Testing queue, keyed by the active team first (teamId) so switching teams yields
-   * a different cache entry and one team's suggestions/assignments never bleed into
-   * another's. `filters` keys each list variant (suggestions by deck/status,
-   * assignments by event/assignee/deck/status).
-   */
-  cardTestSuggestions: (teamId: string, filters: Record<string, string>) =>
-    [teamId, "card-test-suggestions", filters] as const,
-  testAssignments: (teamId: string, filters: Record<string, string>) =>
-    [teamId, "test-assignments", filters] as const,
-
-  /**
    * Tasks (meta-pivot redesign), keyed by the active team first (teamId) so switching
    * teams yields a different cache entry and one team's tasks never bleed into
    * another's. `filters` keys each list variant (by deck/assignee/status).

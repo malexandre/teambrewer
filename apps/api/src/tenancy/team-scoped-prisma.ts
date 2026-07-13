@@ -19,8 +19,6 @@ export const TEAM_OWNED_MODELS = new Set<string>([
   "comment",
   "notification",
   "activityEvent",
-  "cardTestSuggestion",
-  "testAssignment",
   "matchupGamePlan",
   "retrospective",
   "meta",

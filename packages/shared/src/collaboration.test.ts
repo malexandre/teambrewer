@@ -5,15 +5,18 @@ import { parseMentionHandles, subjectTypeSchema } from "./collaboration.js";
 describe("subjectTypeSchema", () => {
   it("accepts the adopted subject types", () => {
     expect(subjectTypeSchema.parse("deck")).toBe("deck");
-    expect(subjectTypeSchema.parse("event")).toBe("event");
-    expect(subjectTypeSchema.parse("card_test_suggestion")).toBe("card_test_suggestion");
-    expect(subjectTypeSchema.parse("test_assignment")).toBe("test_assignment");
+    expect(subjectTypeSchema.parse("game_log")).toBe("game_log");
     expect(subjectTypeSchema.parse("matchup_game_plan")).toBe("matchup_game_plan");
+    expect(subjectTypeSchema.parse("task")).toBe("task");
   });
 
   it("rejects an unknown subject type at the boundary", () => {
     expect(subjectTypeSchema.safeParse("spreadsheet").success).toBe(false);
     expect(subjectTypeSchema.safeParse("").success).toBe(false);
+    // The testing-queue subjects were merged into `task` (meta-pivot); their old
+    // subject types are no longer accepted.
+    expect(subjectTypeSchema.safeParse("card_test_suggestion").success).toBe(false);
+    expect(subjectTypeSchema.safeParse("test_assignment").success).toBe(false);
   });
 });
 

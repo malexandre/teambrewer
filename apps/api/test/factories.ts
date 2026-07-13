@@ -673,51 +673,6 @@ export async function createMatchupGamePlan(
   };
 }
 
-export async function createTestAssignment(
-  prisma: PrismaClient,
-  options: {
-    teamId: string;
-    assigneeId: string;
-    assignedById: string;
-    deckId: string;
-    eventId?: string | null;
-    opponentGauntletEntryId?: string | null;
-    opponentHeroId?: string | null;
-    opponentArchetypeLabel?: string | null;
-    opponentSnapshotLabel?: string;
-    targetGames?: number | null;
-    status?: "open" | "in_progress" | "done" | "cancelled";
-    notes?: string;
-    archivedAt?: Date | null;
-  },
-): Promise<{ id: string; teamId: string; assigneeId: string; status: string }> {
-  const created = await prisma.testAssignment.create({
-    data: {
-      teamId: options.teamId,
-      eventId: options.eventId ?? null,
-      assigneeId: options.assigneeId,
-      assignedById: options.assignedById,
-      deckId: options.deckId,
-      opponentGauntletEntryId: options.opponentGauntletEntryId ?? null,
-      opponentHeroId: options.opponentHeroId ?? null,
-      opponentArchetypeLabel:
-        options.opponentArchetypeLabel ??
-        (options.opponentGauntletEntryId || options.opponentHeroId ? null : "Aggro Red"),
-      opponentSnapshotLabel: options.opponentSnapshotLabel ?? "vs the field",
-      targetGames: options.targetGames ?? null,
-      status: options.status ?? "open",
-      notes: options.notes ?? "",
-      archivedAt: options.archivedAt ?? null,
-    },
-  });
-  return {
-    id: created.id,
-    teamId: created.teamId,
-    assigneeId: created.assigneeId,
-    status: created.status,
-  };
-}
-
 export async function createDeckSelection(
   prisma: PrismaClient,
   options: {

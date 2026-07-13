@@ -214,22 +214,21 @@ describe("Riftbound cross-game acceptance (integration)", () => {
     // Bo3 with all-best confidence factors -> full weight.
     expect(gameLog.body.confidenceWeight).toBe(1);
 
-    // Testing queue — a card-test suggestion and a test assignment.
-    const suggestion = await asRiftboundMember(
-      request(app.getHttpServer()).post("/api/card-test-suggestions").send({
-        deckId: ourDeckId,
-        cardInId: riftboundCardId,
-        reasoning: "Adds reach against wide boards.",
-      }),
-    );
-    expect(suggestion.status).toBe(201);
-
-    const assignment = await asRiftboundMember(
+    // Tasks — the merged testing-work unit, with an inline +card token (a Riftbound
+    // card id) in the description and a teammate assigned.
+    const task = await asRiftboundMember(
       request(app.getHttpServer())
-        .post("/api/test-assignments")
-        .send({ assigneeId: riftboundTeammate.id, deckId: ourDeckId, opponentHeroId: legendId }),
+        .post("/api/tasks")
+        .send({
+          title: "Test reach against wide boards",
+          description: `Try +[[${riftboundCardId}]] in the go-wide matchups.`,
+          deckId: ourDeckId,
+          assigneeId: riftboundTeammate.id,
+        }),
     );
-    expect(assignment.status).toBe(201);
+    expect(task.status).toBe(201);
+    expect(task.body.assignee.userId).toBe(riftboundTeammate.id);
+    expect(task.body.description).toContain(riftboundCardId);
   });
 
   it("isolates a Riftbound team from a Flesh and Blood team on the same instance", async () => {

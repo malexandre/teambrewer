@@ -539,25 +539,9 @@ async function seedDashboard(databaseUrl: string): Promise<void> {
         [randomUUID(), E2E_TEAMS.alpha.id, E2E_DASHBOARD_USER.id, formatId, now, deckId, heroId],
       );
     }
-
-    // An open assignment for the dashboard user vs the hero target (personal widget +
-    // coverage assignee).
-    await client.query(
-      `INSERT INTO "test_assignment"
-         (id, team_id, event_id, assignee_id, assigned_by_id, deck_id,
-          opponent_gauntlet_entry_id, opponent_snapshot_label, status, notes, updated_at)
-       VALUES ($1,$2,$3,$4,$4,$5,$6,$7,'open','',$8)`,
-      [
-        randomUUID(),
-        E2E_TEAMS.alpha.id,
-        eventId,
-        E2E_DASHBOARD_USER.id,
-        deckId,
-        heroGauntletId,
-        `vs ${E2E_REFERENCE.heroName}`,
-        now,
-      ],
-    );
+    // The testing-queue models were merged into Task (meta-pivot, WS-3); the old
+    // test_assignment seeding is dropped here. The full dashboard e2e journey is
+    // rewritten in WS-7.
   } finally {
     await client.end();
   }

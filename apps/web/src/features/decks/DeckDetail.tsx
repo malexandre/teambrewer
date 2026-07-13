@@ -13,8 +13,6 @@ import { ApiError } from "@/lib/api-client";
 import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
 import { CommentThread } from "@/features/collaboration/CommentThread";
 
-import { SuggestionBoard } from "@/features/testing-queue/SuggestionBoard";
-
 import { GamePlanSection } from "@/features/gameplans/GamePlanSection";
 
 import { DECK_VISIBILITY_LABELS } from "./deck-display";
@@ -148,8 +146,6 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
       ) : null}
 
       <IterationLog teamId={teamId} deckId={deck.id} canAddEntry={canModify} />
-
-      <SuggestionBoard teamId={teamId} deckId={deck.id} deckArchived={deck.archivedAt !== null} />
 
       <GamePlanSection
         teamId={teamId}
