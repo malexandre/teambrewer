@@ -4,12 +4,14 @@ import {
   type DeckVisibility,
   type UpdateDeckInput,
 } from "@teambrewer/shared";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
+import { formatMetaDate } from "@/features/metas/meta-display";
+import { useCurrentMeta, useMetas } from "@/features/metas/use-metas";
 import { ApiError } from "@/lib/api-client";
 
 import { DeckVisibilityControl } from "./DeckVisibilityControl";
@@ -60,6 +62,34 @@ export function DeckForm({
   const updateDeck = useUpdateDeck(teamId, deck?.id ?? "");
   const recognize = useRecognizeDeckUrl(teamId);
 
+  // Meta linking: on edit, seed the deck's current links; on create, default-select
+  // the current meta once it resolves (undefined = not yet initialized, so submitting
+  // before metas load omits `metaIds` and lets the server apply the current-meta default).
+  const { data: metaListData } = useMetas(teamId);
+  const { data: currentMeta, isPending: currentMetaPending } = useCurrentMeta(teamId);
+  const [metaIds, setMetaIds] = useState<string[] | undefined>(
+    deck ? deck.linkedMetas.map((meta) => meta.id) : undefined,
+  );
+  useEffect(() => {
+    if (deck || metaIds !== undefined) return;
+    if (currentMeta) {
+      setMetaIds([currentMeta.id]);
+    } else if (!currentMetaPending) {
+      setMetaIds([]);
+    }
+  }, [deck, metaIds, currentMeta, currentMetaPending]);
+  const selectedMetaIds = metaIds ?? [];
+  const metas = metaListData?.data ?? [];
+
+  function toggleMeta(metaId: string) {
+    setMetaIds((current) => {
+      const selected = current ?? [];
+      return selected.includes(metaId)
+        ? selected.filter((id) => id !== metaId)
+        : [...selected, metaId];
+    });
+  }
+
   const mutation = isEditing ? updateDeck : createDeck;
 
   function recognizeCurrentUrl() {
@@ -104,6 +134,7 @@ export function DeckForm({
         isReference,
         tags: parseTags(tags),
         notes,
+        metaIds: selectedMetaIds,
       };
       updateDeck.mutate(input, { onSuccess: onSaved });
       return;
@@ -118,6 +149,9 @@ export function DeckForm({
       isReference,
       tags: parseTags(tags),
       notes,
+      // Only send an explicit set once initialized; otherwise the server links the
+      // current meta by default.
+      ...(metaIds !== undefined ? { metaIds } : {}),
     };
     createDeck.mutate(input, { onSuccess: onSaved });
   }
@@ -184,6 +218,33 @@ export function DeckForm({
           placeholder="comma, separated, tags"
         />
       </div>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium">Metas</legend>
+        {metas.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No metas yet. Create a meta to track this deck against the field.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {metas.map((meta) => (
+              <li key={meta.id}>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedMetaIds.includes(meta.id)}
+                    onChange={() => toggleMeta(meta.id)}
+                  />
+                  <span>{meta.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatMetaDate(meta.startDate)} – {formatMetaDate(meta.endDate)}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+      </fieldset>
 
       <div className="flex flex-col gap-1">
         <Label htmlFor="deck-notes">Notes</Label>

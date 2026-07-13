@@ -28,6 +28,10 @@ Reference decks represent opponent/meta archetypes for gauntlets.
 - As a **team-admin**, I can create **reference decks** (opponent archetypes) for the gauntlet and moderate
   others' decks.
 - As a **member**, I can browse/filter the team's decks by hero, format, status, and tags.
+- As a **member**, I can **link a deck to metas** (a multi-select on the deck form). Creating a deck
+  **defaults to linking the current meta** (editable); the deck detail lists its linked metas. The join is
+  `DeckMeta` (see [metas.md](metas.md)); the API accepts `metaIds` on create/update (omitting it on create
+  keeps the current-meta default, an explicit set — even empty — overrides it) and returns `linkedMetas`.
 
 ## Data
 

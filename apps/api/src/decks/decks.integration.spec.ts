@@ -9,6 +9,7 @@ import {
   createFormat,
   createGame,
   createHero,
+  createMeta,
   createTeam,
   createTestPrismaClient,
   createUser,
@@ -156,6 +157,78 @@ describe("Decks endpoints (integration)", () => {
         heroId: riftHeroId,
       });
       expect(response.status).toBe(404);
+    });
+  });
+
+  describe("Meta linking (DeckMeta)", () => {
+    // The default meta window (2026-07-01 → 2026-08-01) contains "today" in the
+    // test environment, so a default-created meta is the current one.
+    const currentWindow = {
+      startDate: new Date("2026-07-01T00:00:00.000Z"),
+      endDate: new Date("2026-08-01T00:00:00.000Z"),
+    };
+    const pastWindow = {
+      startDate: new Date("2020-01-01T00:00:00.000Z"),
+      endDate: new Date("2020-02-01T00:00:00.000Z"),
+    };
+
+    it("links the current meta by default when metaIds is omitted", async () => {
+      const current = await createMeta(prisma, { teamId: teamA.id, name: "Now", ...currentWindow });
+      const response = await asMemberA(http().post("/api/decks")).send(validBody());
+      expect(response.status).toBe(201);
+      expect(response.body.linkedMetas).toEqual([{ id: current.id, name: "Now" }]);
+    });
+
+    it("links nothing when no meta is current and metaIds is omitted", async () => {
+      await createMeta(prisma, { teamId: teamA.id, name: "Old", ...pastWindow });
+      const response = await asMemberA(http().post("/api/decks")).send(validBody());
+      expect(response.status).toBe(201);
+      expect(response.body.linkedMetas).toEqual([]);
+    });
+
+    it("overrides the default with an explicit metaIds set", async () => {
+      await createMeta(prisma, { teamId: teamA.id, name: "Now", ...currentWindow });
+      const other = await createMeta(prisma, { teamId: teamA.id, name: "Other", ...pastWindow });
+      const response = await asMemberA(http().post("/api/decks")).send({
+        ...validBody(),
+        metaIds: [other.id],
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.linkedMetas).toEqual([{ id: other.id, name: "Other" }]);
+    });
+
+    it("links nothing when metaIds is an explicit empty array", async () => {
+      await createMeta(prisma, { teamId: teamA.id, name: "Now", ...currentWindow });
+      const response = await asMemberA(http().post("/api/decks")).send({
+        ...validBody(),
+        metaIds: [],
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.linkedMetas).toEqual([]);
+    });
+
+    it("replaces the linked metas on update", async () => {
+      const first = await createMeta(prisma, { teamId: teamA.id, name: "First", ...currentWindow });
+      const second = await createMeta(prisma, { teamId: teamA.id, name: "Second", ...pastWindow });
+      const created = await asMemberA(http().post("/api/decks")).send({
+        ...validBody(),
+        metaIds: [first.id],
+      });
+      const updated = await asMemberA(http().patch(`/api/decks/${created.body.id}`)).send({
+        metaIds: [second.id],
+      });
+      expect(updated.status).toBe(200);
+      expect(updated.body.linkedMetas).toEqual([{ id: second.id, name: "Second" }]);
+    });
+
+    it("rejects a meta from another team (cross-team FK → 422)", async () => {
+      const foreign = await createMeta(prisma, { teamId: teamB.id, name: "B-meta" });
+      const response = await asMemberA(http().post("/api/decks")).send({
+        ...validBody(),
+        metaIds: [foreign.id],
+      });
+      expect(response.status).toBe(422);
+      expect(response.body.error.code).toBe("DOMAIN_RULE_VIOLATION");
     });
   });
 

@@ -120,6 +120,18 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
             </dd>
           </div>
         ) : null}
+        {deck.linkedMetas.length > 0 ? (
+          <div className="sm:col-span-2">
+            <dt className="text-muted-foreground">Metas</dt>
+            <dd className="flex flex-wrap gap-1">
+              {deck.linkedMetas.map((meta) => (
+                <span key={meta.id} className="rounded-md bg-muted px-2 py-0.5 text-xs">
+                  {meta.name}
+                </span>
+              ))}
+            </dd>
+          </div>
+        ) : null}
       </dl>
 
       <div className="flex flex-col gap-1">

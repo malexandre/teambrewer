@@ -42,6 +42,18 @@ describe("createDeckSchema", () => {
     expect(parsed.tags).toEqual([]);
     expect(parsed.notes).toBe("");
     expect(parsed.heroId).toBeUndefined();
+    // Omitting metaIds leaves it undefined so the server can default the current meta.
+    expect(parsed.metaIds).toBeUndefined();
+  });
+
+  it("accepts an explicit metaIds set (including empty) and rejects duplicates", () => {
+    expect(createDeckSchema.parse({ ...validInput, metaIds: [] }).metaIds).toEqual([]);
+    expect(createDeckSchema.parse({ ...validInput, metaIds: ["meta-1"] }).metaIds).toEqual([
+      "meta-1",
+    ]);
+    expect(() =>
+      createDeckSchema.parse({ ...validInput, metaIds: ["meta-1", "meta-1"] }),
+    ).toThrow();
   });
 
   it("accepts an optional hero, tags, notes and visibility", () => {
@@ -113,6 +125,13 @@ describe("updateDeckSchema", () => {
 
   it("rejects a status field (status changes go through the status endpoint)", () => {
     expect(() => updateDeckSchema.parse({ status: "retired" })).toThrow();
+  });
+
+  it("accepts a metaIds-only update (replacement set)", () => {
+    expect(updateDeckSchema.parse({ metaIds: ["meta-1", "meta-2"] }).metaIds).toEqual([
+      "meta-1",
+      "meta-2",
+    ]);
   });
 
   it("rejects an empty update", () => {

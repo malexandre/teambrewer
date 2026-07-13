@@ -1,8 +1,14 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from "@nestjs/common";
 
 import {
   type CreateDeckInput,
   type DeckDetail,
+  type DeckLinkedMeta,
   type DeckListQuery,
   type DeckListResponse,
   type DeckStatus,
@@ -19,6 +25,7 @@ import { decodeKeysetCursor, encodeKeysetCursor } from "../common/keyset-cursor.
 import { assertFormatInGame, assertHeroInGame } from "../common/reference-data-guards.js";
 import { GAME_CATALOG } from "../games/game-catalog.js";
 import { GameAdapterRegistry } from "../games/game-adapter.registry.js";
+import { resolveCurrentMeta } from "../metas/current-meta.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 import { canModifyDeck, isDeckVisibleTo } from "./deck-authorization.js";
@@ -110,15 +117,20 @@ export class DecksService {
   /** A single deck (404 when missing, cross-tenant, or a private draft the caller can't see). */
   async getDeck(team: TeamContext, deckId: string): Promise<DeckDetail> {
     const deck = await this.loadVisibleDeck(team, deckId);
-    return toDeckDetail(deck);
+    return toDeckDetail(deck, await this.loadLinkedMetas(deckId));
   }
 
-  /** Create a deck; stamps teamId/gameId/ownerId from context and recognizes the link. */
+  /**
+   * Create a deck; stamps teamId/gameId/ownerId from context and recognizes the link.
+   * Links metas per {@link CreateDeckInput.metaIds}: omitting it links the current
+   * meta by default; passing it (even an empty array) overrides that.
+   */
   async create(team: TeamContext, input: CreateDeckInput): Promise<DeckDetail> {
     await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
     if (input.heroId) {
       await assertHeroInGame(this.scoped.db, team.gameId, input.heroId);
     }
+    const metaIdsToLink = await this.resolveMetaIdsToLink(input.metaIds);
 
     const recognized = this.recognizeUrl(team.gameId, input.externalUrl);
     const created = (await this.scoped.db.deck.create({
@@ -139,8 +151,9 @@ export class DecksService {
         notes: input.notes,
       },
     })) as DeckRow;
+    await this.replaceDeckMetaLinks(created.id, metaIdsToLink);
     await this.recordDeckActivity(team, created, "deck_created");
-    return toDeckDetail(created);
+    return this.getDeck(team, created.id);
   }
 
   /** Update a deck's metadata (owner or team-admin). Status is not editable here. */
@@ -168,7 +181,13 @@ export class DecksService {
         this.recognizeUrl(team.gameId, input.externalUrl)?.provider ?? UNRECOGNIZED_SOURCE;
     }
 
-    await this.scoped.db.deck.updateMany({ where: { id: deckId }, data });
+    // `metaIds` is not a deck column — a provided set replaces the deck's links.
+    if (Object.keys(data).length > 0) {
+      await this.scoped.db.deck.updateMany({ where: { id: deckId }, data });
+    }
+    if (input.metaIds !== undefined) {
+      await this.replaceDeckMetaLinks(deckId, await this.assertTeamMetas(input.metaIds));
+    }
     const updated = await this.getDeck(team, deckId);
     await this.recordDeckActivity(team, updated, "deck_updated");
     return updated;
@@ -241,6 +260,66 @@ export class DecksService {
     });
   }
 
+  /**
+   * The metas to link on deck-create. `undefined` (omitted) links the current meta
+   * by default (or nothing when none is current); an explicit list (even empty) is
+   * validated same-team and used as-is.
+   */
+  private async resolveMetaIdsToLink(metaIds: string[] | undefined): Promise<string[]> {
+    if (metaIds !== undefined) {
+      return this.assertTeamMetas(metaIds);
+    }
+    const candidates = (await this.scoped.db.meta.findMany({
+      where: { archivedAt: null },
+      select: { id: true, startDate: true, endDate: true, createdAt: true },
+    })) as { id: string; startDate: Date; endDate: Date; createdAt: Date }[];
+    const current = resolveCurrentMeta(candidates, new Date());
+    return current ? [current.id] : [];
+  }
+
+  /** Reject any meta id that is not a non-archived meta of the team (cross-team → 422). */
+  private async assertTeamMetas(metaIds: string[]): Promise<string[]> {
+    for (const metaId of metaIds) {
+      const meta = await this.scoped.db.meta.findFirst({
+        where: { id: metaId, archivedAt: null },
+        select: { id: true },
+      });
+      if (!meta) {
+        throw new UnprocessableEntityException({
+          error: {
+            code: errorCode.domainRuleViolation,
+            message: "A linked meta does not belong to this team.",
+          },
+        });
+      }
+    }
+    return metaIds;
+  }
+
+  /**
+   * Replace a deck's `DeckMeta` links with exactly `metaIds`. The parent deck is
+   * already verified team-scoped, so operating on its transitive join rows by
+   * `deckId` is safe (DeckMeta carries no `teamId`; it is reached through its parents).
+   */
+  private async replaceDeckMetaLinks(deckId: string, metaIds: string[]): Promise<void> {
+    await this.scoped.db.deckMeta.deleteMany({ where: { deckId } });
+    if (metaIds.length > 0) {
+      await this.scoped.db.deckMeta.createMany({
+        data: metaIds.map((metaId) => ({ deckId, metaId })),
+      });
+    }
+  }
+
+  /** A deck's linked metas (id + name), newest-window first, for the detail response. */
+  private async loadLinkedMetas(deckId: string): Promise<DeckLinkedMeta[]> {
+    const links = (await this.scoped.db.deckMeta.findMany({
+      where: { deckId },
+      include: { meta: { select: { id: true, name: true, startDate: true } } },
+      orderBy: { meta: { startDate: "desc" } },
+    })) as { meta: { id: string; name: string; startDate: Date } }[];
+    return links.map((link) => ({ id: link.meta.id, name: link.meta.name }));
+  }
+
   /** Load a deck the caller may see, or throw 404 (also hides private drafts). */
   private async loadVisibleDeck(team: TeamContext, deckId: string): Promise<DeckRow> {
     const deck = (await this.scoped.db.deck.findFirst({ where: { id: deckId } })) as DeckRow | null;
@@ -287,8 +366,8 @@ function toDeckSummary(deck: DeckRow): DeckSummary {
   };
 }
 
-function toDeckDetail(deck: DeckRow): DeckDetail {
-  return { ...toDeckSummary(deck), notes: deck.notes };
+function toDeckDetail(deck: DeckRow, linkedMetas: DeckLinkedMeta[]): DeckDetail {
+  return { ...toDeckSummary(deck), notes: deck.notes, linkedMetas };
 }
 
 function toIterationEntry(entry: {

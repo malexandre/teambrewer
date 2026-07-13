@@ -74,6 +74,20 @@ export const iterationEntryBodySchema = z
   .max(2000);
 
 /**
+ * The metas a deck is linked to (`DeckMeta` join — a deck can belong to many
+ * metas). Each id is validated server-side as belonging to the same team. On
+ * create, **omitting** this links the current meta by default; passing it (even
+ * an empty array) overrides that. On update, passing it **replaces** the whole
+ * set. Distinct ids only.
+ */
+export const deckMetaIdsSchema = z
+  .array(z.string().min(1))
+  .max(50, "A deck can link at most 50 metas.")
+  .refine((ids) => new Set(ids).size === ids.length, {
+    message: "Linked metas must be distinct.",
+  });
+
+/**
  * Create-deck input. Omits every server-controlled field (`teamId`/`gameId`/
  * `ownerId`/`status`/`source`): `teamId`/`gameId`/`ownerId` come from the verified
  * context, `status` starts at `exploratory`, and `source` is set by URL
@@ -89,6 +103,8 @@ export const createDeckSchema = z.object({
   isReference: z.boolean().default(false),
   tags: deckTagsSchema.default([]),
   notes: deckNotesSchema.default(""),
+  // Omitted → link the current meta by default; provided (even []) → override.
+  metaIds: deckMetaIdsSchema.optional(),
 });
 export type CreateDeckInput = z.infer<typeof createDeckSchema>;
 
@@ -107,6 +123,8 @@ export const updateDeckSchema = z
     isReference: z.boolean().optional(),
     tags: deckTagsSchema.optional(),
     notes: deckNotesSchema.optional(),
+    // Provided → replaces the deck's whole linked-meta set (validated same-team).
+    metaIds: deckMetaIdsSchema.optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
@@ -164,8 +182,19 @@ export const deckSummarySchema = z.object({
 });
 export type DeckSummary = z.infer<typeof deckSummarySchema>;
 
-/** A single deck with its full detail (adds prose notes to the summary). */
-export const deckDetailSchema = deckSummarySchema.extend({ notes: z.string() });
+/** A meta a deck is linked to, denormalized onto the deck detail (id + name). */
+export const deckLinkedMetaSchema = z.object({ id: z.string(), name: z.string() });
+export type DeckLinkedMeta = z.infer<typeof deckLinkedMetaSchema>;
+
+/**
+ * A single deck with its full detail: prose notes plus the metas it is linked to
+ * (`DeckMeta`). `linkedMetas` seeds the meta multi-select on edit and is shown on
+ * the deck page; the list response omits it (see summary).
+ */
+export const deckDetailSchema = deckSummarySchema.extend({
+  notes: z.string(),
+  linkedMetas: z.array(deckLinkedMetaSchema),
+});
 export type DeckDetail = z.infer<typeof deckDetailSchema>;
 
 /** Cursor-paginated response for `GET /api/decks`. */

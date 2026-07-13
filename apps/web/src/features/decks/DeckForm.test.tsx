@@ -54,6 +54,13 @@ function mockApi(
     if (url.includes("/api/decks/recognize-url") && method === "POST") {
       return json({ recognized: { provider: "fabrary", externalId: "abc" } });
     }
+    // No current meta by default (404 → the form links nothing); the metas list is empty.
+    if (url.includes("/api/metas/current")) {
+      return json({ error: { code: "NOT_FOUND", message: "No meta is current." } }, 404);
+    }
+    if (url.includes("/api/metas")) {
+      return json({ data: [], nextCursor: null });
+    }
     if (url.includes("/api/decks") && method === "POST") {
       const body: unknown = init?.body ? JSON.parse(init.body as string) : {};
       options.onCreate?.(body);
@@ -71,6 +78,7 @@ function mockApi(
         isReference: false,
         tags: [],
         notes: "",
+        linkedMetas: [],
         archivedAt: null,
         createdAt: "2026-07-12T00:00:00.000Z",
         updatedAt: "2026-07-12T00:00:00.000Z",
