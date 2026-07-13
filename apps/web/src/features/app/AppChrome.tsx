@@ -59,9 +59,6 @@ export function AppChrome({ children }: { children: ReactNode }) {
             <Link to="/cards" className="px-2 py-1 hover:underline">
               Cards
             </Link>
-            <Link to="/activity" className="px-2 py-1 hover:underline">
-              Activity
-            </Link>
             {canAdminister ? (
               <Link to="/admin" className="px-2 py-1 hover:underline">
                 Admin

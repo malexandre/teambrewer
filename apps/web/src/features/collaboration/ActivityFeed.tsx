@@ -1,12 +1,12 @@
-import type { ActivityVerb, SubjectType } from "@teambrewer/shared";
+import type { ActivityVerb } from "@teambrewer/shared";
 
 import { ACTIVITY_VERB_LABELS } from "./activity-display";
 import { type ActivityFilters, useActivity } from "./use-activity";
 
 /**
- * The team activity feed, newest-first (docs/features/collaboration-core.md).
- * Reused for the team-wide timeline (its own route) and, filtered by subject, as
- * a per-deck activity section on the deck detail page.
+ * The activity feed, newest-first (docs/features/collaboration-core.md). Rendered
+ * filtered by subject as a per-subject activity section on detail pages (deck,
+ * game log, …).
  */
 export function ActivityFeed({
   teamId,
@@ -41,9 +41,3 @@ export function ActivityFeed({
     </section>
   );
 }
-
-/** The subject types the activity page can filter by (adopted subjects). */
-export const ACTIVITY_SUBJECT_FILTERS: { value: SubjectType | "all"; label: string }[] = [
-  { value: "all", label: "All activity" },
-  { value: "deck", label: "Decks" },
-];
