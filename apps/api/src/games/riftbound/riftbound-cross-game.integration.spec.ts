@@ -22,8 +22,8 @@ import type { PrismaClient } from "../../generated/prisma/client.js";
 
 /**
  * The phase-12 acceptance test (ADR-0006). With a team bound to Riftbound, every
- * existing feature — decks, events/gauntlets, game logging, matchups, testing
- * queue, and knowledge — works through the real HTTP endpoints with no
+ * existing feature — decks, events/gauntlets, game logging, and the testing
+ * queue — works through the real HTTP endpoints with no
  * game-specific branching, and reference data + team data stay isolated from a
  * Flesh and Blood team on the same instance. Reference data is set up with the
  * generic factories (the sync path itself is covered by the sync integration
@@ -213,19 +213,6 @@ describe("Riftbound cross-game acceptance (integration)", () => {
     expect(gameLog.status).toBe(201);
     // Bo3 with all-best confidence factors -> full weight.
     expect(gameLog.body.confidenceWeight).toBe(1);
-
-    // Matchups — the confidence-weighted read derived from the logged game.
-    const matchups = await asRiftboundMember(
-      request(app.getHttpServer()).get(`/api/matchups?formatId=${riftboundFormatId}`),
-    );
-    expect(matchups.status).toBe(200);
-    expect(matchups.body.grouping).toBe("deck");
-    expect(matchups.body.data.length).toBeGreaterThan(0);
-
-    const matrix = await asRiftboundMember(
-      request(app.getHttpServer()).get(`/api/matchups/matrix?formatId=${riftboundFormatId}`),
-    );
-    expect(matrix.status).toBe(200);
 
     // Testing queue — a card-test suggestion and a test assignment.
     const suggestion = await asRiftboundMember(

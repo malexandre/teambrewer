@@ -12,7 +12,6 @@ import { EventDetailPage } from "@/features/events/EventDetailPage";
 import { EventsPage } from "@/features/events/EventsPage";
 import { GameDetailPage } from "@/features/game-logging/GameDetailPage";
 import { GamesPage } from "@/features/game-logging/GamesPage";
-import { MatchupsPage } from "@/features/matchups/MatchupsPage";
 import { AssignmentsPage } from "@/features/testing-queue/AssignmentsPage";
 import { ClaimPage } from "@/features/auth/ClaimPage";
 import { LoginPage } from "@/features/auth/LoginPage";
@@ -130,12 +129,6 @@ const gameDetailRoute = createRoute({
   },
 });
 
-const matchupsRoute = createRoute({
-  getParentRoute: () => authenticatedLayout,
-  path: "/matchups",
-  component: MatchupsPage,
-});
-
 const assignmentsRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/assignments",
@@ -174,7 +167,6 @@ const routeTree = rootRoute.addChildren([
     eventDetailRoute,
     gamesRoute,
     gameDetailRoute,
-    matchupsRoute,
     assignmentsRoute,
     activityRoute,
     adminRoute,
