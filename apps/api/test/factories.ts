@@ -307,26 +307,22 @@ export async function createDeck(
 }
 
 /**
- * Events & gauntlets fixtures (phase-05). Team-owned; permissions are a shared team
- * board (no owner column). An event needs a `teamId` and a `formatId`; a gauntlet
- * entry needs its `eventId`/`teamId` plus exactly one target form; attendance is one
- * RSVP row per (event, user). Everything else defaults so isolation tests build one
- * in a single call.
+ * Events fixtures (meta-pivot redesign, WS-5). Team-owned; permissions are a shared
+ * team board (no owner column). A lightweight event needs a `teamId` and a `gameId`,
+ * with an optional meta link; attendance is one RSVP row per (event, user).
+ * Everything else defaults so isolation tests build one in a single call.
  */
 
-type EventStatus = "upcoming" | "active" | "completed" | "archived";
-type EventImportance = "local" | "regional" | "national" | "major";
-type AttendanceStatus = "going" | "maybe" | "not_going";
+type AttendanceStatus = "going" | "interested";
 
 export interface CreateEventOptions {
   teamId: string;
-  formatId: string;
+  gameId?: string;
   name?: string;
+  metaId?: string | null;
   date?: Date;
   location?: string | null;
-  importance?: EventImportance;
   description?: string;
-  status?: EventStatus;
   archivedAt?: Date | null;
 }
 
@@ -334,8 +330,7 @@ export interface TestEvent {
   id: string;
   teamId: string;
   name: string;
-  formatId: string;
-  status: string;
+  gameId: string;
 }
 
 export async function createEvent(
@@ -346,13 +341,12 @@ export async function createEvent(
   const created = await prisma.event.create({
     data: {
       teamId: options.teamId,
-      formatId: options.formatId,
+      gameId: options.gameId ?? "flesh-and-blood",
       name: options.name ?? `Event ${suffix}`,
+      metaId: options.metaId ?? null,
       date: options.date ?? new Date("2026-09-12T00:00:00.000Z"),
       location: options.location ?? null,
-      importance: options.importance ?? "regional",
       description: options.description ?? "",
-      status: options.status ?? "upcoming",
       archivedAt: options.archivedAt ?? null,
     },
   });
@@ -360,38 +354,8 @@ export async function createEvent(
     id: created.id,
     teamId: created.teamId,
     name: created.name,
-    formatId: created.formatId,
-    status: created.status,
+    gameId: created.gameId,
   };
-}
-
-export interface CreateGauntletEntryOptions {
-  eventId: string;
-  teamId: string;
-  referenceDeckId?: string | null;
-  heroId?: string | null;
-  archetypeLabel?: string | null;
-  expectedMetaShare?: number;
-  notes?: string;
-}
-
-export async function createGauntletEntry(
-  prisma: PrismaClient,
-  options: CreateGauntletEntryOptions,
-): Promise<{ id: string; eventId: string; teamId: string }> {
-  const created = await prisma.gauntletEntry.create({
-    data: {
-      eventId: options.eventId,
-      teamId: options.teamId,
-      referenceDeckId: options.referenceDeckId ?? null,
-      heroId: options.heroId ?? null,
-      archetypeLabel:
-        options.archetypeLabel ?? (options.referenceDeckId || options.heroId ? null : "Aggro Red"),
-      expectedMetaShare: options.expectedMetaShare ?? 20,
-      notes: options.notes ?? "",
-    },
-  });
-  return { id: created.id, eventId: created.eventId, teamId: created.teamId };
 }
 
 export async function createAttendance(
@@ -606,10 +570,10 @@ export async function createActivityEvent(
 }
 
 /**
- * Game-plans, deck selection & retrospective fixtures (phase-09). MatchupGamePlan
- * and Retrospective are team-owned; DeckSelection is scoped transitively through its
- * event (no teamId, like Attendance). Each defaults everything but the required
- * references so an isolation test builds one in a single call.
+ * Game-plan fixtures (phase-09; meta-pivot redesign). MatchupGamePlan is team-owned
+ * and defaults everything but the required references so an isolation test builds one
+ * in a single call. (Per-event deck selections + retrospectives were removed with the
+ * events strip — WS-5.)
  */
 
 export interface CreateMatchupGamePlanOptions {
@@ -656,61 +620,6 @@ export async function createMatchupGamePlan(
     ourDeckId: created.ourDeckId,
     opponentRef: created.opponentRef,
   };
-}
-
-export async function createDeckSelection(
-  prisma: PrismaClient,
-  options: {
-    eventId: string;
-    userId: string;
-    deckId: string;
-    reasoning?: string;
-    locked?: boolean;
-    lockedAt?: Date | null;
-  },
-): Promise<{ id: string; eventId: string; userId: string; locked: boolean }> {
-  const created = await prisma.deckSelection.create({
-    data: {
-      eventId: options.eventId,
-      userId: options.userId,
-      deckId: options.deckId,
-      reasoning: options.reasoning ?? "",
-      locked: options.locked ?? false,
-      lockedAt: options.lockedAt ?? (options.locked ? new Date() : null),
-    },
-  });
-  return {
-    id: created.id,
-    eventId: created.eventId,
-    userId: created.userId,
-    locked: created.locked,
-  };
-}
-
-export async function createRetrospective(
-  prisma: PrismaClient,
-  options: {
-    eventId: string;
-    teamId: string;
-    authorId: string;
-    body?: string;
-    resultsSummary?: string;
-    learnings?: string;
-    archivedAt?: Date | null;
-  },
-): Promise<{ id: string; eventId: string; teamId: string }> {
-  const created = await prisma.retrospective.create({
-    data: {
-      eventId: options.eventId,
-      teamId: options.teamId,
-      authorId: options.authorId,
-      body: options.body ?? "We went 5-2; the plan held up.",
-      resultsSummary: options.resultsSummary ?? "",
-      learnings: options.learnings ?? "",
-      archivedAt: options.archivedAt ?? null,
-    },
-  });
-  return { id: created.id, eventId: created.eventId, teamId: created.teamId };
 }
 
 /**

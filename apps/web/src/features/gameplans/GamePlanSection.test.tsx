@@ -39,7 +39,6 @@ const plan = {
   ourDeckId: "deck-1",
   ourDeckName: "Aggro Dori",
   formatId: "format-1",
-  opponentGauntletEntryId: null,
   opponentHeroId: "hero-1",
   opponentArchetypeLabel: null,
   opponentRef: "hero:hero-1",

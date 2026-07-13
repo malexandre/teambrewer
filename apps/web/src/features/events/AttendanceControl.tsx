@@ -9,9 +9,9 @@ import { useSetMyAttendance } from "./use-event-mutations";
 import { useAttendance } from "./use-events";
 
 /**
- * The current member's RSVP (a going / maybe / not_going toggle) plus a compact
- * roster of everyone's RSVP. Each member sets only their own attendance; the toggle
- * reflects the caller's current status.
+ * The current member's RSVP (a Going / Interested toggle) plus a compact roster of
+ * everyone's RSVP. Each member sets only their own attendance; the toggle reflects
+ * the caller's current status.
  */
 export function AttendanceControl({
   teamId,

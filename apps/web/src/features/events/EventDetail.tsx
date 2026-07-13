@@ -3,25 +3,18 @@ import type { EventDetail as EventDetailType } from "@teambrewer/shared";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useFormats } from "@/features/cards/use-formats";
-import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
-import { CommentThread } from "@/features/collaboration/CommentThread";
-import { ApiError } from "@/lib/api-client";
+import { useMetas } from "@/features/metas/use-metas";
 
 import { AttendanceControl } from "./AttendanceControl";
-import { DeckSelectionSection } from "./DeckSelectionSection";
-import { EVENT_IMPORTANCE_LABELS, formatEventDate } from "./event-display";
+import { formatEventDate } from "./event-display";
 import { EventForm } from "./EventForm";
-import { EventStatusControl } from "./EventStatusControl";
-import { GauntletBuilder } from "./GauntletBuilder";
-import { RetrospectiveSection } from "./RetrospectiveSection";
-import { useArchiveEvent, useUpdateEvent } from "./use-event-mutations";
+import { useArchiveEvent } from "./use-event-mutations";
 
 /**
- * An event's detail: the prep hub. Header (name, format, date, importance, status),
- * the gauntlet builder (the field to beat), and attendance. Permissions are a
- * shared team board — any member may edit the event, its gauntlet, and archive it.
- * Editing swaps in the event form in place.
+ * An event's detail: a lightweight social board item. Header (name, date, location,
+ * optional meta link), an optional description, and the attendance control (RSVP +
+ * roster). Permissions are a shared team board — any member may edit or archive the
+ * event. Editing swaps in the event form in place.
  */
 export function EventDetail({
   teamId,
@@ -33,10 +26,11 @@ export function EventDetail({
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
 
-  const updateEvent = useUpdateEvent(teamId, event.id);
   const archiveEvent = useArchiveEvent(teamId, event.id);
-  const { data: formatData } = useFormats(teamId);
-  const formatName = formatData?.data.find((format) => format.id === event.formatId)?.name;
+  const { data: metaData } = useMetas(teamId);
+  const metaName = event.metaId
+    ? (metaData?.data.find((meta) => meta.id === event.metaId)?.name ?? "Meta")
+    : null;
 
   if (editing) {
     return (
@@ -70,38 +64,18 @@ export function EventDetail({
 
       <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
         <div>
-          <dt className="text-muted-foreground">Format</dt>
-          <dd>{formatName ?? "—"}</dd>
-        </div>
-        <div>
           <dt className="text-muted-foreground">Date</dt>
           <dd>{formatEventDate(event.date)}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Importance</dt>
-          <dd>{EVENT_IMPORTANCE_LABELS[event.importance]}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Location</dt>
           <dd>{event.location ?? "—"}</dd>
         </div>
+        <div>
+          <dt className="text-muted-foreground">Meta</dt>
+          <dd>{metaName ?? "—"}</dd>
+        </div>
       </dl>
-
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-semibold">Status</span>
-        <EventStatusControl
-          status={event.status}
-          disabled={updateEvent.isPending}
-          onChange={(next) => updateEvent.mutate({ status: next })}
-        />
-        {updateEvent.isError ? (
-          <p role="alert" className="text-sm text-destructive">
-            {updateEvent.error instanceof ApiError
-              ? updateEvent.error.message
-              : "Could not update the event."}
-          </p>
-        ) : null}
-      </div>
 
       {event.description ? (
         <section className="flex flex-col gap-1">
@@ -110,21 +84,7 @@ export function EventDetail({
         </section>
       ) : null}
 
-      <GauntletBuilder teamId={teamId} eventId={event.id} entries={event.gauntletEntries} canEdit />
-
       <AttendanceControl teamId={teamId} eventId={event.id} />
-
-      <DeckSelectionSection teamId={teamId} eventId={event.id} eventFormatId={event.formatId} />
-
-      <RetrospectiveSection teamId={teamId} eventId={event.id} />
-
-      <CommentThread teamId={teamId} subjectType="event" subjectId={event.id} canComment />
-
-      <ActivityFeed
-        teamId={teamId}
-        filters={{ subjectType: "event", subjectId: event.id }}
-        title="Event activity"
-      />
     </div>
   );
 }

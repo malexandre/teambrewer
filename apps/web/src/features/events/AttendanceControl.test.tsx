@@ -79,7 +79,7 @@ describe("AttendanceControl", () => {
 
     const goingButton = await screen.findByRole("button", { name: /^going$/i });
     await vi.waitFor(() => expect(goingButton).toHaveAttribute("aria-pressed", "true"));
-    expect(screen.getByRole("button", { name: /^maybe$/i })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /^interested$/i })).toHaveAttribute(
       "aria-pressed",
       "false",
     );
@@ -91,8 +91,8 @@ describe("AttendanceControl", () => {
     const user = userEvent.setup();
     renderWithClient(<AttendanceControl teamId="team-1" eventId="event-1" />);
 
-    await user.click(await screen.findByRole("button", { name: /^maybe$/i }));
+    await user.click(await screen.findByRole("button", { name: /^interested$/i }));
     await vi.waitFor(() => expect(puts).toHaveLength(1));
-    expect(puts[0]).toEqual({ status: "maybe" });
+    expect(puts[0]).toEqual({ status: "interested" });
   });
 });

@@ -22,10 +22,10 @@ import type { PrismaClient } from "../../generated/prisma/client.js";
 
 /**
  * The phase-12 acceptance test (ADR-0006). With a team bound to Riftbound, every
- * existing feature — decks, events/gauntlets, game logging, and the testing
- * queue — works through the real HTTP endpoints with no
- * game-specific branching, and reference data + team data stay isolated from a
- * Flesh and Blood team on the same instance. Reference data is set up with the
+ * existing feature — decks, metas + tiered deck entries, lightweight events, game
+ * logging, and tasks — works through the real HTTP endpoints with no game-specific
+ * branching, and reference data + team data stay isolated from a Flesh and Blood
+ * team on the same instance. Reference data is set up with the
  * generic factories (the sync path itself is covered by the sync integration
  * test); the point here is that the feature services never assume FaB.
  */
@@ -177,32 +177,32 @@ describe("Riftbound cross-game acceptance (integration)", () => {
     expect(teammateDeck.status).toBe(201);
     const teammateDeckId = teammateDeck.body.id as string;
 
-    // Event + gauntlet entry (with expected metagame share, target = a Legend).
-    const event = await asRiftboundMember(
-      request(app.getHttpServer()).post("/api/events").send({
-        name: "Riftbound Regional",
-        formatId: riftboundFormatId,
-        date: "2026-09-12",
-        importance: "regional",
+    // Meta + a tiered deck entry (the field to beat, target = a Legend). The window
+    // spans the game's played-at date so the log auto-suggests this meta.
+    const meta = await asRiftboundMember(
+      request(app.getHttpServer()).post("/api/metas").send({
+        name: "Riftbound Season 1",
+        startDate: "2026-06-01",
+        endDate: "2026-12-31",
       }),
     );
-    expect(event.status).toBe(201);
-    const eventId = event.body.id as string;
+    expect(meta.status).toBe(201);
+    const metaId = meta.body.id as string;
 
-    const gauntletEntry = await asRiftboundMember(
+    const deckEntry = await asRiftboundMember(
       request(app.getHttpServer())
-        .post(`/api/events/${eventId}/gauntlet-entries`)
-        .send({ heroId: legendId, expectedMetaShare: 30 }),
+        .post(`/api/metas/${metaId}/deck-entries`)
+        .send({ tier: "meta_defining", heroId: legendId }),
     );
-    expect(gauntletEntry.status).toBe(201);
+    expect(deckEntry.status).toBe(201);
 
-    // Game logging — a Bo3 between our deck and the teammate's.
+    // Game logging — a Bo3 between our deck and the teammate's, linked to the meta.
     const gameLog = await asRiftboundMember(
       request(app.getHttpServer())
         .post("/api/game-logs")
         .send({
           formatId: riftboundFormatId,
-          eventId,
+          metaId,
           sideA: { pilotUserId: riftboundMember.id, deckId: ourDeckId },
           sideB: { pilotUserId: riftboundTeammate.id, deckId: teammateDeckId },
           firstPlayerSide: "A",
@@ -211,6 +211,7 @@ describe("Riftbound cross-game acceptance (integration)", () => {
         }),
     );
     expect(gameLog.status).toBe(201);
+    expect(gameLog.body.metaId).toBe(metaId);
     // Bo3 with all-best confidence factors -> full weight.
     expect(gameLog.body.confidenceWeight).toBe(1);
 

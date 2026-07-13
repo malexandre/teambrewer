@@ -1,43 +1,25 @@
 import { Link } from "@tanstack/react-router";
-import {
-  type EventImportance,
-  eventImportanceSchema,
-  eventStatusSchema,
-  type EventStatus,
-} from "@teambrewer/shared";
 import { useMemo, useState } from "react";
 
-import { useFormats } from "@/features/cards/use-formats";
-import { FormatPicker } from "@/features/decks/FormatPicker";
+import { useMetas } from "@/features/metas/use-metas";
 
-import {
-  EVENT_IMPORTANCE_LABELS,
-  EVENT_STATUS_LABELS,
-  formatEventDate,
-  SELECT_CLASS,
-} from "./event-display";
+import { formatEventDate, SELECT_CLASS } from "./event-display";
 import { type EventFilters, useEvents } from "./use-events";
 
 /**
- * The team's events with filters (status, format, importance). Mobile-first; each
- * row links to the event hub. Format ids are resolved to names via reference data.
+ * The team's events with an optional meta filter. Mobile-first; each row links to
+ * the event detail. Linked meta ids are resolved to names via the metas list.
  */
 export function EventList({ teamId }: { teamId: string | undefined }) {
-  const [status, setStatus] = useState<EventStatus | "">("");
-  const [formatId, setFormatId] = useState("");
-  const [importance, setImportance] = useState<EventImportance | "">("");
+  const [metaId, setMetaId] = useState("");
 
-  const filters: EventFilters = {
-    ...(status ? { status } : {}),
-    ...(formatId ? { formatId } : {}),
-    ...(importance ? { importance } : {}),
-  };
+  const filters: EventFilters = { ...(metaId ? { metaId } : {}) };
 
   const { data, isPending, isError } = useEvents(teamId, filters);
-  const { data: formatData } = useFormats(teamId);
-  const formatNames = useMemo(
-    () => new Map((formatData?.data ?? []).map((format) => [format.id, format.name])),
-    [formatData],
+  const { data: metaData } = useMetas(teamId);
+  const metaNames = useMemo(
+    () => new Map((metaData?.data ?? []).map((meta) => [meta.id, meta.name])),
+    [metaData],
   );
 
   const events = data?.data ?? [];
@@ -47,28 +29,14 @@ export function EventList({ teamId }: { teamId: string | undefined }) {
       <div className="flex flex-wrap items-end gap-2">
         <select
           className={SELECT_CLASS}
-          value={status}
-          onChange={(event) => setStatus(event.target.value as EventStatus | "")}
-          aria-label="Filter by status"
+          value={metaId}
+          onChange={(event) => setMetaId(event.target.value)}
+          aria-label="Filter by meta"
         >
-          <option value="">All statuses</option>
-          {eventStatusSchema.options.map((option) => (
-            <option key={option} value={option}>
-              {EVENT_STATUS_LABELS[option]}
-            </option>
-          ))}
-        </select>
-        <FormatPicker teamId={teamId} value={formatId} onChange={setFormatId} />
-        <select
-          className={SELECT_CLASS}
-          value={importance}
-          onChange={(event) => setImportance(event.target.value as EventImportance | "")}
-          aria-label="Filter by importance"
-        >
-          <option value="">All importances</option>
-          {eventImportanceSchema.options.map((option) => (
-            <option key={option} value={option}>
-              {EVENT_IMPORTANCE_LABELS[option]}
+          <option value="">All metas</option>
+          {(metaData?.data ?? []).map((meta) => (
+            <option key={meta.id} value={meta.id}>
+              {meta.name}
             </option>
           ))}
         </select>
@@ -89,20 +57,11 @@ export function EventList({ teamId }: { teamId: string | undefined }) {
                 params={{ eventId: event.id }}
                 className="flex flex-col gap-1 rounded-md border border-border p-3 hover:bg-accent"
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{event.name}</span>
-                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs">
-                    {EVENT_STATUS_LABELS[event.status]}
-                  </span>
-                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                    {EVENT_IMPORTANCE_LABELS[event.importance]}
-                  </span>
-                </div>
+                <span className="font-medium">{event.name}</span>
                 <span className="text-xs text-muted-foreground">
                   {formatEventDate(event.date)}
-                  {" · "}
-                  {formatNames.get(event.formatId) ?? "Unknown format"}
                   {event.location ? ` · ${event.location}` : ""}
+                  {event.metaId ? ` · ${metaNames.get(event.metaId) ?? "Meta"}` : ""}
                 </span>
               </Link>
             </li>

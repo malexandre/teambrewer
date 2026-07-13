@@ -41,15 +41,12 @@ export const queryKeys = {
     [teamId, "deck", deckId, "meta-readiness", metaId ?? "current"] as const,
 
   /**
-   * Events & gauntlets, keyed by the active team first so switching teams yields a
-   * different cache entry and one team's events never bleed into another's.
-   * `filters` keys each list variant; the gauntlet and attendance sub-resources are
-   * keyed under their event.
+   * Events, keyed by the active team first so switching teams yields a different
+   * cache entry and one team's events never bleed into another's. `filters` keys each
+   * list variant; the attendance sub-resource is keyed under its event.
    */
   events: (teamId: string, filters: Record<string, string>) => [teamId, "events", filters] as const,
   event: (teamId: string, eventId: string) => [teamId, "event", eventId] as const,
-  eventGauntlet: (teamId: string, eventId: string) =>
-    [teamId, "event", eventId, "gauntlet"] as const,
   eventAttendance: (teamId: string, eventId: string) =>
     [teamId, "event", eventId, "attendance"] as const,
 
@@ -100,16 +97,11 @@ export const queryKeys = {
   task: (teamId: string, taskId: string) => [teamId, "task", taskId] as const,
 
   /**
-   * Game-plans, deck selection & retrospective (phase-09), keyed by the active team
-   * first (teamId) so switching teams yields a different cache entry. Game-plan lists
-   * are keyed by their filters (surfaced per-deck on the deck page); deck selection and
-   * retrospective are keyed under their event.
+   * Game-plans (phase-09), keyed by the active team first (teamId) so switching teams
+   * yields a different cache entry. Game-plan lists are keyed by their filters
+   * (surfaced per-deck on the deck page).
    */
   gamePlans: (teamId: string, filters: Record<string, string>) =>
     [teamId, "game-plans", filters] as const,
   gamePlan: (teamId: string, gamePlanId: string) => [teamId, "game-plan", gamePlanId] as const,
-  eventDeckSelections: (teamId: string, eventId: string) =>
-    [teamId, "event", eventId, "deck-selections"] as const,
-  eventRetrospective: (teamId: string, eventId: string) =>
-    [teamId, "event", eventId, "retrospective"] as const,
 } as const;

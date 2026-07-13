@@ -7,19 +7,16 @@ import { subjectTypeSchema } from "./collaboration.js";
  * activity feed is an append-only, team-scoped timeline addressed polymorphically
  * by `(subjectType, subjectId)`. Verbs are an enum extended as modules adopt the
  * subsystem; phase-04 emits the deck lifecycle verbs plus the generic `commented`,
- * events add their own lifecycle verbs, game logs add theirs (phase-06), and
- * game-plans add theirs (phase-09). The meta-pivot redesign adds the meta + task
- * lifecycle verbs and removes the old suggestion/assignment verbs (those two models
- * merged into `task`).
+ * game logs add theirs (phase-06), and game-plans add theirs (phase-09). The
+ * meta-pivot redesign adds the meta + task lifecycle verbs, removes the old
+ * suggestion/assignment verbs (merged into `task`), and drops the event verbs
+ * (events became a lightweight social board, no longer activity-tracked, WS-5).
  */
 
 export const activityVerbSchema = z.enum([
   "deck_created",
   "deck_updated",
   "deck_status_changed",
-  "event_created",
-  "event_updated",
-  "event_status_changed",
   "game_log_created",
   "game_log_updated",
   "matchup_game_plan_created",

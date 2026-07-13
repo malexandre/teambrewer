@@ -82,8 +82,6 @@ model User {
   pilotedGameLogs             GameLog[]            @relation("GameLogPilot")
   opponentGameLogs            GameLog[]            @relation("GameLogOpponentPilot")
   updatedGamePlans            MatchupGamePlan[]    @relation("MatchupGamePlanUpdatedBy")
-  deckSelections              DeckSelection[]
-  authoredRetrospectives      Retrospective[]
   authoredTasks               Task[]               @relation("TaskAuthor")
   assignedTasks               Task[]               @relation("TaskAssignee")
   taskVotes                   TaskVote[]
@@ -175,13 +173,11 @@ model Team {
   memberships         TeamMembership[]
   decks               Deck[]
   events              Event[]
-  gauntletEntries     GauntletEntry[]
   comments            Comment[]
   notifications       Notification[]
   activityEvents      ActivityEvent[]
   gameLogs            GameLog[]
   matchupGamePlans    MatchupGamePlan[]
-  retrospectives      Retrospective[]
   metas               Meta[]
   metaDeckEntries     MetaDeckEntry[]
   tasks               Task[]
@@ -252,6 +248,7 @@ model Game {
   cards           Card[]
   cardDataVersion CardDataVersion?
   decks           Deck[]
+  events          Event[]
 
   @@map("game")
 }
@@ -270,7 +267,6 @@ model Format {
 
   game             Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
   decks            Deck[]
-  events           Event[]
   gameLogs         GameLog[]
   matchupGamePlans MatchupGamePlan[]
 
@@ -296,7 +292,6 @@ model Hero {
 
   game             Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
   decks            Deck[]
-  gauntletEntries  GauntletEntry[]
   gameLogs         GameLog[]
   matchupGamePlans MatchupGamePlan[]
   metaDeckEntries  MetaDeckEntry[]
@@ -399,11 +394,9 @@ model Deck {
   owner  User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   iterationEntries         DeckIterationEntry[]
-  gauntletEntries          GauntletEntry[]
   gameLogsAsDeck           GameLog[]            @relation("GameLogDeck")
   gameLogsAsOpponentDeck   GameLog[]            @relation("GameLogOpponentDeck")
   matchupGamePlans         MatchupGamePlan[]
-  deckSelections           DeckSelection[]
   deckMetas                DeckMeta[]
   referenceDeckMetaEntries MetaDeckEntry[]
   tasks                    Task[]
@@ -432,100 +425,50 @@ model DeckIterationEntry {
 }
 
 // ---------------------------------------------------------------------------
-// Events & gauntlets (phase-05). The Event is the central organizing hub (ADR-0004):
-// a target tournament with a gauntlet (the field to beat, weighted by expected
-// metagame share) and member attendance (RSVP). See
+// Events (meta-pivot redesign, WS-5). The Event is a lightweight social board item:
+// a named, dated get-together with an optional venue, description, and a link to the
+// meta it belongs to, plus per-member attendance (RSVP). The organizing hub moved to
+// the Meta (docs/decisions/0010-meta-as-organizing-hub.md), so events no longer carry
+// a status lifecycle, importance, a format, a gauntlet, deck selections, or a
+// retrospective, and are not a commentable subject. See
 // docs/features/events-and-gauntlets.md and docs/architecture/data-model.md.
 //
 // Permissions are a shared team board: any member may create/edit/delete any event
-// or gauntlet entry (no owner column); attendance is per-user. Event and
-// GauntletEntry carry teamId and are team-scoped by construction; Attendance is
-// scoped transitively through its parent event (like DeckIterationEntry).
+// (no owner column); attendance is per-user. Event carries teamId and is team-scoped
+// by construction; Attendance is scoped transitively through its parent event (like
+// DeckIterationEntry).
 // ---------------------------------------------------------------------------
 
-/// An event's lifecycle. Transitions are validated server-side (see
-/// docs/features/events-and-gauntlets.md); `archived` is the terminal soft-delete
-/// state (reaching it stamps `archivedAt` and drops the event from default lists).
-enum EventStatus {
-  upcoming
-  active
-  completed
-  archived
-}
-
-/// How much an event matters (ordinal: local < regional < national < major).
-/// Drives dashboard prioritization (consumers deferred to later phases).
-enum EventImportance {
-  local
-  regional
-  national
-  major
-}
-
-/// A member's RSVP for an event.
+/// A member's RSVP for an event (absence = not going).
 enum AttendanceStatus {
   going
-  maybe
-  not_going
+  interested
 }
 
-/// A team's target tournament: format + date + importance, with a lifecycle status.
-/// The hub that later modules (game logging, matchups, assignments, deck selection)
-/// optionally reference. Soft-deleted via `archivedAt` so history survives.
+/// A team's lightweight event: a name, date, optional venue/description, and an
+/// optional link to a meta. Soft-deleted via `archivedAt` so history survives.
 model Event {
-  id          String          @id @default(cuid())
-  teamId      String          @map("team_id")
+  id          String    @id @default(cuid())
+  teamId      String    @map("team_id")
+  gameId      String    @map("game_id")
   name        String
-  formatId    String          @map("format_id")
+  metaId      String?   @map("meta_id")
   date        DateTime
   location    String?
-  importance  EventImportance
-  description String          @default("")
-  status      EventStatus     @default(upcoming)
-  archivedAt  DateTime?       @map("archived_at")
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
+  description String    @default("")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  format Format @relation(fields: [formatId], references: [id])
+  team Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  game Game  @relation(fields: [gameId], references: [id])
+  meta Meta? @relation(fields: [metaId], references: [id], onDelete: SetNull)
 
-  gauntletEntries GauntletEntry[]
-  attendances     Attendance[]
-  deckSelections  DeckSelection[]
-  retrospective   Retrospective?
+  attendances Attendance[]
 
   @@index([teamId])
-  @@index([teamId, status])
-  @@index([teamId, formatId])
-  @@index([teamId, importance])
+  @@index([teamId, metaId])
   @@map("event")
-}
-
-/// One entry in an event's gauntlet (the field to beat). Names exactly one target
-/// form — a reference deck (a Deck where isReference is true), a bare hero, or a
-/// free-text archetype label — plus its projected field share (0–100, stored raw;
-/// normalization into weights is deferred to consumers). The exactly-one-target and
-/// duplicate-target rules are enforced server-side.
-model GauntletEntry {
-  id                String   @id @default(cuid())
-  eventId           String   @map("event_id")
-  teamId            String   @map("team_id")
-  referenceDeckId   String?  @map("reference_deck_id")
-  heroId            String?  @map("hero_id")
-  archetypeLabel    String?  @map("archetype_label")
-  expectedMetaShare Int      @map("expected_meta_share")
-  notes             String   @default("")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-
-  event         Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  team          Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  referenceDeck Deck? @relation(fields: [referenceDeckId], references: [id], onDelete: SetNull)
-  hero          Hero? @relation(fields: [heroId], references: [id], onDelete: SetNull)
-
-  @@index([eventId])
-  @@index([teamId])
-  @@map("gauntlet_entry")
 }
 
 /// A member's RSVP for an event (one row per member per event). No teamId — it is
@@ -808,15 +751,15 @@ model ActivityEvent {
 }
 
 // ---------------------------------------------------------------------------
-// Game-plans & deck selection (phase-09). Turns testing into decisions: a written
-// matchup game-plan per (our deck × opponent archetype), a per-member deck
-// selection per event that a team-admin can lock, and a post-event retrospective.
-// See docs/features/gameplans-and-deck-selection.md and docs/architecture/data-model.md.
+// Game-plans (phase-09; meta-pivot redesign). Turns testing into decisions: a written
+// matchup game-plan per (our deck × opponent archetype). See
+// docs/features/gameplans-and-deck-selection.md and docs/architecture/data-model.md.
+// (The per-event deck selection + post-event retrospective were removed with the
+// events strip — WS-5.)
 //
-// MatchupGamePlan and Retrospective carry teamId and are team-scoped by
-// construction. DeckSelection carries no teamId — it is reached only through its
-// team-scoped parent event, like Attendance. Key cards are no longer a structured
-// child table (meta-pivot redesign, WS-4): they live inline in the plan `body` as
+// MatchupGamePlan carries teamId and is team-scoped by construction. Key cards are
+// no longer a structured child table (meta-pivot redesign, WS-4): they live inline
+// in the plan `body` as
 // +[[cardId]] tokens (see packages/shared/src/card-tokens.ts). The opponent is
 // exactly one of a bare hero or a free-text archetype label; opponentSnapshotLabel
 // is a server-derived human label resolved at write time that survives deletion of
@@ -854,53 +797,6 @@ model MatchupGamePlan {
   @@index([teamId])
   @@index([teamId, ourDeckId])
   @@map("matchup_game_plan")
-}
-
-/// A member's committed deck for an event (one per event per member), plus free-text
-/// reasoning. No teamId — reached only through its team-scoped parent event (like
-/// Attendance). Only a team-admin can lock/unlock; while locked, the member cannot
-/// change deckId/reasoning.
-model DeckSelection {
-  id        String    @id @default(cuid())
-  eventId   String    @map("event_id")
-  userId    String    @map("user_id")
-  deckId    String    @map("deck_id")
-  reasoning String    @default("")
-  locked    Boolean   @default(false)
-  lockedAt  DateTime? @map("locked_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deck  Deck  @relation(fields: [deckId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, userId])
-  @@index([eventId])
-  @@map("deck_selection")
-}
-
-/// The post-event review (one per event). Required body plus optional resultsSummary
-/// and learnings. Any member authors; team-admins edit/archive. Soft-deleted via
-/// archivedAt. Carries teamId and is team-scoped by construction.
-model Retrospective {
-  id             String    @id @default(cuid())
-  eventId        String    @unique @map("event_id")
-  teamId         String    @map("team_id")
-  authorId       String    @map("author_id")
-  body           String
-  resultsSummary String    @default("") @map("results_summary")
-  learnings      String    @default("")
-  archivedAt     DateTime? @map("archived_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-
-  event  Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  team   Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([teamId])
-  @@map("retrospective")
 }
 
 // ---------------------------------------------------------------------------
@@ -944,6 +840,7 @@ model Meta {
   metaDeckEntries MetaDeckEntry[]
   deckMetas       DeckMeta[]
   gameLogs        GameLog[]
+  events          Event[]
 
   @@index([teamId])
   @@index([teamId, startDate])

@@ -1,19 +1,13 @@
-import {
-  type CreateEventInput,
-  type EventDetail,
-  type EventImportance,
-  eventImportanceSchema,
-  type UpdateEventInput,
-} from "@teambrewer/shared";
+import { type CreateEventInput, type EventDetail, type UpdateEventInput } from "@teambrewer/shared";
 import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FormatPicker } from "@/features/decks/FormatPicker";
+import { useMetas } from "@/features/metas/use-metas";
 import { ApiError } from "@/lib/api-client";
 
-import { EVENT_IMPORTANCE_LABELS, SELECT_CLASS } from "./event-display";
+import { SELECT_CLASS } from "./event-display";
 import { useCreateEvent, useUpdateEvent } from "./use-event-mutations";
 
 /** The `YYYY-MM-DD` value a native date input expects, from an ISO date string. */
@@ -23,9 +17,9 @@ function toDateInputValue(isoDate: string | undefined): string {
 }
 
 /**
- * Create or edit an event: a name, a format from the game's reference data, a date,
- * an importance, and an optional location/description. Status is not edited here —
- * it advances through the status control on the event hub.
+ * Create or edit an event: a name, a date, an optional location/description, and an
+ * optional link to a meta. The organizing hub is the Meta, so an event carries no
+ * format, importance, or status.
  */
 export function EventForm({
   teamId,
@@ -40,12 +34,14 @@ export function EventForm({
 }) {
   const isEditing = Boolean(event);
   const [name, setName] = useState(event?.name ?? "");
-  const [formatId, setFormatId] = useState(event?.formatId ?? "");
   const [date, setDate] = useState(toDateInputValue(event?.date));
-  const [importance, setImportance] = useState<EventImportance>(event?.importance ?? "regional");
   const [location, setLocation] = useState(event?.location ?? "");
   const [description, setDescription] = useState(event?.description ?? "");
+  const [metaId, setMetaId] = useState(event?.metaId ?? "");
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  const { data: metaData } = useMetas(teamId);
+  const metas = metaData?.data ?? [];
 
   const createEvent = useCreateEvent(teamId);
   const updateEvent = useUpdateEvent(teamId, event?.id ?? "");
@@ -59,10 +55,6 @@ export function EventForm({
       setValidationError("An event name is required.");
       return;
     }
-    if (!formatId) {
-      setValidationError("A format is required.");
-      return;
-    }
     if (!date) {
       setValidationError("An event date is required.");
       return;
@@ -71,11 +63,11 @@ export function EventForm({
     if (isEditing && event) {
       const input: UpdateEventInput = {
         name: name.trim(),
-        formatId,
         date,
-        importance,
         location: location.trim() ? location.trim() : null,
         description,
+        // null clears the link; a chosen id sets it.
+        metaId: metaId ? metaId : null,
       };
       updateEvent.mutate(input, { onSuccess: onSaved });
       return;
@@ -83,11 +75,10 @@ export function EventForm({
 
     const input: CreateEventInput = {
       name: name.trim(),
-      formatId,
       date,
-      importance,
       ...(location.trim() ? { location: location.trim() } : {}),
       description,
+      ...(metaId ? { metaId } : {}),
     };
     createEvent.mutate(input, { onSuccess: onSaved });
   }
@@ -106,10 +97,6 @@ export function EventForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
-          <Label htmlFor="event-format">Format</Label>
-          <FormatPicker id="event-format" teamId={teamId} value={formatId} onChange={setFormatId} />
-        </div>
-        <div className="flex flex-col gap-1">
           <Label htmlFor="event-date">Date</Label>
           <Input
             id="event-date"
@@ -117,24 +104,6 @@ export function EventForm({
             value={date}
             onChange={(changeEvent) => setDate(changeEvent.target.value)}
           />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="event-importance">Importance</Label>
-          <select
-            id="event-importance"
-            className={SELECT_CLASS}
-            value={importance}
-            onChange={(changeEvent) => setImportance(changeEvent.target.value as EventImportance)}
-          >
-            {eventImportanceSchema.options.map((option) => (
-              <option key={option} value={option}>
-                {EVENT_IMPORTANCE_LABELS[option]}
-              </option>
-            ))}
-          </select>
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor="event-location">Location</Label>
@@ -145,6 +114,23 @@ export function EventForm({
             placeholder="Optional venue / city"
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="event-meta">Meta (optional)</Label>
+        <select
+          id="event-meta"
+          className={SELECT_CLASS}
+          value={metaId}
+          onChange={(changeEvent) => setMetaId(changeEvent.target.value)}
+        >
+          <option value="">No meta</option>
+          {metas.map((meta) => (
+            <option key={meta.id} value={meta.id}>
+              {meta.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-col gap-1">
