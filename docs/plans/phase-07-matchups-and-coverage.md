@@ -142,4 +142,3 @@ assigned to them. `GameLog` is the source of truth (materialization may come lat
   [phase-09-gameplans-and-deck-selection.md](phase-09-gameplans-and-deck-selection.md)
 - Skills: [../../.claude/skills/implementing-a-phase/SKILL.md](../../.claude/skills/implementing-a-phase/SKILL.md) ·
   [../../.claude/skills/adding-a-feature-module/SKILL.md](../../.claude/skills/adding-a-feature-module/SKILL.md)
-</content>

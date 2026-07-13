@@ -145,4 +145,3 @@ confident deck choice and a durable review ([ADR-0004](../decisions/0004-event-c
   [phase-08-testing-queue.md](phase-08-testing-queue.md)
 - Skills: [../../.claude/skills/implementing-a-phase/SKILL.md](../../.claude/skills/implementing-a-phase/SKILL.md) ·
   [../../.claude/skills/adding-a-feature-module/SKILL.md](../../.claude/skills/adding-a-feature-module/SKILL.md)
-</content>

@@ -30,7 +30,6 @@ export const queryKeys = {
   card: (teamId: string, cardId: string) => [teamId, "card", cardId] as const,
   formats: (teamId: string) => [teamId, "formats"] as const,
   heroes: (teamId: string) => [teamId, "heroes"] as const,
-  cardDataVersion: (teamId: string) => [teamId, "card-data-version"] as const,
 
   /**
    * Decks, keyed by the active team first so switching teams yields a different

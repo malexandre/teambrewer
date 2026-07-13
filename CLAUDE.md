@@ -14,276 +14,48 @@ The authoritative description of the product, domain, architecture, and decision
 
 ## Current state
 
-The knowledge base and the phased implementation plan are complete. **Phase-00 (foundation) is done:**
-the pnpm monorepo, strict TypeScript, lint/format, the Vitest + Testcontainers + Playwright test harness,
-Prisma 7 with an empty base migration, the NestJS API (`GET /api/health`), the React + Vite PWA shell, and
-the Docker Compose stack (Postgres + API + Nginx) all exist and pass locally.
+The app was built phase by phase (phases 00–13) into a shippable, self-hostable **v1**: the pnpm
+monorepo + strict TS + the Vitest/Testcontainers/Playwright harness; **Better Auth** (password +
+mandatory TOTP, or Discord SSO — invite-only, no email); the **tenant-isolation backbone**
+(`TeamContextGuard` + `TeamScopedPrisma` + `TeamAdminGuard`); the global per-game **card database**
+(`GameAdapter` seam, Flesh and Blood + Riftbound adapters, idempotent `card:sync`); the
+collaboration core (comments, `@mentions` → notifications, activity); and PWA/ops hardening. That
+history is real — the per-phase detail lives in the git log and [`docs/plans/`](docs/plans/README.md).
 
-**Phase-01 (auth & tenancy) is ✅ done** (merged to `main`): the identity/tenancy models + migration;
-**Better Auth** (password + mandatory TOTP + backup codes, invite-only, no-email) and the **Discord** login
-method; the **tenant-isolation backbone** (`TeamContextGuard` + `TeamScopedPrisma`) and the management-side
-**`TeamAdminGuard`**; the admin, onboarding-link, and self endpoints; rate limiting; and the auth/teams
-**frontend**.
+**The current state is the "meta-pivot" redesign** (branch `feat/meta-pivot`), which re-centres the
+app on the **metagame** instead of individual events. See
+[ADR-0010](docs/decisions/0010-meta-as-organizing-hub.md) (supersedes the event-as-hub ADR-0004).
+The primary loop is now **decks ↔ the current meta ↔ tasks**:
 
-**Phase-02 (card database) is ✅ done** on branch `phase-02-card-database`. Delivered and tested (all
-local-green: 132 API + 58 shared + 12 web unit/integration tests + the phase-01 e2e; plus a live proof-sync
-of the real the-fab-cube v8.2.0 dataset → 4862 cards / 145 heroes, idempotent): the finalized **`GameAdapter`**
-seam + registry with the **Flesh and Blood** reference adapter; global per-game reference models
-(`Game`/`Format`/`Hero`/lean `Card`/`CardDataVersion`); the idempotent **card sync** (`CardSyncService` +
-`card:sync` CLI + env-gated cron) importing the-fab-cube (pinned release tag), plus the network-free
-`db:seed`; game-filtered **endpoints** (`/api/cards` search with keyset pagination, `/api/cards/:id`,
-`/api/formats`, `/api/heroes`, `/api/card-data/version`, instance-admin `/api/admin/card-data/sync`); and the
-**frontend** cards feature (`CardPicker`, `CardPreview`, data-version badge, hooks, a Cards page). **Decision
-recorded:** the `Card` model is **lean** (name + pitch + image only — decks are links, the image conveys
-stats); `data-model.md` and `card-database.md` were updated to match.
+- **Meta** (team-scoped) is the organizing hub: a dated window (`[startDate, endDate]`) owning a
+  **tiered list of decks to beat** (`MetaDeckEntry` with a `MetaTier`: meta-defining / contender /
+  counter-meta / fringe). "Current meta" = the one whose window contains today. Decks link to metas
+  (`DeckMeta`, defaulting to the current meta on create). See [`docs/features/metas.md`](docs/features/metas.md).
+- **Per-deck readiness** replaces the standalone matchups tab: the confidence-weighted matchup math
+  (still single-sourced in `packages/shared`, fed by `GameLog`) is surfaced as a **Readiness** section
+  on the deck page — weighted win rate + raw sample + thin-data flag + whether a game-plan exists
+  (Tier-1 decks flagged when unplanned). Matchup **game-plans** stay, per deck, with `+card` bodies.
+- **Tasks** (unified) merge the two old testing-queue models into one free-form `Task` (title,
+  description, optional deck link, status `proposed → assigned → finished|abandoned` with a
+  report-on-finish rule, upvotes, assignee). Commentable + activity-tracked. See
+  [`docs/features/tasks.md`](docs/features/tasks.md).
+- **`+card` inline mentions**: cards are linked inline in prose (task descriptions, game-plan bodies,
+  deck notes) as stable `+[[cardId]]` tokens via the shared composer/renderer, mirroring `@member`
+  mentions — no structured card-list tables.
+- **Lightweight events**: an `Event` is now name / date / location / description / optional `metaId`
+  + **RSVP** (`going | interested`). Gauntlets, deck-selection, retrospective, status, and importance
+  are gone (the gauntlet moved to Meta). `GameLog` drops `eventId` and gains an optional `metaId`.
+- **Navigation**: a left **sidebar** main menu (Decks · Metas · Events · Games · Tasks · Admin\* ·
+  Settings) + a top **submenu bar** for sections with sub-pages (Admin → Teams · Accounts · Members),
+  collapsing to an accessible drawer on mobile. The authenticated **landing page is Decks**.
+- **Removed** entirely: the dashboard, the knowledge base (primers / decisions / polls), the standalone
+  matchups tab, the top-level activity tab, the team roster tab (Discord covers it; `@`-autocomplete
+  still uses `/members`), and the standalone cards page (the card DB + `CardPicker` remain).
 
-**Phase-03 (decks) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 173 API + 81
-shared + 20 web unit/integration tests + 2 e2e journeys): the team-owned, **link-only** `Deck` and
-`DeckIterationEntry` models + migration (ADR-0002 — no stored card list); the **`DecksModule`** — the first
-real consumer of `TeamScopedPrisma` — with team-scoped CRUD, the dedicated status endpoint enforcing a
-**permissive status lifecycle** (transition map single-sourced in `packages/shared`), ownership +
-team-admin moderation, `private`/`team` visibility (404 to avoid enumeration), cross-game `formatId`/`heroId`
-rejection, the append-only iteration log, and best-effort **Fabrary URL recognition** via the game adapter
-(metadata only, no scraping — ADR-0007); endpoints `GET/POST /api/decks`, `GET/PATCH/DELETE
-/api/decks/:deckId`, `PATCH /api/decks/:deckId/status`, `GET/POST /api/decks/:deckId/iteration-entries`,
-`POST /api/decks/recognize-url`; and the mobile-first **frontend** decks feature (list/detail/form, status
-+ visibility controls, iteration log, hero/format pickers, team-scoped hooks). **Fix:** `TeamScopedPrisma`
-now resolves the team context **lazily** (a request-scoped controller is instantiated before its guards
-run). **Doc updated:** the `decks.md` status mermaid now matches the permissive prose.
+Everything is **local-green** on the meta-pivot branch: **406 API + 252 shared + 77 web**
+unit/integration tests and **9 Playwright e2e journeys** (8 desktop + the phone-viewport game-logging
+flow), plus `pnpm lint`, `pnpm typecheck`, and `pnpm build`.
 
-**Phase-04 (collaboration core) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 201
-API + 110 shared + 23 web unit/integration tests + 3 e2e journeys): the shared, **polymorphic**
-collaboration subsystem — threaded **comments**, **@mentions → notifications**, an **activity feed**, and an
-in-app **notification center** (no email/push — ADR-0003) — plus a reusable **attach pattern** so any module
-becomes commentable + activity-tracked by declaring a `subjectType`. Backend: `Comment`/`Mention`/
-`Notification`/`ActivityEvent` models + migration (subject_type/type/verb are plain strings, extended as
-modules adopt); the **`AttachableSubjectResolver` + `SubjectResolverRegistry`** contract (collaboration never
-depends on the modules it serves); `CollaborationModule` (comments CRUD + single-level threading +
-author/team-admin moderation, mention parsing → in-team `Mention` + `Notification`, the notification center,
-and the per-subject/team activity feed) — all team-scoped via `TeamScopedPrisma` (`comment`/`notification`/
-`activityEvent` added to `TEAM_OWNED_MODELS`); and the **decks retrofit** (deck registered as the first
-subject; `deck_created`/`deck_updated`/`deck_status_changed` + `commented` activity). **Privacy decision:**
-private-deck activity is never recorded to the team-wide feed (the resolver's `isTeamVisible`), so a personal
-draft's existence can't leak. **Scope decision (with the user):** notifications are **mentions-only** this
-phase; the `type` enum stays open for reply/authored notifications later. Endpoints `GET/POST /api/comments`,
-`PATCH/DELETE /api/comments/:commentId`, `GET /api/notifications`, `PATCH /api/notifications/:id/read`,
-`POST /api/notifications/read-all`, `GET /api/activity`. Frontend: `CommentThread` (nested replies,
-in-team-only @-autocomplete, inline edit/remove), `NotificationCenter` (header bell + unread badge), and
-`ActivityFeed` (a `/activity` route + a per-deck section on `DeckDetail`).
-
-**Phase-05 (events & gauntlets) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 243
-API + 147 shared + 31 web unit/integration tests + 4 e2e journeys): the **Event** as the central organizing
-hub (ADR-0004). Backend `EventsModule` — team-scoped **events** CRUD (keyset pagination; `status`/`formatId`/
-`importance` filters; status advanced **through `PATCH`** with a guarded lifecycle `upcoming → active →
-completed → archived` + cancellation, illegal → `422`; `DELETE` archives via `archivedAt`), the **gauntlet**
-(exactly-one target form — reference deck / hero / archetype label; raw `expectedMetaShare` 0–100; reference-
-deck must be the team's own `isReference` deck; cross-game hero rejection; duplicate-target `422`), and
-idempotent per-member **attendance** (`PUT .../attendance/me`). Models `Event`/`GauntletEntry`/`Attendance` +
-migration; `event`/`gauntletEntry` added to `TEAM_OWNED_MODELS` (attendance is scoped transitively through
-its parent event — no `teamId`). Endpoints `GET/POST /api/events`, `GET/PATCH/DELETE /api/events/:eventId`,
-`GET/POST /api/events/:eventId/gauntlet-entries`, `PATCH/DELETE .../:gauntletEntryId`,
-`GET /api/events/:eventId/attendance`, `PUT .../attendance/me`. Frontend `events` feature — list + filters,
-the **event hub** (header, status control, gauntlet builder with a share bar + running total, attendance
-toggle + roster), create/edit form, team-scoped hooks. **Decision (with the user):** events & gauntlets are a
-**shared team board** — any member creates/edits/deletes any event or gauntlet entry (no owner column);
-`data-model.md`'s `Event` has no owner field, and `multi-tenancy.md` + `events-and-gauntlets.md` were updated
-to record it. **Post-phase follow-up (with the user):** events were then retrofitted onto the collaboration
-subsystem — `event` is a commentable subject (`EventSubjectResolver`), the hub renders the shared
-`CommentThread` + `ActivityFeed`, and create/update/status-change emit `event_created`/`event_updated`/
-`event_status_changed` activity (shared `subjectType`/`activityVerb` enums extended).
-
-**Phase-06 (game logging) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 271 API +
-176 shared + 38 web unit/integration tests + 5 e2e journeys): the **`GameLog`** as the confidence-weighted
-source of truth for every matchup aggregate (ADR-0005, finalized this phase). The signature decision is the
-**confidence-weight model** — four 3-level factor enums (`skillParity`/`seriousness`/`deckMaturity`/
-`pilotFamiliarity`) each mapping to a `1.0`/`0.7`/`0.4` sub-score, combined by the pure
-**`deriveConfidenceWeight`** (in `packages/shared`, so the API derives it authoritatively and the web form
-previews it live) as a **weighted mean** (`0.35`/`0.25`/`0.25`/`0.15`); all-best → `1.0`, all-worst → the
-documented `0.40` floor, always within `[0,1]`, locked by table-driven tests. Backend `GameLogsModule` —
-team-scoped CRUD, `sideA` (our pilot+deck) / `sideB` (teammate **or** external opponent via exactly one of
-reference deck / hero / archetype), result↔best-of consistency, cross-team deck/event + cross-game
-format/hero FK rejection, logger/team-admin ownership (404-before-403), `archivedAt` soft-delete, keyset
-pagination + filters (`formatId`/`eventId`/`deckId`/`heroId`/`pilotUserId`, matching either side); the
-`GameLog` model + migration (`gameLog` added to `TEAM_OWNED_MODELS`); and the collaboration retrofit
-(`game_log` subject + `game_log_created`/`game_log_updated` activity). Endpoints `GET/POST /api/game-logs`,
-`GET/PATCH/DELETE /api/game-logs/:gameLogId`. Frontend `game-logging` feature — the **fast mobile logging
-form** (deck + opponent-kind pickers, big result buttons / games-won steppers, confidence factors as
-segmented controls pre-filled with defaults, a live "counts as ~0.78" hint, optional details behind a
-disclosure), the list + the detail hub (matchup, weight + factors, shared `CommentThread` + `ActivityFeed`).
-**Decisions (with the user):** the weight combination is a weighted mean and `deriveConfidenceWeight` lives
-in `packages/shared`; trust-indicator buckets are deferred to phase-07. **Notes:** result/best-of and
-sideB-identity violations surface as `400` at the schema boundary (the events convention; DB-dependent
-domain rules stay `422`); the game-logging e2e runs on a **phone-viewport Playwright project**.
-**Post-phase follow-up (game-logging v2, on branch `feat/game-logging-wizard`):** the single-screen form was
-replaced by a **`GameLogWizard`** — a 3-step fast path (matchup → result → confidence, with its live "counts
-as ~0.XX" hint and the primary **Log game** button) plus an optional step 4 for notes and card capture, used
-on every viewport, reusing the same wizard for edit. The pre-selected `bestOf` is now **game-driven**: a new
-`readonly defaultBestOf: BestOf` on the `GameAdapter` (FaB → `1`) resolved through the new team-scoped
-**`GET /api/game-config`** seam (`{ gameId, identityLabel, defaultBestOf }`, shared `gameConfigSchema`) that
-the wizard reads via `useGameConfig`; `bestOf` itself stays a required, client-supplied field. Logs can also
-capture optional **impressive/underperforming cards**, each tagged ours/theirs, via the new
-**`GameLogCard`** model (scoped transitively through its parent `GameLog`, like `Attendance` on `Event`) and
-`impressiveCards[]`/`underperformingCards[]` on create/update (update replaces the set per role); cross-game
-`cardId` is rejected.
-
-**Phase-07 (matchups & coverage) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 294
-API + 211 shared + 44 web unit/integration tests + 6 e2e journeys): the signature **confidence-weighted
-matchup reads**, derived read-only from `GameLog` (still the source of truth — no materialized table). The
-math is pure and single-sourced in `packages/shared` (`aggregateMatchup`, `trustIndicator`,
-`deriveGameOutcome`, coverage helpers) next to `deriveConfidenceWeight`: **weighted win rate**
-`Σ(w·win)/Σ(w)`, **raw N** (always shown), **effective sample** `Σ(w)`, and a **trust indicator**. Backend
-read-only **`MatchupsModule`** — `GET /api/matchups` (list), `/api/matchups/matrix` (our decks/heroes × the
-opponent field), `/api/matchups/coverage` (an event's gauntlet coverage) — reads team-scoped `GameLog`s via
-`TeamScopedPrisma`, groups **by deck** or **by hero**, resolves deck/hero identities, and validates
-`formatId`/`eventId`/`ourDeckId` (cross-tenant → 404, forged team → 403). Frontend **`matchups`** feature:
-the responsive `MatchupMatrix` (sticky first column + horizontal scroll; every cell shows rate + raw N + a
-trust badge, styled tentative below `high`), the `CoverageTracker` (thin gauntlet matchups ordered by
-normalized field share, with a threshold control), and scope selectors + a by-deck/by-hero toggle.
-**Decisions (with the user), recorded in ADR-0005:** a **draw** counts in raw N but is **excluded** from the
-weighted win rate and the effective sample; **trust thresholds** are `low <5 · medium 5–<15 · high ≥15`;
-coverage aggregates all relevant reps in the event's **format** against each target, flagging effective
-sample below a configurable threshold (default the `high` boundary). `firstPlayerSide` is data, not an
-aggregation axis (v1). Test assignments (`assignments: []`) arrive with phase-08.
-
-**Phase-08 (testing queue) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 361 API +
-243 shared + 53 web unit/integration tests + 7 e2e journeys): the deliberate-testing subsystem — per-deck
-**card-test suggestions** with **upvotes**, and **test assignments** that hand a specific matchup to a
-member. Backend **`TestingQueueModule`** (team-scoped via `TeamScopedPrisma`): **`CardTestSuggestion`** CRUD
-(`GET/POST /api/card-test-suggestions`, `PATCH/DELETE /:suggestionId`) with a guarded lifecycle
-`proposed → testing → adopted | rejected` (illegal → 422; resolving to adopted/rejected requires a
-`resolutionNote`), author/team-admin ownership (404-before-403), archived-deck-blocks-create, and
-cross-team/cross-game FK rejection; **upvote-only voting** (`PUT/DELETE /:suggestionId/votes/me`, idempotent
-upsert on `(suggestionId, userId)`, voter from context — `SuggestionVote` has no `value` and no `teamId`,
-scoped transitively like `Attendance`); and **`TestAssignment`** CRUD (`GET/POST /api/test-assignments`,
-`PATCH/DELETE /:assignmentId`) with an exactly-one-of opponent (gauntlet entry / hero / archetype label; the
-structural rule → 400), a guarded lifecycle `open → in_progress → done` (+`cancelled`), creator/assignee/
-admin ownership, and a server-derived **`opponentSnapshotLabel`** that survives deletion of the referenced
-gauntlet entry/hero. Both are collaboration subjects (`card_test_suggestion`/`test_assignment`) emitting
-created/updated/status_changed activity. Models `CardTestSuggestion`/`SuggestionVote`/`TestAssignment` +
-migration; `cardTestSuggestion`/`testAssignment` added to `TEAM_OWNED_MODELS`. Frontend **`testing-queue`**
-feature: a per-deck **`SuggestionBoard`** (grouped by status, one-tap voting, status control with the
-required resolution note, on-demand discussion) embedded on `DeckDetail`, and an **`/assignments`** page
-(assign a matchup, "All / Assigned to me" scope, status control, discussion). **Decisions (with the user):**
-votes are **upvote-only** (no `value`); assignment statuses use the feature-spec vocabulary
-**`open/in_progress/done`** (+`cancelled`); the opponent snapshot is implemented now (not deferred).
-
-**Phase-09 (game-plans & deck selection) is ✅ done** (merged to `main`). Delivered and tested (all
-local-green: 389 API + 269 shared + 60 web unit/integration tests + 8 e2e journeys): the endgame that turns
-testing into decisions (ADR-0004). Backend new **`GamePlansModule`** — team-scoped **`MatchupGamePlan`** CRUD
-(`GET/POST /api/game-plans`, `GET/PATCH/DELETE /api/game-plans/:gamePlanId`): one canonical plan per
-`(teamId, ourDeckId, opponentRef, formatId)` (duplicate create → `409`; edit updates in place + re-stamps
-`updatedBy`), a polymorphic opponent (gauntlet entry / hero / archetype label) persisted as three nullable
-columns **plus a derived normalized `opponentRef` key** (`gauntlet:`/`hero:`/`label:`) so uniqueness holds
-across the target, and a derived `opponentSnapshotLabel`; `keyCards[]` are a transitively-scoped child model
-**`MatchupGamePlanCard`** (replacement set, validated against the team's game); shared team knowledge (any
-member creates/edits, **archive team-admin only**); a `matchup_game_plan` collaboration subject emitting
-`matchup_game_plan_created/_updated` activity. Two event sub-resources were **added to the existing
-`EventsModule`** (decision with the user): per-member **`DeckSelection`** (`GET .../deck-selections`,
-`PUT .../deck-selections/me` upsert, `PATCH .../deck-selections/:id/lock|/unlock`) — no `teamId` (scoped
-through its event, like `Attendance`), **team-admin-only lock/unlock** (non-admin → `403`), a locked member
-edit → `422` — and the post-event **`Retrospective`** (`GET/POST/PATCH .../retrospective`), one per event
-(duplicate → `409`), any member authors, author-or-admin edits, admin-only archive. Models
-`MatchupGamePlan`/`MatchupGamePlanCard`/`DeckSelection`/`Retrospective` + migration; `matchupGamePlan`/
-`retrospective` added to `TEAM_OWNED_MODELS`. Frontend: a **`gameplans`** feature (editor with a hero/
-archetype opponent picker, key-card autocomplete + strip, `GamePlanCard` with `CardPreview` + comments)
-embedded **only on `DeckDetail`** (decision with the user); and **`DeckSelectionSection`** (my-pick + lock
-badge + roster with admin lock/unlock + a format-mismatch warning) + **`RetrospectiveSection`** on the event
-hub. **Decisions (with the user):** bodies render as **plain `whitespace-pre-wrap` text** (no markdown-
-renderer dependency — the codebase convention); deck-selections/retrospectives live in `EventsModule`;
-game-plans are surfaced only on the deck page this phase (the matchup-matrix-cell link is a later follow-up).
-
-**Phase-10 (team knowledge) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 448 API
-+ 307 shared + 64 web unit/integration tests + 9 e2e journeys): the team's durable memory — long-form
-**primers**, a **decisions log**, and **polls** — all strictly team-scoped and (primers/decisions)
-commentable via the collaboration core. Backend three modules under `apps/api/src/knowledge/`: **primers**
-(team-scoped CRUD, `team`/`private` visibility — a private draft is readable/editable only by its author +
-team-admins, list excludes others' private, single read 404; any member edits a visible primer, author or
-team-admin archives; `relatedDeckId` validated same-team → 422; `primer` collaboration subject with private
-drafts kept off the activity feed); **decisions** (append-oriented CRUD with **no delete**; a polymorphic
-`relatedSubjectRef` — `{subjectType, subjectId}` reusing the collaboration addressing — resolved + validated
-same-team via `TeamScopedPrisma` with a durable snapshot label, cross-team → 404; any member records,
-author/team-admin corrects; `decision` collaboration subject); **polls** (single-choice votes with an
-**effective status** — a poll past `closesAt` counts as closed even if stored `open`; `PUT/DELETE .../vote`
-upserts one vote per `(pollId, userId)`, vote on a closed/expired poll → 422, an `optionId` outside the poll
-→ 422; `open↔closed` lifecycle via `PATCH` with a reopen-past-`closesAt` → 422 and options-locked-once-voted
-→ 422; author/team-admin manage; per-option counts + percentages computed read-only; polls are
-activity-tracked but **not** commentable). Models `Primer`/`Decision`/`Poll`/`PollVote` + migration
-(`PollVote` transitively scoped through its parent poll, `@@unique(pollId,userId)`; `primer`/`decision`/
-`poll` added to `TEAM_OWNED_MODELS`); poll `options` are an ordered JSON array of `{id,label}`. Endpoints
-`GET/POST /api/primers`, `GET/PATCH/DELETE /api/primers/:primerId`, `GET/POST /api/decisions`,
-`GET/PATCH /api/decisions/:decisionId`, `GET/POST /api/polls`, `GET/PATCH /api/polls/:pollId`,
-`PUT/DELETE /api/polls/:pollId/vote`. Frontend a **`knowledge`** feature at a `/knowledge` hub (tabs:
-Primers | Decisions | Polls) — a primers library + detail route (`/knowledge/primers/:id`) with
-edit/archive + `CommentThread`, a decisions log with expandable cards + discussion, and a polls board (vote
-with live count/percentage bars, retract, close/reopen). **Decision (with the user):** long-form bodies
-render as **plain `whitespace-pre-wrap` text** authored in a `<textarea>` — **no markdown editor/sanitizer
-dependency** (the codebase convention through phase-09); React escapes text content, so a script-laden body
-renders literally (proven by a component test) — the "markdown safety" requirement is met by escaping, not a
-sanitizer. `docs/plans/phase-10-team-knowledge.md` and `docs/features/team-knowledge.md` were updated to
-record it.
-
-**Phase-11 (dashboard) is ✅ done** (merged to `main`). Delivered and tested (all local-green: 461 API + 315
-shared + 72 web unit/integration tests + 10 e2e journeys): the **read/aggregation** landing surface that
-answers "what should I do next?" It introduces **no new persisted entity, no migration, no
-`TEAM_OWNED_MODELS` change** — it composes the existing events, matchups/coverage, testing-queue,
-game-logging, and collaboration services (their modules now `export` their services). The one piece of real
-logic is the pure, table-driven **`rankTestingPriorities`** in `packages/shared` (next to the matchup math):
-ranks **per opponent archetype** by `priorityScore = normalizedShare × coverageGap`
-(`coverageGap = max(0, target − effectiveSample)/target`, `target` defaults to the `high` trust boundary 15),
-ordered priority desc → `expectedMetaShare` desc → `effectiveSample` asc → `opponentKey`, with a no-shares
-fallback (rank by coverage gap, `sharesUnset` flagged) and empty-gauntlet → `[]`. Backend read-only
-**`DashboardModule`** — `GET /api/dashboard/me` (my open+in-progress assignments, nearest-upcoming events
-with my RSVP + deck selection, recent results with the outcome from my perspective — flipped when I piloted
-side B) and `GET /api/dashboard/team` (target event = explicit `?eventId=` else nearest upcoming; the ranked
-recommendation, coverage gaps with current assignees, recent team results, an activity slice) — all
-team-scoped through the composed services (a cross-tenant `eventId` → 404, a forged team → 403). Frontend
-**`dashboard`** feature at the **authenticated landing `/`** (the team roster moved to a new `/team` route +
-nav entry) — a mobile-first, sectioned page with a **For me** / **Team** scope toggle, every widget
-deep-linking into its owning feature. **Decisions (with the user):** rank **per opponent archetype** (not
-per our-deck × opponent pairing), and make the dashboard the landing route; `docs/features/dashboard.md` +
-the phase plan were updated to record both.
-
-**Phase-12 (riftbound adapter) is ✅ done** (merged to `main`). The acceptance test for ADR-0006: a second
-game, **Riftbound**, added **entirely through a new `GameAdapter` + reference data** — no core or
-feature-module logic changed (all local-green: 479 API + 315 shared + 74 web unit/integration tests + 10
-e2e journeys). Delivered `apps/api/src/games/riftbound/` implementing the full contract against the
-**Riftcodex** open REST API (confirmed live at build time: base `https://api.riftcodex.com`, `GET /cards`
-paginated `{ items, total, page, size, pages }`, `size` max 100; no auth; unofficial fan project — sync +
-attribute, never hammer): `identityLabel: "Legend"`, `defaultBestOf: 3`, `Standard`/`Draft`/`Sealed`
-formats, **name-only** `cardIdentity` (`pitch` is null — Riftbound has no pitch), and `deriveHeroes` over
-**Legend**-type cards mapping **Domain → the class surface** and **Region (tags) → the talent surface** — no
-Riftbound-only core fields. Registered via the only two boundary-safe edits (a `GAME_CATALOG` entry +
-`GamesModule` provider wiring); the existing phase-02 seed + `card:sync` + `GET /api/game-config` drive it
-unchanged. **Frontend (decision with the user):** the pre-existing but unrendered `gameConfig.identityLabel`
-was **wired into every hard-coded "Hero" label** (deck form/detail, identity picker, gauntlet builder,
-game-plan editor, game-log wizard) via a `useIdentityLabel` hook — config-driven, **no `game ===`
-branching**; FaB still shows "Hero", Riftbound shows "Legend". This completes intended seam wiring flagged
-in `game-abstraction.md`, **not a leak** — recorded in the phase plan's **boundary report** ("the
-abstraction held"). A **cross-game acceptance** integration test drives decks → events/gauntlets → game log
-→ matchups → testing queue → primer for a Riftbound team through the real HTTP stack, with two-team
-isolation.
-
-**Phase-13 (polish, PWA & hardening) is ✅ done** (merged to `main`). The cross-cutting finishing phase —
-no new product features or entities (all local-green: 485 API + 315 shared + 79 web unit/integration tests
-+ 12 e2e journeys incl. the new a11y scan + smoke suite). **Security hardening:** all rate-limit thresholds
-are **env-configurable** (`RATE_LIMIT_*`); **Better Auth's own limiter** now guards `/api/auth/*` (login/TOTP,
-strict on the sign-in paths) — gated by `RATE_LIMIT_AUTH_ENABLED` (on in prod, off in the shared-IP e2e); a
-tuned **expensive-operation** throttle covers the matchup matrix/coverage reads and the admin card sync;
-**helmet** sets the API's baseline headers; **CSRF** is SameSite + CORS + an `OriginCheckGuard` (rejects
-cross-origin cookie-authed mutations); `trust proxy` is set for the front-proxy chain. **Self-hosting ops:**
-the compose stack now boots auth (required `BETTER_AUTH_SECRET`, migrate-on-boot), Nginx honors the front
-proxy's `X-Forwarded-Proto` and sets SPA security headers (CSP/X-Frame-Options/etc.; **HSTS at the front
-proxy**), and [`docs/ops/self-hosting.md`](docs/ops/self-hosting.md) documents TLS-behind-a-proxy, a
-least-privilege DB role, and a Postgres **backup/restore runbook**. **PWA:** app-shell precache + card-image
-`CacheFirst` + a **tenancy-safe persisted TanStack cache** (IndexedDB; only `[teamId, …]` keys, never
-`me`/`admin`, cleared on sign-out) for offline reads — the offline **write** queue is a deferred future
-enhancement (decided with the user). **A11y/theming:** an axe Playwright scan of the key screens (fixed a
-muted-text contrast miss) + a user-facing **theme toggle**. **Performance:** a `(teamId, playedAt DESC, id
-DESC)` GameLog index for keyset lists; matchup reads stay **derived (no materialization)** — measure-first,
-per the documented budget. **CI:** a `pnpm audit` step (fails on high-severity) + the e2e suite wired in
-(active once a remote exists). **Decisions (with the user):** offline writes deferred; TLS terminated by an
-existing front proxy (our Nginx stays HTTP behind it); CSRF via SameSite+CORS+Origin; matchups measure-first.
-This completes the phased build — the app is a shippable, self-hostable v1.
 
 ## How to work in this repo
 

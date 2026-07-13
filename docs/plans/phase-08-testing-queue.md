@@ -146,4 +146,3 @@ collaboration core built in phase-04.
   [phase-07-matchups-and-coverage.md](phase-07-matchups-and-coverage.md)
 - Skills: [../../.claude/skills/implementing-a-phase/SKILL.md](../../.claude/skills/implementing-a-phase/SKILL.md) ·
   [../../.claude/skills/adding-a-feature-module/SKILL.md](../../.claude/skills/adding-a-feature-module/SKILL.md)
-</content>

@@ -7,8 +7,11 @@ This `docs/` folder is the **single source of truth** for what TeamBrewer is, wh
 made, and how it should be built. It is written to be consumed by both humans and future AI agent
 sessions. **Read the relevant documents here before implementing anything.**
 
-> Status: this knowledge base and the phased plan are complete. **No application code has been
-> written yet.** Implementation happens phase by phase — see [`plans/`](plans/README.md).
+> Status: the app is built (a shippable, self-hostable v1) and has since been re-centred on the
+> **metagame** — see the "meta-pivot" summary in [`../CLAUDE.md`](../CLAUDE.md) and
+> [ADR-0010](decisions/0010-meta-as-organizing-hub.md). Some phase-era feature specs and plans under
+> [`plans/`](plans/README.md) still describe the original event-centric build; treat `CLAUDE.md` +
+> the ADRs as authoritative where they differ.
 
 ## How this knowledge base is organized
 
@@ -28,8 +31,9 @@ sessions. **Read the relevant documents here before implementing anything.**
   designed-for but built later. See [`domain/flesh-and-blood.md`](domain/flesh-and-blood.md).
 - **Isolated teams (workspaces):** one instance hosts many teams; a team never sees another team's
   data. See [`architecture/multi-tenancy.md`](architecture/multi-tenancy.md).
-- **Event-centric:** testing hangs off a target tournament (format + date). See
-  [`features/events-and-gauntlets.md`](features/events-and-gauntlets.md).
+- **Meta-centric:** the team's organizing unit is a dated **Meta** (a tiered list of decks to beat);
+  readiness, testing, and events all hang off it. Events are lightweight (name/date/RSVP). See
+  [`features/metas.md`](features/metas.md) and [ADR-0010](decisions/0010-meta-as-organizing-hub.md).
 - **Decks are links, not lists:** a deck is `{ hero, format, external link, metadata }`. The app is a
   collaboration layer over decks-as-links, powered by a rich card database — **not** a deck builder or
   a scraper. See [ADR-0002](decisions/0002-decks-as-links.md).

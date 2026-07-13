@@ -205,4 +205,3 @@ Follow [testing-strategy.md](../architecture/testing-strategy.md).
 - Wizard + card-capture design:
   [`2026-07-12-game-logging-wizard-and-card-capture-design.md`](../superpowers/specs/2026-07-12-game-logging-wizard-and-card-capture-design.md)
 - [game-abstraction.md](../architecture/game-abstraction.md) (`defaultBestOf`, `GET /api/game-config`)
-</content>

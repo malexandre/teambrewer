@@ -219,4 +219,3 @@ Follow [testing-strategy.md](../architecture/testing-strategy.md). This is calle
   [`testing-queue.md`](testing-queue.md) · [`dashboard.md`](dashboard.md) ·
   [`gameplans-and-deck-selection.md`](gameplans-and-deck-selection.md)
 - Implementing phase: [`phase-07-matchups-and-coverage.md`](../plans/phase-07-matchups-and-coverage.md)
-</content>

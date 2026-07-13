@@ -198,5 +198,3 @@ Follow [testing-strategy.md](../architecture/testing-strategy.md).
   [`testing-queue.md`](testing-queue.md) · [`gameplans-and-deck-selection.md`](gameplans-and-deck-selection.md) ·
   [`dashboard.md`](dashboard.md) · [`decks.md`](decks.md)
 - Implementing phase: [`phase-05-events-and-gauntlets.md`](../plans/phase-05-events-and-gauntlets.md)
-</content>
-</invoke>

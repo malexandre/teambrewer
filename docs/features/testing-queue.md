@@ -196,4 +196,3 @@ Follow [testing-strategy.md](../architecture/testing-strategy.md).
   [`card-database.md`](card-database.md) ·
   [`gameplans-and-deck-selection.md`](gameplans-and-deck-selection.md)
 - Implementing phase: [`phase-08-testing-queue.md`](../plans/phase-08-testing-queue.md)
-</content>
