@@ -3,13 +3,13 @@ import { authenticator } from "otplib";
 
 import { E2E_PASSWORD, E2E_SETUP_TOKEN, E2E_TEAMS } from "./fixtures";
 
-test("setup link -> password -> TOTP -> backup codes -> team-switch isolation", async ({
+test("setup link -> password -> TOTP -> backup codes -> lands on Decks -> team switch", async ({
   page,
 }) => {
   // 1. Open the setup link and set a password.
   await page.goto(`/setup/${E2E_SETUP_TOKEN}`);
   await page.getByLabel("Password").fill(E2E_PASSWORD);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
 
   // 2. Enrol TOTP: read the manual secret and enter a live code.
   const secret = (await page.getByTestId("totp-secret").innerText()).trim();
@@ -20,17 +20,18 @@ test("setup link -> password -> TOTP -> backup codes -> team-switch isolation", 
   await expect(page.getByTestId("backup-codes")).toBeVisible();
   await page.getByRole("button", { name: "Continue to app" }).click();
 
-  // 4. Lands on the dashboard; open the team roster (alpha, the first membership) —
-  //    it shows only the active team's members.
-  await page.getByRole("link", { name: "Team", exact: true }).click();
-  await expect(page.getByText(E2E_TEAMS.alpha.extraMember)).toBeVisible();
-  await expect(page.getByText(E2E_TEAMS.bravo.extraMember)).toHaveCount(0);
+  // 4. Lands on the authenticated app: the landing route is Decks, and the sidebar
+  //    highlights it.
+  await expect(page.getByRole("heading", { name: "Decks" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Decks", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 
-  // 5. Switch teams: only the newly active team's members are shown (isolation).
-  await page
-    .getByRole("combobox", { name: /active team/i })
-    .selectOption({ label: E2E_TEAMS.bravo.name });
-
-  await expect(page.getByText(E2E_TEAMS.bravo.extraMember)).toBeVisible();
-  await expect(page.getByText(E2E_TEAMS.alpha.extraMember)).toHaveCount(0);
+  // 5. Both memberships are offered; switching the active team works (deeper
+  //    tenant-isolation is proven by the decks/smoke journeys).
+  const teamSelector = page.getByRole("combobox", { name: /active team/i });
+  await expect(teamSelector).toHaveValue(E2E_TEAMS.alpha.id);
+  await teamSelector.selectOption({ label: E2E_TEAMS.bravo.name });
+  await expect(teamSelector).toHaveValue(E2E_TEAMS.bravo.id);
 });

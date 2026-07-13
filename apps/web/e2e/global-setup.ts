@@ -9,41 +9,29 @@ import { Client } from "pg";
 import {
   E2E_A11Y_SETUP_TOKEN,
   E2E_A11Y_USER,
+  E2E_CARD_NAME,
   E2E_COLLAB_AUTHOR,
   E2E_COLLAB_AUTHOR_SETUP_TOKEN,
   E2E_COLLAB_MENTIONED,
   E2E_COLLAB_MENTIONED_SETUP_TOKEN,
-  E2E_DASHBOARD_DECK_NAME,
-  E2E_DASHBOARD_EVENT_NAME,
-  E2E_DASHBOARD_SETUP_TOKEN,
-  E2E_DASHBOARD_USER,
   E2E_DECKS_SETUP_TOKEN,
   E2E_DECKS_USER,
   E2E_EVENTS_SETUP_TOKEN,
   E2E_EVENTS_USER,
-  E2E_GAMEPLAN_CARD_NAME,
   E2E_GAMEPLAN_DECK_NAME,
-  E2E_GAMEPLAN_EVENT_NAME,
   E2E_GAMEPLAN_SETUP_TOKEN,
   E2E_GAMEPLAN_USER,
   E2E_GAMELOG_DECK_NAME,
   E2E_GAMELOG_SETUP_TOKEN,
   E2E_GAMELOG_USER,
-  E2E_KNOWLEDGE_SETUP_TOKEN,
-  E2E_KNOWLEDGE_USER,
-  E2E_MATCHUP_DECK_NAME,
-  E2E_MATCHUP_EVENT_NAME,
-  E2E_MATCHUP_SETUP_TOKEN,
-  E2E_MATCHUP_USER,
+  E2E_METALOOP_SETUP_TOKEN,
+  E2E_METALOOP_USER,
   E2E_ONBOARDING_USER,
   E2E_REFERENCE,
   E2E_SETUP_TOKEN,
   E2E_SMOKE_SETUP_TOKEN,
   E2E_SMOKE_USER,
   E2E_TEAMS,
-  E2E_TESTQUEUE_DECK_NAME,
-  E2E_TESTQUEUE_SETUP_TOKEN,
-  E2E_TESTQUEUE_USER,
   RUNTIME_FILE,
 } from "./fixtures";
 
@@ -127,46 +115,22 @@ async function seed(databaseUrl: string): Promise<void> {
     await addMembership(E2E_TEAMS.alpha.id, E2E_GAMELOG_USER.id);
     await addMembership(E2E_TEAMS.bravo.id, E2E_GAMELOG_USER.id);
 
-    // The matchups user also belongs to both teams (alpha first -> default active).
-    await insertUser(E2E_MATCHUP_USER.id, E2E_MATCHUP_USER.username, E2E_MATCHUP_USER.displayName);
-    await addMembership(E2E_TEAMS.alpha.id, E2E_MATCHUP_USER.id);
-    await addMembership(E2E_TEAMS.bravo.id, E2E_MATCHUP_USER.id);
-
-    // The testing-queue user also belongs to both teams (alpha first -> default active).
-    await insertUser(
-      E2E_TESTQUEUE_USER.id,
-      E2E_TESTQUEUE_USER.username,
-      E2E_TESTQUEUE_USER.displayName,
-    );
-    await addMembership(E2E_TEAMS.alpha.id, E2E_TESTQUEUE_USER.id);
-    await addMembership(E2E_TEAMS.bravo.id, E2E_TESTQUEUE_USER.id);
-
-    // The game-plans user is a team-admin on alpha (to lock the roster) + member on bravo.
+    // The game-plans user belongs to both teams (alpha first -> default active).
     await insertUser(
       E2E_GAMEPLAN_USER.id,
       E2E_GAMEPLAN_USER.username,
       E2E_GAMEPLAN_USER.displayName,
     );
-    await addMembership(E2E_TEAMS.alpha.id, E2E_GAMEPLAN_USER.id, "team_admin");
+    await addMembership(E2E_TEAMS.alpha.id, E2E_GAMEPLAN_USER.id);
     await addMembership(E2E_TEAMS.bravo.id, E2E_GAMEPLAN_USER.id);
 
-    // The team-knowledge user belongs to both teams (alpha first -> default active).
+    // The core-loop user belongs to alpha only.
     await insertUser(
-      E2E_KNOWLEDGE_USER.id,
-      E2E_KNOWLEDGE_USER.username,
-      E2E_KNOWLEDGE_USER.displayName,
+      E2E_METALOOP_USER.id,
+      E2E_METALOOP_USER.username,
+      E2E_METALOOP_USER.displayName,
     );
-    await addMembership(E2E_TEAMS.alpha.id, E2E_KNOWLEDGE_USER.id);
-    await addMembership(E2E_TEAMS.bravo.id, E2E_KNOWLEDGE_USER.id);
-
-    // The dashboard user also belongs to both teams (alpha first -> default active).
-    await insertUser(
-      E2E_DASHBOARD_USER.id,
-      E2E_DASHBOARD_USER.username,
-      E2E_DASHBOARD_USER.displayName,
-    );
-    await addMembership(E2E_TEAMS.alpha.id, E2E_DASHBOARD_USER.id);
-    await addMembership(E2E_TEAMS.bravo.id, E2E_DASHBOARD_USER.id);
+    await addMembership(E2E_TEAMS.alpha.id, E2E_METALOOP_USER.id);
 
     // The accessibility-scan user belongs to both teams (alpha first -> default active).
     await insertUser(E2E_A11Y_USER.id, E2E_A11Y_USER.username, E2E_A11Y_USER.displayName);
@@ -196,13 +160,10 @@ async function seed(databaseUrl: string): Promise<void> {
     await insertSetupToken(E2E_DECKS_USER.id, E2E_DECKS_SETUP_TOKEN);
     await insertSetupToken(E2E_EVENTS_USER.id, E2E_EVENTS_SETUP_TOKEN);
     await insertSetupToken(E2E_GAMELOG_USER.id, E2E_GAMELOG_SETUP_TOKEN);
-    await insertSetupToken(E2E_MATCHUP_USER.id, E2E_MATCHUP_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_AUTHOR.id, E2E_COLLAB_AUTHOR_SETUP_TOKEN);
     await insertSetupToken(E2E_COLLAB_MENTIONED.id, E2E_COLLAB_MENTIONED_SETUP_TOKEN);
-    await insertSetupToken(E2E_TESTQUEUE_USER.id, E2E_TESTQUEUE_SETUP_TOKEN);
     await insertSetupToken(E2E_GAMEPLAN_USER.id, E2E_GAMEPLAN_SETUP_TOKEN);
-    await insertSetupToken(E2E_KNOWLEDGE_USER.id, E2E_KNOWLEDGE_SETUP_TOKEN);
-    await insertSetupToken(E2E_DASHBOARD_USER.id, E2E_DASHBOARD_SETUP_TOKEN);
+    await insertSetupToken(E2E_METALOOP_USER.id, E2E_METALOOP_SETUP_TOKEN);
     await insertSetupToken(E2E_A11Y_USER.id, E2E_A11Y_SETUP_TOKEN);
     await insertSetupToken(E2E_SMOKE_USER.id, E2E_SMOKE_SETUP_TOKEN);
   } finally {
@@ -211,9 +172,9 @@ async function seed(databaseUrl: string): Promise<void> {
 }
 
 /**
- * Insert a single hero so the events journey can add a hero gauntlet target.
- * Heroes normally come from the network card sync (skipped in e2e), so this runs
- * after `db:seed` has created the Game the hero FKs to.
+ * Insert a single hero so specs can target a hero (meta deck entry, game-log
+ * opponent, game-plan opponent). Heroes normally come from the network card sync
+ * (skipped in e2e), so this runs after `db:seed` has created the Game the hero FKs to.
  */
 async function seedHero(databaseUrl: string): Promise<void> {
   const client = new Client({ connectionString: databaseUrl });
@@ -230,94 +191,18 @@ async function seedHero(databaseUrl: string): Promise<void> {
 }
 
 /**
- * Seed a team deck owned by the game-logging user on the alpha team, so the
- * game-logging journey can pick "our deck" without driving the (desktop-oriented)
- * deck form on a phone viewport. FKs to the game + the "Classic Constructed" format
- * the network-free `db:seed` created.
+ * Seed a single FaB card so the `+card` composer (task descriptions, game-plan
+ * bodies) and the game-logging wizard's optional card capture resolve a real search
+ * result without a network card sync.
  */
-async function seedGameLogDeck(databaseUrl: string): Promise<void> {
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
-  try {
-    const format = await client.query<{ id: string }>(
-      `SELECT id FROM "format" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
-      [E2E_REFERENCE.formatName],
-    );
-    const formatId = format.rows[0]?.id;
-    if (!formatId) {
-      throw new Error("Expected the seeded Classic Constructed format to exist.");
-    }
-    await client.query(
-      `INSERT INTO "deck"
-         (id, team_id, name, game_id, format_id, external_url, source, owner_id,
-          status, visibility, is_reference, tags, notes, updated_at)
-       VALUES ($1,$2,$3,'flesh-and-blood',$4,$5,'fabrary',$6,
-          'testing','team',false, ARRAY[]::text[], '', $7)`,
-      [
-        randomUUID(),
-        E2E_TEAMS.alpha.id,
-        E2E_GAMELOG_DECK_NAME,
-        formatId,
-        "https://fabrary.net/decks/e2e-gamelog",
-        E2E_GAMELOG_USER.id,
-        new Date().toISOString(),
-      ],
-    );
-  } finally {
-    await client.end();
-  }
-}
-
-/**
- * Seed a team deck owned by the testing-queue user on alpha, so the testing-queue
- * journey can propose card tests on it and assign matchups for it without driving
- * the deck form. FKs to the game + the "Classic Constructed" format from `db:seed`.
- */
-async function seedTestQueueDeck(databaseUrl: string): Promise<void> {
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
-  try {
-    const format = await client.query<{ id: string }>(
-      `SELECT id FROM "format" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
-      [E2E_REFERENCE.formatName],
-    );
-    const formatId = format.rows[0]?.id;
-    if (!formatId) {
-      throw new Error("Expected the seeded Classic Constructed format to exist.");
-    }
-    await client.query(
-      `INSERT INTO "deck"
-         (id, team_id, name, game_id, format_id, external_url, source, owner_id,
-          status, visibility, is_reference, tags, notes, updated_at)
-       VALUES ($1,$2,$3,'flesh-and-blood',$4,$5,'fabrary',$6,
-          'testing','team',false, ARRAY[]::text[], '', $7)`,
-      [
-        randomUUID(),
-        E2E_TEAMS.alpha.id,
-        E2E_TESTQUEUE_DECK_NAME,
-        formatId,
-        "https://fabrary.net/decks/e2e-testqueue",
-        E2E_TESTQUEUE_USER.id,
-        new Date().toISOString(),
-      ],
-    );
-  } finally {
-    await client.end();
-  }
-}
-
-/**
- * Seed a single FaB card so the game-logging wizard's optional card-capture step
- * (step 4) has something real to search for and pick, without a network card sync.
- */
-async function seedGameLogCard(databaseUrl: string): Promise<void> {
+async function seedCard(databaseUrl: string): Promise<void> {
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
   try {
     await client.query(
       `INSERT INTO "card" (id, game_id, external_id, name, pitch, updated_at)
-         VALUES ($1,'flesh-and-blood','e2e-cnc','Command and Conquer',1,$2)`,
-      [randomUUID(), new Date().toISOString()],
+         VALUES ($1,'flesh-and-blood','e2e-cnc',$2,1,$3)`,
+      [randomUUID(), E2E_CARD_NAME, new Date().toISOString()],
     );
   } finally {
     await client.end();
@@ -325,98 +210,14 @@ async function seedGameLogCard(databaseUrl: string): Promise<void> {
 }
 
 /**
- * Seed the matchups journey's data on alpha: a team deck, an event with a two-target
- * gauntlet (the seeded hero + an archetype label), and two logged wins of our deck
- * vs the seeded hero. That gives the matrix a real cell (100% · N=2 · low trust) and
- * the coverage tracker an under-tested target, without driving the logging wizard.
+ * Seed a team deck owned by `ownerId` on the alpha team, so a journey can pick "our
+ * deck" (game-logging) or open a deck to write a game-plan on it, without driving the
+ * deck form. FKs to the game + the "Classic Constructed" format `db:seed` created.
  */
-async function seedMatchups(databaseUrl: string): Promise<void> {
+async function seedTeamDeck(databaseUrl: string, name: string, ownerId: string): Promise<void> {
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
   try {
-    const now = new Date().toISOString();
-    const format = await client.query<{ id: string }>(
-      `SELECT id FROM "format" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
-      [E2E_REFERENCE.formatName],
-    );
-    const formatId = format.rows[0]?.id;
-    const hero = await client.query<{ id: string }>(
-      `SELECT id FROM "hero" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
-      [E2E_REFERENCE.heroName],
-    );
-    const heroId = hero.rows[0]?.id;
-    if (!formatId || !heroId) {
-      throw new Error("Expected the seeded format + hero to exist for the matchups journey.");
-    }
-
-    const deckId = randomUUID();
-    await client.query(
-      `INSERT INTO "deck"
-         (id, team_id, name, game_id, format_id, external_url, source, owner_id,
-          status, visibility, is_reference, tags, notes, updated_at)
-       VALUES ($1,$2,$3,'flesh-and-blood',$4,$5,'fabrary',$6,
-          'testing','team',false, ARRAY[]::text[], '', $7)`,
-      [
-        deckId,
-        E2E_TEAMS.alpha.id,
-        E2E_MATCHUP_DECK_NAME,
-        formatId,
-        "https://fabrary.net/decks/e2e-matchup",
-        E2E_MATCHUP_USER.id,
-        now,
-      ],
-    );
-
-    const eventId = randomUUID();
-    await client.query(
-      `INSERT INTO "event"
-         (id, team_id, name, format_id, date, importance, description, status, updated_at)
-       VALUES ($1,$2,$3,$4,$5,'regional','','upcoming',$6)`,
-      [eventId, E2E_TEAMS.alpha.id, E2E_MATCHUP_EVENT_NAME, formatId, now, now],
-    );
-    // Two gauntlet targets: the seeded hero (which our logs cover, thinly) and an
-    // archetype label (fully untested) — both read as under-covered by default.
-    await client.query(
-      `INSERT INTO "gauntlet_entry"
-         (id, event_id, team_id, hero_id, expected_meta_share, notes, updated_at)
-       VALUES ($1,$2,$3,$4,40,'',$5)`,
-      [randomUUID(), eventId, E2E_TEAMS.alpha.id, heroId, now],
-    );
-    await client.query(
-      `INSERT INTO "gauntlet_entry"
-         (id, event_id, team_id, archetype_label, expected_meta_share, notes, updated_at)
-       VALUES ($1,$2,$3,'Aggro Red',60,'',$4)`,
-      [randomUUID(), eventId, E2E_TEAMS.alpha.id, now],
-    );
-
-    // Two wins of our deck vs the seeded hero (Bo1), full confidence weight.
-    for (let index = 0; index < 2; index += 1) {
-      await client.query(
-        `INSERT INTO "game_log"
-           (id, team_id, logged_by_id, format_id, played_at, pilot_user_id, deck_id, hero_id,
-            first_player_side, best_of, games_won_a, games_won_b, learnings,
-            skill_parity, seriousness, deck_maturity, pilot_familiarity, confidence_weight, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$3,$6,$7,'A',1,1,0,'',
-            'evenly_matched','tournament_serious','both_tuned','knows_well',1,$5)`,
-        [randomUUID(), E2E_TEAMS.alpha.id, E2E_MATCHUP_USER.id, formatId, now, deckId, heroId],
-      );
-    }
-  } finally {
-    await client.end();
-  }
-}
-
-/**
- * Seed the game-plans journey's data on alpha: a team deck owned by the game-plans
- * user, an event to select a deck for and retrospect on, and a FaB card for the
- * game-plan editor's key-card autocomplete. FKs to the game + the "Classic
- * Constructed" format the network-free `db:seed` created.
- */
-async function seedGamePlans(databaseUrl: string): Promise<void> {
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
-  try {
-    const now = new Date().toISOString();
     const format = await client.query<{ id: string }>(
       `SELECT id FROM "format" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
       [E2E_REFERENCE.formatName],
@@ -434,114 +235,13 @@ async function seedGamePlans(databaseUrl: string): Promise<void> {
       [
         randomUUID(),
         E2E_TEAMS.alpha.id,
-        E2E_GAMEPLAN_DECK_NAME,
+        name,
         formatId,
-        "https://fabrary.net/decks/e2e-gameplan",
-        E2E_GAMEPLAN_USER.id,
-        now,
+        `https://fabrary.net/decks/${randomUUID()}`,
+        ownerId,
+        new Date().toISOString(),
       ],
     );
-    await client.query(
-      `INSERT INTO "event"
-         (id, team_id, name, format_id, date, importance, description, status, updated_at)
-       VALUES ($1,$2,$3,$4,$5,'regional','','upcoming',$6)`,
-      [randomUUID(), E2E_TEAMS.alpha.id, E2E_GAMEPLAN_EVENT_NAME, formatId, now, now],
-    );
-    await client.query(
-      `INSERT INTO "card" (id, game_id, external_id, name, pitch, updated_at)
-         VALUES ($1,'flesh-and-blood','e2e-snatch',$2,1,$3)`,
-      [randomUUID(), E2E_GAMEPLAN_CARD_NAME, now],
-    );
-  } finally {
-    await client.end();
-  }
-}
-
-/**
- * Seed the dashboard journey's data on alpha: a team deck owned by the dashboard user,
- * an upcoming event whose gauntlet has two targets (the seeded hero + an archetype
- * label), two logged wins of our deck vs the hero, and an open test assignment for the
- * dashboard user against the hero target. That gives the personal view an assignment +
- * recent results and the team view a ranked recommendation + an under-covered gap with
- * an assignee — all without driving the logging wizard. FKs to the game + "Classic
- * Constructed" format from `db:seed` and the hero from `seedHero`.
- */
-async function seedDashboard(databaseUrl: string): Promise<void> {
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
-  try {
-    const now = new Date().toISOString();
-    const format = await client.query<{ id: string }>(
-      `SELECT id FROM "format" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
-      [E2E_REFERENCE.formatName],
-    );
-    const formatId = format.rows[0]?.id;
-    const hero = await client.query<{ id: string }>(
-      `SELECT id FROM "hero" WHERE game_id = 'flesh-and-blood' AND name = $1 LIMIT 1`,
-      [E2E_REFERENCE.heroName],
-    );
-    const heroId = hero.rows[0]?.id;
-    if (!formatId || !heroId) {
-      throw new Error("Expected the seeded format + hero to exist for the dashboard journey.");
-    }
-
-    const deckId = randomUUID();
-    await client.query(
-      `INSERT INTO "deck"
-         (id, team_id, name, game_id, format_id, external_url, source, owner_id,
-          status, visibility, is_reference, tags, notes, updated_at)
-       VALUES ($1,$2,$3,'flesh-and-blood',$4,$5,'fabrary',$6,
-          'testing','team',false, ARRAY[]::text[], '', $7)`,
-      [
-        deckId,
-        E2E_TEAMS.alpha.id,
-        E2E_DASHBOARD_DECK_NAME,
-        formatId,
-        "https://fabrary.net/decks/e2e-dashboard",
-        E2E_DASHBOARD_USER.id,
-        now,
-      ],
-    );
-
-    const eventId = randomUUID();
-    await client.query(
-      `INSERT INTO "event"
-         (id, team_id, name, format_id, date, importance, description, status, updated_at)
-       VALUES ($1,$2,$3,$4,$5,'regional','','upcoming',$6)`,
-      [eventId, E2E_TEAMS.alpha.id, E2E_DASHBOARD_EVENT_NAME, formatId, now, now],
-    );
-
-    // The higher-share hero target (thinly covered by our two wins) and a fully
-    // untested archetype — both under-covered, so both surface as gaps.
-    const heroGauntletId = randomUUID();
-    await client.query(
-      `INSERT INTO "gauntlet_entry"
-         (id, event_id, team_id, hero_id, expected_meta_share, notes, updated_at)
-       VALUES ($1,$2,$3,$4,60,'',$5)`,
-      [heroGauntletId, eventId, E2E_TEAMS.alpha.id, heroId, now],
-    );
-    await client.query(
-      `INSERT INTO "gauntlet_entry"
-         (id, event_id, team_id, archetype_label, expected_meta_share, notes, updated_at)
-       VALUES ($1,$2,$3,'Aggro Red',40,'',$4)`,
-      [randomUUID(), eventId, E2E_TEAMS.alpha.id, now],
-    );
-
-    // Two wins of our deck vs the seeded hero (Bo1), full confidence weight.
-    for (let index = 0; index < 2; index += 1) {
-      await client.query(
-        `INSERT INTO "game_log"
-           (id, team_id, logged_by_id, format_id, played_at, pilot_user_id, deck_id, hero_id,
-            first_player_side, best_of, games_won_a, games_won_b, learnings,
-            skill_parity, seriousness, deck_maturity, pilot_familiarity, confidence_weight, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$3,$6,$7,'A',1,1,0,'',
-            'evenly_matched','tournament_serious','both_tuned','knows_well',1,$5)`,
-        [randomUUID(), E2E_TEAMS.alpha.id, E2E_DASHBOARD_USER.id, formatId, now, deckId, heroId],
-      );
-    }
-    // The testing-queue models were merged into Task (meta-pivot, WS-3); the old
-    // test_assignment seeding is dropped here. The full dashboard e2e journey is
-    // rewritten in WS-7.
   } finally {
     await client.end();
   }
@@ -596,26 +296,13 @@ export default async function globalSetup(): Promise<void> {
     stdio: "inherit",
   });
 
-  // A hero for the events journey's gauntlet (FKs to the game the seed just created).
+  // A hero (FKs to the game the seed just created) and a card for `+card`/capture.
   await seedHero(databaseUrl);
+  await seedCard(databaseUrl);
 
-  // A team deck for the game-logging journey (FKs to the game + format from the seed).
-  await seedGameLogDeck(databaseUrl);
-
-  // A team deck for the testing-queue journey (suggestions + assignments).
-  await seedTestQueueDeck(databaseUrl);
-
-  // A card for the game-logging journey's optional card-capture step.
-  await seedGameLogCard(databaseUrl);
-
-  // A deck, an event + gauntlet, and a couple of logs for the matchups journey.
-  await seedMatchups(databaseUrl);
-
-  // A deck, an event, and a card for the game-plans / deck-selection / retrospective journey.
-  await seedGamePlans(databaseUrl);
-
-  // A deck, an upcoming event + gauntlet, logs, and an assignment for the dashboard journey.
-  await seedDashboard(databaseUrl);
+  // Team decks for the game-logging and game-plans journeys.
+  await seedTeamDeck(databaseUrl, E2E_GAMELOG_DECK_NAME, E2E_GAMELOG_USER.id);
+  await seedTeamDeck(databaseUrl, E2E_GAMEPLAN_DECK_NAME, E2E_GAMEPLAN_USER.id);
 
   const apiProcess = spawn(process.execPath, ["dist/main.js"], {
     cwd: apiDir,

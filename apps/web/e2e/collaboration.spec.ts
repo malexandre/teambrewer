@@ -12,7 +12,7 @@ import {
 async function onboard(page: Page, token: string): Promise<void> {
   await page.goto(`/setup/${token}`);
   await page.getByLabel("Password").fill(E2E_PASSWORD);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
 
   const secret = (await page.getByTestId("totp-secret").innerText()).trim();
   await page.getByLabel("Authenticator code").fill(authenticator.generate(secret));

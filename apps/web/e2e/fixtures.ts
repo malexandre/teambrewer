@@ -74,47 +74,9 @@ export const E2E_GAMELOG_SETUP_TOKEN = "e2e-gamelog-setup-token";
 export const E2E_GAMELOG_DECK_NAME = "E2E Rhinar Aggro";
 
 /**
- * A dedicated onboardable user for the matchups journey — independent of the other
- * specs so they can run in parallel (each consumes its own single-use token).
- * Belongs to both teams (alpha first → default active) to exercise matchup
- * isolation across a team switch. The global-setup seeds this team a deck, an
- * event with a gauntlet, and a couple of game logs so the matrix + coverage have
- * real numbers without driving the (phone-oriented) logging wizard on desktop.
- */
-export const E2E_MATCHUP_USER = {
-  id: "e2e-user-matchup",
-  username: "matchup_user",
-  displayName: "Matchup User",
-};
-export const E2E_MATCHUP_SETUP_TOKEN = "e2e-matchup-setup-token";
-/** The team deck seeded on alpha whose matchup vs the seeded hero the matrix shows. */
-export const E2E_MATCHUP_DECK_NAME = "E2E Matchup Deck";
-/** The event (with a gauntlet) seeded on alpha for the coverage tracker. */
-export const E2E_MATCHUP_EVENT_NAME = "E2E Matchup Cup";
-
-/**
- * A dedicated onboardable user for the testing-queue journey — independent of the
- * other specs so they can run in parallel (each consumes its own single-use token).
- * Belongs to both teams (alpha first → default active) to exercise suggestion +
- * assignment isolation across a team switch. The global-setup seeds this team a deck
- * to propose card tests on and assign matchups for.
- */
-export const E2E_TESTQUEUE_USER = {
-  id: "e2e-user-testqueue",
-  username: "testqueue_user",
-  displayName: "Testqueue User",
-};
-export const E2E_TESTQUEUE_SETUP_TOKEN = "e2e-testqueue-setup-token";
-/** The team deck seeded on alpha the testing-queue user proposes/assigns against. */
-export const E2E_TESTQUEUE_DECK_NAME = "E2E Testing Queue Deck";
-
-/**
- * A dedicated onboardable user for the game-plans / deck-selection / retrospective
- * journey — independent of the other specs so they can run in parallel (each consumes
- * its own single-use token). Seeded as a **team-admin** on alpha (so the journey can
- * lock the roster) and a member on bravo. The global-setup seeds this team a deck (to
- * write a game-plan on and pick for the event) and an event (to select a deck for and
- * retrospect on).
+ * A dedicated onboardable user for the game-plans journey — independent of the other
+ * specs so they can run in parallel (each consumes its own single-use token). The
+ * global-setup seeds this team a deck to write a matchup game-plan on.
  */
 export const E2E_GAMEPLAN_USER = {
   id: "e2e-user-gameplan",
@@ -122,45 +84,22 @@ export const E2E_GAMEPLAN_USER = {
   displayName: "Gameplan User",
 };
 export const E2E_GAMEPLAN_SETUP_TOKEN = "e2e-gameplan-setup-token";
-/** The team deck seeded on alpha the game-plans user writes a plan on / picks for the event. */
+/** The team deck seeded on alpha the game-plans user writes a plan on. */
 export const E2E_GAMEPLAN_DECK_NAME = "E2E Game-Plan Deck";
-/** The event seeded on alpha the game-plans user selects a deck for and retrospects on. */
-export const E2E_GAMEPLAN_EVENT_NAME = "E2E Game-Plan Cup";
-/** A FaB card seeded so the game-plan editor's key-card autocomplete has a real result. */
-export const E2E_GAMEPLAN_CARD_NAME = "Snatch";
 
 /**
- * A dedicated onboardable user for the team-knowledge journey (primers, decisions,
- * polls) — independent of the other specs so they can run in parallel (each consumes
- * its own single-use token). Belongs to both teams (alpha first → default active) to
- * exercise knowledge isolation across a team switch. The mention target is the seeded
- * `alpha_two` teammate (E2E_TEAMS.alpha.extraMember), who is already on alpha.
+ * A dedicated onboardable user for the core meta-pivot loop journey — independent of
+ * the other specs (own single-use token). Belongs to alpha only. Drives the whole
+ * primary loop through the UI: create a meta with a tiered deck entry → create a deck
+ * (auto-linked to the current meta) → readiness → add a card idea (a `+card` task) →
+ * advance the task with a report → create an event linked to the meta and RSVP.
  */
-export const E2E_KNOWLEDGE_USER = {
-  id: "e2e-user-knowledge",
-  username: "knowledge_user",
-  displayName: "Knowledge User",
+export const E2E_METALOOP_USER = {
+  id: "e2e-user-metaloop",
+  username: "metaloop_user",
+  displayName: "Metaloop User",
 };
-export const E2E_KNOWLEDGE_SETUP_TOKEN = "e2e-knowledge-setup-token";
-
-/**
- * A dedicated onboardable user for the dashboard journey — independent of the other
- * specs so they can run in parallel (each consumes its own single-use token). Belongs
- * to both teams (alpha first → default active) to exercise dashboard isolation across
- * a team switch. The global-setup seeds this team a deck, an upcoming event with a
- * gauntlet, two logged wins, and an open test assignment so every dashboard widget
- * (assignments, recent results, recommendation, coverage) has real data.
- */
-export const E2E_DASHBOARD_USER = {
-  id: "e2e-user-dashboard",
-  username: "dashboard_user",
-  displayName: "Dashboard User",
-};
-export const E2E_DASHBOARD_SETUP_TOKEN = "e2e-dashboard-setup-token";
-/** The team deck seeded on alpha the dashboard user's assignment + results reference. */
-export const E2E_DASHBOARD_DECK_NAME = "E2E Dashboard Deck";
-/** The upcoming event (with a gauntlet) seeded on alpha the dashboard targets. */
-export const E2E_DASHBOARD_EVENT_NAME = "E2E Dashboard Cup";
+export const E2E_METALOOP_SETUP_TOKEN = "e2e-metaloop-setup-token";
 
 /**
  * A dedicated onboardable user for the accessibility (axe) scan — independent of
@@ -190,13 +129,16 @@ export const E2E_SMOKE_DECK_NAME = "E2E Smoke Deck";
 
 /**
  * Reference data for the specs. `formatName` comes from the network-free `db:seed`
- * (games + formats); `heroName` is a single hero the events e2e global-setup inserts
- * after the seed (heroes normally come from the network card sync, skipped in e2e).
+ * (games + formats); `heroName` is a single hero the global-setup inserts after the
+ * seed (heroes normally come from the network card sync, skipped in e2e).
  */
 export const E2E_REFERENCE = {
   formatName: "Classic Constructed",
   heroName: "Dorinthea",
 };
+
+/** A FaB card the global-setup seeds so `+card` mentions and card capture resolve. */
+export const E2E_CARD_NAME = "Command and Conquer";
 
 /** Where global-setup records the container id + API pid for global-teardown. */
 export const RUNTIME_FILE = ".e2e-runtime.json";

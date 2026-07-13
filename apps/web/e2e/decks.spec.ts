@@ -12,7 +12,7 @@ test("create a deck, set its status, log an iteration, and confirm team isolatio
   // 1. Onboard the decks user (setup -> TOTP -> app), landing on alpha (default).
   await page.goto(`/setup/${E2E_DECKS_SETUP_TOKEN}`);
   await page.getByLabel("Password").fill(E2E_PASSWORD);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
 
   const secret = (await page.getByTestId("totp-secret").innerText()).trim();
   await page.getByLabel("Authenticator code").fill(authenticator.generate(secret));

@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { authenticator } from "otplib";
 
 import {
+  E2E_CARD_NAME,
   E2E_GAMELOG_DECK_NAME,
   E2E_GAMELOG_SETUP_TOKEN,
   E2E_PASSWORD,
@@ -17,7 +18,7 @@ test("log a game on a phone with default factors, see the weight, confirm isolat
   // 1. Onboard the game-logging user (setup -> TOTP -> app), landing on alpha (default).
   await page.goto(`/setup/${E2E_GAMELOG_SETUP_TOKEN}`);
   await page.getByLabel("Password").fill(E2E_PASSWORD);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
 
   const secret = (await page.getByTestId("totp-secret").innerText()).trim();
   await page.getByLabel("Authenticator code").fill(authenticator.generate(secret));
@@ -26,10 +27,11 @@ test("log a game on a phone with default factors, see the weight, confirm isolat
   await expect(page.getByTestId("backup-codes")).toBeVisible();
   await page.getByRole("button", { name: "Continue to app" }).click();
 
-  // 2. Log a game from the Games page, driving the mobile wizard: step 1 (matchup),
-  //    Next to step 2 (result — defaults are fine), Next to step 3 (confidence), then
-  //    the optional step 4 to capture a card before saving.
-  await page.getByRole("link", { name: "Games", exact: true }).click();
+  // 2. Log a game from the Games page (navigate by URL — on a phone the sidebar is a
+  //    drawer). Drive the mobile wizard: step 1 (matchup), Next to step 2 (result —
+  //    defaults are fine), Next to step 3 (confidence), then the optional step 4 to
+  //    capture a card before saving. There is no event picker (meta-pivot).
+  await page.goto("/games");
   await page.getByRole("button", { name: "Log a game" }).click();
 
   // Step 1 — Matchup.
@@ -54,7 +56,9 @@ test("log a game on a phone with default factors, see the weight, confirm isolat
   // ("Search cards"), so scope to the impressive-cards group to disambiguate.
   const impressiveCardsSection = page.getByRole("group", { name: /impressive cards/i });
   await impressiveCardsSection.getByRole("combobox", { name: /search cards/i }).fill("Command");
-  await impressiveCardsSection.getByRole("button", { name: /command and conquer/i }).click();
+  await impressiveCardsSection
+    .getByRole("button", { name: new RegExp(E2E_CARD_NAME, "i") })
+    .click();
 
   // Submit via the keyboard: on the narrow phone viewport the wrapped segmented
   // controls make a pointer click flaky (scroll-bounce hit-testing), and pressing
@@ -66,10 +70,10 @@ test("log a game on a phone with default factors, see the weight, confirm isolat
   // 3. Lands on the game hub; the weight and the captured card are both shown.
   await expect(page.getByRole("heading", { name: new RegExp(`${deckName} vs`) })).toBeVisible();
   await expect(page.getByText("~1.00").first()).toBeVisible();
-  await expect(page.getByText("Command and Conquer")).toBeVisible();
+  await expect(page.getByText(E2E_CARD_NAME)).toBeVisible();
 
   // 4. The game appears in the team's list.
-  await page.getByRole("link", { name: "Games", exact: true }).click();
+  await page.goto("/games");
   await expect(
     page.getByText(new RegExp(`${deckName} vs .*${E2E_REFERENCE.heroName}`)),
   ).toBeVisible();
@@ -78,6 +82,6 @@ test("log a game on a phone with default factors, see the weight, confirm isolat
   await page
     .getByRole("combobox", { name: /active team/i })
     .selectOption({ label: E2E_TEAMS.bravo.name });
-  await page.getByRole("link", { name: "Games", exact: true }).click();
+  await page.goto("/games");
   await expect(page.getByText(deckName)).toHaveCount(0);
 });

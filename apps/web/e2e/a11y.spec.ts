@@ -11,11 +11,11 @@ import { completeOnboarding } from "./helpers";
  * pass; keyboard/focus specifics are covered by component tests.
  */
 const SCREENS: ReadonlyArray<{ name: string; path: string; ready: RegExp }> = [
-  { name: "dashboard", path: "/", ready: /dashboard/i },
-  { name: "decks", path: "/decks", ready: /decks/i },
+  { name: "decks", path: "/", ready: /decks/i },
+  { name: "metas", path: "/metas", ready: /metas/i },
   { name: "events", path: "/events", ready: /events/i },
-  { name: "matchups", path: "/matchups", ready: /matchups/i },
-  { name: "knowledge", path: "/knowledge", ready: /knowledge/i },
+  { name: "games", path: "/games", ready: /games/i },
+  { name: "tasks", path: "/tasks", ready: /tasks/i },
 ];
 
 test("key screens have no serious/critical a11y violations", async ({ page }) => {

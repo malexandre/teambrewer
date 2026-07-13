@@ -16,7 +16,7 @@ export async function completeOnboarding(
 
   await page.goto(`/setup/${options.setupToken}`);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
 
   const secret = (await page.getByTestId("totp-secret").innerText()).trim();
   await page.getByLabel("Authenticator code").fill(authenticator.generate(secret));
@@ -25,6 +25,7 @@ export async function completeOnboarding(
   await expect(page.getByTestId("backup-codes")).toBeVisible();
   await page.getByRole("button", { name: "Continue to app" }).click();
 
-  // Landed in the app: the shared header is present.
-  await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
+  // Landed in the app: the shared header (with Sign out) is present on every
+  // viewport, unlike the sidebar nav which collapses to a drawer on mobile.
+  await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
 }
