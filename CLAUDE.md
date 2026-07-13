@@ -261,8 +261,29 @@ branching**; FaB still shows "Hero", Riftbound shows "Legend". This completes in
 in `game-abstraction.md`, **not a leak** — recorded in the phase plan's **boundary report** ("the
 abstraction held"). A **cross-game acceptance** integration test drives decks → events/gauntlets → game log
 → matchups → testing queue → primer for a Riftbound team through the real HTTP stack, with two-team
-isolation. Next: **phase-13 (polish, PWA & hardening)** — pick it up per
-[`docs/plans/`](docs/plans/README.md).
+isolation.
+
+**Phase-13 (polish, PWA & hardening) is ✅ done** (merged to `main`). The cross-cutting finishing phase —
+no new product features or entities (all local-green: 485 API + 315 shared + 79 web unit/integration tests
++ 12 e2e journeys incl. the new a11y scan + smoke suite). **Security hardening:** all rate-limit thresholds
+are **env-configurable** (`RATE_LIMIT_*`); **Better Auth's own limiter** now guards `/api/auth/*` (login/TOTP,
+strict on the sign-in paths) — gated by `RATE_LIMIT_AUTH_ENABLED` (on in prod, off in the shared-IP e2e); a
+tuned **expensive-operation** throttle covers the matchup matrix/coverage reads and the admin card sync;
+**helmet** sets the API's baseline headers; **CSRF** is SameSite + CORS + an `OriginCheckGuard` (rejects
+cross-origin cookie-authed mutations); `trust proxy` is set for the front-proxy chain. **Self-hosting ops:**
+the compose stack now boots auth (required `BETTER_AUTH_SECRET`, migrate-on-boot), Nginx honors the front
+proxy's `X-Forwarded-Proto` and sets SPA security headers (CSP/X-Frame-Options/etc.; **HSTS at the front
+proxy**), and [`docs/ops/self-hosting.md`](docs/ops/self-hosting.md) documents TLS-behind-a-proxy, a
+least-privilege DB role, and a Postgres **backup/restore runbook**. **PWA:** app-shell precache + card-image
+`CacheFirst` + a **tenancy-safe persisted TanStack cache** (IndexedDB; only `[teamId, …]` keys, never
+`me`/`admin`, cleared on sign-out) for offline reads — the offline **write** queue is a deferred future
+enhancement (decided with the user). **A11y/theming:** an axe Playwright scan of the key screens (fixed a
+muted-text contrast miss) + a user-facing **theme toggle**. **Performance:** a `(teamId, playedAt DESC, id
+DESC)` GameLog index for keyset lists; matchup reads stay **derived (no materialization)** — measure-first,
+per the documented budget. **CI:** a `pnpm audit` step (fails on high-severity) + the e2e suite wired in
+(active once a remote exists). **Decisions (with the user):** offline writes deferred; TLS terminated by an
+existing front proxy (our Nginx stays HTTP behind it); CSRF via SameSite+CORS+Origin; matchups measure-first.
+This completes the phased build — the app is a shippable, self-hostable v1.
 
 ## How to work in this repo
 
@@ -336,6 +357,7 @@ With mise activated in your shell, `pnpm`/`node` resolve to these pinned version
 - `pnpm test` — run unit/integration tests (Vitest; api integration uses Testcontainers Postgres)
 - `pnpm test:e2e` — run end-to-end tests (Playwright; needs Docker — spins up a Testcontainers Postgres and the API)
 - `pnpm lint` / `pnpm typecheck` — static checks (ESLint / tsc)
+- `pnpm audit` — dependency vulnerability audit (fails on high-severity or worse)
 - `pnpm format` / `pnpm format:write` — Prettier check / write
 - `pnpm --filter @teambrewer/api db:migrate` — apply database migrations (`prisma migrate dev`)
 - `pnpm --filter @teambrewer/api db:generate` — regenerate the Prisma client

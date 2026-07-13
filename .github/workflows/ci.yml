@@ -24,6 +24,13 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
 
+      # Dependency audit — fails the build on high-severity (or worse) advisories.
+      - run: pnpm audit --audit-level=high
+
       # Integration tests provision Postgres via Testcontainers, which uses the
       # Docker daemon available on GitHub-hosted runners.
       - run: pnpm test
+
+      # Critical-journey e2e (Playwright) — Testcontainers Postgres + the built API,
+      # then chromium + mobile projects. Uses the same Docker daemon as `pnpm test`.
+      - run: pnpm test:e2e

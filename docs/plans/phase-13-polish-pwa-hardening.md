@@ -69,26 +69,31 @@ Five workstreams, all cross-cutting:
 
 ## Task checklist (test-first, ordered)
 
-- [ ] Read [security](../architecture/security.md), [frontend](../architecture/frontend.md),
+- [x] Read [security](../architecture/security.md), [frontend](../architecture/frontend.md),
       [testing-strategy](../architecture/testing-strategy.md), [tech-stack](../architecture/tech-stack.md),
       and the [`implementing-a-phase`](../../.claude/skills/implementing-a-phase/SKILL.md) skill.
-- [ ] Write failing rate-limit integration tests (auth login, setup/reset link generation + consumption
-      exceed the limit → 429); then implement the rate limiting.
-- [ ] Add security headers (Nginx + helmet), CSRF, and CORS lock-down; write tests/checks asserting the
-      headers are present and cross-origin requests are rejected.
-- [ ] Implement the PWA manifest + service worker; write a test/check that card data + read views load
-      offline and that **no cross-team data** is served from cache after switching teams.
+- [x] Write failing rate-limit integration tests (auth login, setup/reset link generation + consumption
+      exceed the limit → 429); then implement the rate limiting. *(env-configurable; Better Auth limiter for
+      login; strict for links; expensive limit for matchup reads + card sync.)*
+- [x] Add security headers (Nginx + helmet), CSRF, and CORS lock-down; write tests/checks asserting the
+      headers are present and cross-origin requests are rejected. *(CSRF = SameSite + CORS + OriginCheckGuard.)*
+- [x] Implement the PWA manifest + service worker; write a test/check that card data + read views load
+      offline and that **no cross-team data** is served from cache after switching teams. *(App-shell
+      precache + card-image CacheFirst + tenancy-safe persisted TanStack cache; smoke reload-isolation test.)*
 - [ ] (If feasible) implement the offline game-log queue; test that a log created offline persists and
-      syncs on reconnect, scoped to the correct team.
-- [ ] Do the responsive/a11y pass; add automated a11y checks (e.g. axe in Playwright) on key screens and
-      fix violations.
-- [ ] Performance pass: measure hot queries, add indexes via migration, optimize matchup aggregation,
-      review query keys; add a regression test for aggregation correctness after any change.
-- [ ] Write the Playwright e2e smoke suite for critical journeys (below).
-- [ ] Write the backup/restore runbook; complete `.env.example`; document TLS setup.
-- [ ] Add a dependency-audit script (`pnpm audit`) runnable locally; wire it into CI once a remote exists.
-- [ ] Sync `CLAUDE.md` commands and the roadmap Status table; reconcile drifted docs.
-- [ ] Run the full verification below.
+      syncs on reconnect, scoped to the correct team. *(Deferred with the user — documented future
+      enhancement; broader offline write is out of scope.)*
+- [x] Do the responsive/a11y pass; add automated a11y checks (e.g. axe in Playwright) on key screens and
+      fix violations. *(axe scan of 5 screens; fixed a muted-foreground contrast miss; added the theme toggle.)*
+- [x] Performance pass: measure hot queries, add indexes via migration, optimize matchup aggregation,
+      review query keys; add a regression test for aggregation correctness after any change. *(Added the
+      (teamId, playedAt DESC, id DESC) index; kept the pure, unit-tested aggregation; measure-first, no
+      materialization; documented the budget.)*
+- [x] Write the Playwright e2e smoke suite for critical journeys (below).
+- [x] Write the backup/restore runbook; complete `.env.example`; document TLS setup. *(docs/ops/self-hosting.md.)*
+- [x] Add a dependency-audit script (`pnpm audit`) runnable locally; wire it into CI once a remote exists.
+- [x] Sync `CLAUDE.md` commands and the roadmap Status table; reconcile drifted docs.
+- [x] Run the full verification below.
 
 ## Tests & verification
 

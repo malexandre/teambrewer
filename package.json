@@ -14,6 +14,7 @@
     "test": "pnpm --recursive --if-present test",
     "test:e2e": "pnpm --filter @teambrewer/web test:e2e",
     "lint": "eslint .",
+    "audit": "pnpm audit --audit-level=high",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "typecheck": "pnpm --recursive --if-present typecheck",

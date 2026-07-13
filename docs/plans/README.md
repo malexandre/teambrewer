@@ -81,6 +81,6 @@ Update as phases complete.
 | 10 | Team Knowledge | ✅ done |
 | 11 | Dashboard | ✅ done |
 | 12 | Riftbound Adapter | ✅ done |
-| 13 | Polish, PWA & Hardening | ⛔ not started |
+| 13 | Polish, PWA & Hardening | ✅ done |
 
 Legend: ⛔ not started · 🚧 in progress · ✅ done
