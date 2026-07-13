@@ -54,10 +54,7 @@ export class MembershipService {
   }
 
   async addMember(teamId: string, input: CreateMembershipInput): Promise<TeamMember> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: input.userId },
-      select: { id: true },
-    });
+    const user = await this.resolveUser(input);
     if (!user) {
       throw new UnprocessableEntityException({
         error: { code: errorCode.domainRuleViolation, message: "That user does not exist." },
@@ -65,7 +62,7 @@ export class MembershipService {
     }
 
     const existing = await this.prisma.teamMembership.findUnique({
-      where: { teamId_userId: { teamId, userId: input.userId } },
+      where: { teamId_userId: { teamId, userId: user.id } },
       select: { teamId: true },
     });
     if (existing) {
@@ -78,9 +75,23 @@ export class MembershipService {
     }
 
     await this.prisma.teamMembership.create({
-      data: { teamId, userId: input.userId, role: input.role },
+      data: { teamId, userId: user.id, role: input.role },
     });
-    return this.requireMember(teamId, input.userId);
+    return this.requireMember(teamId, user.id);
+  }
+
+  /** Resolve the target user from exactly one of userId / username (schema-enforced). */
+  private async resolveUser(input: CreateMembershipInput): Promise<{ id: string } | null> {
+    if (input.userId) {
+      return this.prisma.user.findUnique({ where: { id: input.userId }, select: { id: true } });
+    }
+    if (input.username) {
+      return this.prisma.user.findUnique({
+        where: { username: input.username },
+        select: { id: true },
+      });
+    }
+    return null;
   }
 
   async changeRole(teamId: string, userId: string, role: TeamRole): Promise<TeamMember> {

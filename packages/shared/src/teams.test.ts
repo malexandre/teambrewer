@@ -33,15 +33,28 @@ describe("createTeamSchema", () => {
 });
 
 describe("createMembershipSchema", () => {
-  it("parses a membership with a user and role", () => {
+  it("parses a membership by userId and role", () => {
     expect(createMembershipSchema.parse({ userId: "user-1", role: "member" })).toEqual({
       userId: "user-1",
       role: "member",
     });
   });
 
-  it("rejects a membership without a user", () => {
+  it("parses a membership by username and role", () => {
+    expect(createMembershipSchema.parse({ username: "alice", role: "member" })).toEqual({
+      username: "alice",
+      role: "member",
+    });
+  });
+
+  it("rejects a membership identifying neither a userId nor a username", () => {
     expect(() => createMembershipSchema.parse({ role: "member" })).toThrow();
+  });
+
+  it("rejects a membership giving both a userId and a username", () => {
+    expect(() =>
+      createMembershipSchema.parse({ userId: "user-1", username: "alice", role: "member" }),
+    ).toThrow();
   });
 });
 

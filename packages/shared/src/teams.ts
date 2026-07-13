@@ -22,11 +22,20 @@ export const createTeamSchema = z.object({
 });
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
 
-/** Add an existing user to a team with a role (team-admin/instance-admin). */
-export const createMembershipSchema = z.object({
-  userId: z.string().min(1),
-  role: teamRoleSchema,
-});
+/**
+ * Add an existing user to a team with a role (team-admin/instance-admin). The
+ * user is identified by exactly one of `userId` (e.g. from the roster) or
+ * `username` (e.g. typed into the admin console); the server resolves it.
+ */
+export const createMembershipSchema = z
+  .object({
+    userId: z.string().min(1).optional(),
+    username: z.string().min(1).optional(),
+    role: teamRoleSchema,
+  })
+  .refine((value) => Boolean(value.userId) !== Boolean(value.username), {
+    message: "Provide exactly one of userId or username.",
+  });
 export type CreateMembershipInput = z.infer<typeof createMembershipSchema>;
 
 /** Change a member's role within a team. */

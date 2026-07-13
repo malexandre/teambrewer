@@ -218,6 +218,52 @@ describe("Admin endpoints (integration)", () => {
       expect(response.status).toBe(201);
       expect(response.body).toMatchObject({ username: "newcomer", role: "member" });
     });
+
+    it("adds an existing user as a member by username", async () => {
+      await createUser(prisma, { username: "newcomer" });
+      const response = await http()
+        .post(`/api/admin/teams/${world.teamA.id}/members`)
+        .set("x-test-user-id", world.teamAdminA.id)
+        .send({ username: "newcomer", role: "team_admin" });
+      expect(response.status).toBe(201);
+      expect(response.body).toMatchObject({ username: "newcomer", role: "team_admin" });
+    });
+
+    it("422s when adding a username that does not exist", async () => {
+      const response = await http()
+        .post(`/api/admin/teams/${world.teamA.id}/members`)
+        .set("x-test-user-id", world.teamAdminA.id)
+        .send({ username: "ghost", role: "member" });
+      expect(response.status).toBe(422);
+      expect(response.body.error.code).toBe("DOMAIN_RULE_VIOLATION");
+    });
+
+    it("409s when the named user is already a member", async () => {
+      const response = await http()
+        .post(`/api/admin/teams/${world.teamA.id}/members`)
+        .set("x-test-user-id", world.teamAdminA.id)
+        .send({ username: "member_alpha", role: "member" });
+      expect(response.status).toBe(409);
+    });
+
+    it("400s when neither userId nor username is provided", async () => {
+      const response = await http()
+        .post(`/api/admin/teams/${world.teamA.id}/members`)
+        .set("x-test-user-id", world.teamAdminA.id)
+        .send({ role: "member" });
+      expect(response.status).toBe(400);
+    });
+
+    it("lets an instance-admin add a member to a team they do not belong to", async () => {
+      // world.instanceAdmin is a member of neither team A nor team B.
+      const response = await http()
+        .post(`/api/admin/teams/${world.teamB.id}/members`)
+        .set("x-test-user-id", world.instanceAdmin.id)
+        .set("x-test-instance-admin", "true")
+        .send({ username: "member_alpha", role: "member" });
+      expect(response.status).toBe(201);
+      expect(response.body).toMatchObject({ username: "member_alpha", role: "member" });
+    });
   });
 
   describe("instance-admin flag", () => {

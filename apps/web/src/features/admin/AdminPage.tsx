@@ -10,6 +10,7 @@ import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
 
 import {
+  useAddMember,
   useAdminMembers,
   useAdminTeams,
   useChangeRole,
@@ -179,6 +180,51 @@ function CreateUserForm({ teamId }: { teamId: string }) {
   );
 }
 
+function AddExistingMemberForm({ teamId }: { teamId: string }) {
+  const addMember = useAddMember(teamId);
+  const [username, setUsername] = useState("");
+  const [role, setRole] = useState<TeamRole>("member");
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    addMember.mutate({ username, role }, { onSuccess: () => setUsername("") });
+  }
+
+  return (
+    <form className="flex flex-wrap items-end gap-2" onSubmit={submit}>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="add-existing-username">Existing username</Label>
+        <Input
+          id="add-existing-username"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          required
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="add-existing-role">Role</Label>
+        <select
+          id="add-existing-role"
+          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+          value={role}
+          onChange={(event) => setRole(event.target.value as TeamRole)}
+        >
+          <option value="member">Member</option>
+          <option value="team_admin">Team admin</option>
+        </select>
+      </div>
+      <Button type="submit" disabled={addMember.isPending}>
+        Add member
+      </Button>
+      {addMember.isError ? (
+        <p role="alert" className="w-full text-sm text-destructive">
+          {messageFor(addMember.error)}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
 function MembersAdmin({ teamId }: { teamId: string }) {
   const members = useAdminMembers(teamId);
   const changeRole = useChangeRole(teamId);
@@ -273,28 +319,101 @@ function MembersAdmin({ teamId }: { teamId: string }) {
   );
 }
 
+/**
+ * The accounts + membership controls for one team. Reused for any team an
+ * instance-admin selects and for a team-admin's own (active) team.
+ */
+function TeamAdminPanel({ teamId }: { teamId: string }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <h3 className="text-sm font-medium">Create a new account</h3>
+        <CreateUserForm teamId={teamId} />
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-sm font-medium">Add an existing member</h3>
+        <AddExistingMemberForm teamId={teamId} />
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-sm font-medium">Members</h3>
+        <MembersAdmin teamId={teamId} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Instance-admins administer any team's accounts + members without being a
+ * member of it (TeamAdminGuard grants management, not data, access — see
+ * multi-tenancy.md). The team to manage is chosen here, independent of the
+ * membership-derived active team.
+ */
+function InstanceTeamManagement() {
+  const teams = useAdminTeams(true);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const list = teams.data?.data ?? [];
+  const activeId = selectedTeamId ?? list[0]?.id ?? null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Manage a team</CardTitle>
+        <CardDescription>
+          Manage accounts and members of any team — you need not be a member (instance admin).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        {list.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No teams yet. Create one above.</p>
+        ) : (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="manage-team">Team</Label>
+              <select
+                id="manage-team"
+                className="h-9 max-w-xs rounded-md border border-input bg-background px-2 text-sm"
+                value={activeId ?? ""}
+                onChange={(event) => setSelectedTeamId(event.target.value)}
+              >
+                {list.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {activeId ? <TeamAdminPanel teamId={activeId} /> : null}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AdminPage() {
   const { data: user } = useCurrentUser();
   const { activeTeam } = useActiveTeam();
-  const canAdministerActive = Boolean(user?.isInstanceAdmin) || activeTeam?.role === "team_admin";
+  const administersActiveTeam = activeTeam?.role === "team_admin";
 
   return (
     <div className="flex flex-col gap-6">
-      {user?.isInstanceAdmin ? <InstanceTeamsSection /> : null}
-
-      {activeTeam && canAdministerActive ? (
+      {user?.isInstanceAdmin ? (
+        <>
+          <InstanceTeamsSection />
+          <InstanceTeamManagement />
+        </>
+      ) : administersActiveTeam && activeTeam ? (
         <Card>
           <CardHeader>
             <CardTitle>{activeTeam.name} — accounts & members</CardTitle>
             <CardDescription>Create accounts and manage membership for this team.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-6">
-            <CreateUserForm teamId={activeTeam.teamId} />
-            <MembersAdmin teamId={activeTeam.teamId} />
+          <CardContent>
+            <TeamAdminPanel teamId={activeTeam.teamId} />
           </CardContent>
         </Card>
       ) : (
-        <p className="text-sm text-muted-foreground">You do not administer the active team.</p>
+        <p className="text-sm text-muted-foreground">You do not administer any team.</p>
       )}
     </div>
   );

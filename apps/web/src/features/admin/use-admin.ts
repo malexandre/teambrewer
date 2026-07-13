@@ -7,6 +7,7 @@ import {
   generatedLinkSchema,
   teamListSchema,
   teamMemberListSchema,
+  teamMemberSchema,
   type TeamRole,
 } from "@teambrewer/shared";
 
@@ -50,6 +51,19 @@ export function useCreateUser(teamId: string) {
       apiClient.post(`/admin/teams/${teamId}/users`, {
         body: input,
         schema: adminCreateUserResponseSchema,
+      }),
+    onSuccess: () => invalidateTeam(queryClient, teamId),
+  });
+}
+
+/** Add an already-existing account to the team by username. */
+export function useAddMember(teamId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { username: string; role: TeamRole }) =>
+      apiClient.post(`/admin/teams/${teamId}/members`, {
+        body: input,
+        schema: teamMemberSchema,
       }),
     onSuccess: () => invalidateTeam(queryClient, teamId),
   });
