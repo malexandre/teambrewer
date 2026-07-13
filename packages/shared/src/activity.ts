@@ -9,7 +9,7 @@ import { subjectTypeSchema } from "./collaboration.js";
  * subsystem; phase-04 emits the deck lifecycle verbs plus the generic `commented`,
  * events add their own lifecycle verbs, game logs add theirs (phase-06), the testing
  * queue adds the suggestion/assignment lifecycle verbs (phase-08), and game-plans add
- * theirs (phase-09).
+ * theirs (phase-09). The meta-pivot redesign adds the meta + task lifecycle verbs.
  */
 
 export const activityVerbSchema = z.enum([
@@ -29,6 +29,11 @@ export const activityVerbSchema = z.enum([
   "test_assignment_status_changed",
   "matchup_game_plan_created",
   "matchup_game_plan_updated",
+  "meta_created",
+  "meta_updated",
+  "task_created",
+  "task_updated",
+  "task_status_changed",
   "commented",
 ]);
 export type ActivityVerb = z.infer<typeof activityVerbSchema>;
