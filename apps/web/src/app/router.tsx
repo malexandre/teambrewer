@@ -3,7 +3,6 @@ import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/re
 import { SettingsPage } from "@/features/account/SettingsPage";
 import { AdminPage } from "@/features/admin/AdminPage";
 import { AppChrome } from "@/features/app/AppChrome";
-import { HomePage } from "@/features/app/HomePage";
 import { CardsPage } from "@/features/cards/CardsPage";
 import { DeckDetailPage } from "@/features/decks/DeckDetailPage";
 import { DecksPage } from "@/features/decks/DecksPage";
@@ -69,12 +68,6 @@ const homeRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/",
   component: DecksPage,
-});
-
-const teamRoute = createRoute({
-  getParentRoute: () => authenticatedLayout,
-  path: "/team",
-  component: HomePage,
 });
 
 const cardsRoute = createRoute({
@@ -152,7 +145,6 @@ const routeTree = rootRoute.addChildren([
   claimRoute,
   authenticatedLayout.addChildren([
     homeRoute,
-    teamRoute,
     cardsRoute,
     decksRoute,
     deckDetailRoute,
