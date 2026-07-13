@@ -11,13 +11,11 @@ describe("ThemeToggle", () => {
     // ThemeProvider resolves the system theme via matchMedia; jsdom lacks it.
     vi.stubGlobal(
       "matchMedia",
-      vi
-        .fn()
-        .mockReturnValue({
-          matches: false,
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-        }),
+      vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
     );
   });
 
