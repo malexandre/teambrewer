@@ -13,31 +13,31 @@ function json(payload: unknown, status = 200): Response {
   });
 }
 
-function mockApi(): void {
+function taskFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "task-1",
+    title: "Test Bravado",
+    description: "",
+    deckId: "deck-1",
+    deckName: "Aggro Dori",
+    author: { userId: "u1", username: "alice", displayName: "Alice" },
+    assignee: null,
+    status: "proposed",
+    report: "",
+    voteCount: 0,
+    viewerHasVoted: false,
+    archivedAt: null,
+    createdAt: "2026-07-12T00:00:00.000Z",
+    updatedAt: "2026-07-12T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function mockApi(tasks: Array<Record<string, unknown>> = [taskFixture()]): void {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = typeof input === "string" ? input : input.toString();
     if (url.includes("/api/tasks")) {
-      return json({
-        data: [
-          {
-            id: "task-1",
-            title: "Test Bravado",
-            description: "",
-            deckId: "deck-1",
-            deckName: "Aggro Dori",
-            author: { userId: "u1", username: "alice", displayName: "Alice" },
-            assignee: null,
-            status: "proposed",
-            report: "",
-            voteCount: 0,
-            viewerHasVoted: false,
-            archivedAt: null,
-            createdAt: "2026-07-12T00:00:00.000Z",
-            updatedAt: "2026-07-12T00:00:00.000Z",
-          },
-        ],
-        nextCursor: null,
-      });
+      return json({ data: tasks, nextCursor: null });
     }
     if (url.includes("/api/members")) return json({ data: [] });
     if (url.includes("/api/decks")) return json({ data: [], nextCursor: null });
@@ -77,5 +77,36 @@ describe("DeckCardIdeasSection", () => {
     // The reused tasks form appears with the seeded title (pre-linked to this deck).
     expect(screen.getByLabelText("Task title")).toHaveValue("Card idea: Aggro Dori");
     expect(screen.getByLabelText("Task description")).toBeInTheDocument();
+  });
+
+  it("reveals a finished task's report from its row", async () => {
+    mockApi([
+      taskFixture({
+        id: "task-done",
+        title: "Test Command and Conquer",
+        status: "finished",
+        report: "Went 7-3 into the field; worth keeping.",
+      }),
+    ]);
+    renderWithClient(
+      <DeckCardIdeasSection teamId="team-1" deckId="deck-1" deckName="Aggro Dori" />,
+    );
+
+    await screen.findByText("Test Command and Conquer");
+    // The report is hidden until the toggle is clicked.
+    expect(screen.queryByText(/Went 7-3/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Report" }));
+    expect(screen.getByText("Went 7-3 into the field; worth keeping.")).toBeInTheDocument();
+  });
+
+  it("shows no report toggle for a task without a report", async () => {
+    mockApi();
+    renderWithClient(
+      <DeckCardIdeasSection teamId="team-1" deckId="deck-1" deckName="Aggro Dori" />,
+    );
+
+    await screen.findByText("Test Bravado");
+    expect(screen.queryByRole("button", { name: "Report" })).not.toBeInTheDocument();
   });
 });
