@@ -290,11 +290,12 @@ model Hero {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  game             Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  decks            Deck[]
-  gameLogs         GameLog[]
-  matchupGamePlans MatchupGamePlan[]
-  metaDeckEntries  MetaDeckEntry[]
+  game                  Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  decks                 Deck[]
+  gameLogsAsSelfHero    GameLog[]         @relation("GameLogSelfHero")
+  gameLogsAsOpponentHero GameLog[]        @relation("GameLogOpponentHero")
+  matchupGamePlans      MatchupGamePlan[]
+  metaDeckEntries       MetaDeckEntry[]
 
   @@unique([gameId, externalId])
   @@index([gameId, name])
@@ -549,11 +550,13 @@ enum PilotFamiliarity {
   first_time
 }
 
-/// One recorded game/match. sideA is always our side (a team-member pilot on a team
-/// deck); sideB is either a teammate (opponentPilotUserId + opponentDeckId) or an
-/// external opponent identified by exactly one of a reference deck, a hero, or a
-/// free-text archetype label. Opponent identifier rules are enforced server-side;
-/// confidenceWeight is derived from the four factor columns (never client-supplied).
+/// One recorded game/match. Both sides are **matchup subjects**: side A (our side)
+/// is exactly one of a team deck, a meta deck entry, or a (hero + label); side B (the
+/// opponent) is exactly one of a team deck, a meta deck entry, or a (hero + label).
+/// The optional `pilotUserId`/`opponentPilotUserId` record who piloted each side
+/// (a teammate opponent is just an opponent subject with `opponentPilotUserId` set),
+/// and `externalOpponentName` names a non-member opponent. Subject rules are enforced
+/// server-side; confidenceWeight is derived from the four factor columns.
 model GameLog {
   id         String   @id @default(cuid())
   teamId     String   @map("team_id")
@@ -562,16 +565,20 @@ model GameLog {
   metaId     String?  @map("meta_id")
   playedAt   DateTime @map("played_at")
 
-  // side A — our side
-  pilotUserId String @map("pilot_user_id")
-  deckId      String @map("deck_id")
+  // side A — our side (exactly one subject; pilot optional)
+  pilotUserId         String? @map("pilot_user_id")
+  deckId              String? @map("deck_id")
+  selfMetaDeckEntryId String? @map("self_meta_deck_entry_id")
+  selfHeroId          String? @map("self_hero_id")
+  selfArchetypeLabel  String? @map("self_archetype_label")
 
-  // side B — opponent (teammate or external)
-  opponentPilotUserId  String? @map("opponent_pilot_user_id")
-  externalOpponentName String? @map("external_opponent_name")
-  opponentDeckId       String? @map("opponent_deck_id")
-  heroId               String? @map("hero_id")
-  archetypeLabel       String? @map("archetype_label")
+  // side B — opponent (exactly one subject; pilot + external name optional)
+  opponentPilotUserId     String? @map("opponent_pilot_user_id")
+  externalOpponentName    String? @map("external_opponent_name")
+  opponentDeckId          String? @map("opponent_deck_id")
+  opponentMetaDeckEntryId String? @map("opponent_meta_deck_entry_id")
+  opponentHeroId          String? @map("opponent_hero_id")
+  opponentArchetypeLabel  String? @map("opponent_archetype_label")
 
   firstPlayerSide GameSide    @map("first_player_side")
   bestOf          Int         @map("best_of")
@@ -592,24 +599,28 @@ model GameLog {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  team          Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  loggedBy      User          @relation("GameLogLoggedBy", fields: [loggedById], references: [id], onDelete: Cascade)
-  format        Format        @relation(fields: [formatId], references: [id])
-  meta          Meta?         @relation(fields: [metaId], references: [id], onDelete: SetNull)
-  pilot         User          @relation("GameLogPilot", fields: [pilotUserId], references: [id], onDelete: Cascade)
-  deck          Deck          @relation("GameLogDeck", fields: [deckId], references: [id], onDelete: Cascade)
-  opponentPilot User?         @relation("GameLogOpponentPilot", fields: [opponentPilotUserId], references: [id], onDelete: SetNull)
-  opponentDeck  Deck?         @relation("GameLogOpponentDeck", fields: [opponentDeckId], references: [id], onDelete: SetNull)
-  hero          Hero?         @relation(fields: [heroId], references: [id], onDelete: SetNull)
-  cards         GameLogCard[]
+  team                 Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  loggedBy             User           @relation("GameLogLoggedBy", fields: [loggedById], references: [id], onDelete: Cascade)
+  format               Format         @relation(fields: [formatId], references: [id])
+  meta                 Meta?          @relation(fields: [metaId], references: [id], onDelete: SetNull)
+  pilot                User?          @relation("GameLogPilot", fields: [pilotUserId], references: [id], onDelete: SetNull)
+  deck                 Deck?          @relation("GameLogDeck", fields: [deckId], references: [id], onDelete: SetNull)
+  selfMetaDeckEntry    MetaDeckEntry? @relation("GameLogSelfMetaDeckEntry", fields: [selfMetaDeckEntryId], references: [id], onDelete: SetNull)
+  selfHero             Hero?          @relation("GameLogSelfHero", fields: [selfHeroId], references: [id], onDelete: SetNull)
+  opponentPilot        User?          @relation("GameLogOpponentPilot", fields: [opponentPilotUserId], references: [id], onDelete: SetNull)
+  opponentDeck         Deck?          @relation("GameLogOpponentDeck", fields: [opponentDeckId], references: [id], onDelete: SetNull)
+  opponentMetaDeckEntry MetaDeckEntry? @relation("GameLogOpponentMetaDeckEntry", fields: [opponentMetaDeckEntryId], references: [id], onDelete: SetNull)
+  opponentHero         Hero?          @relation("GameLogOpponentHero", fields: [opponentHeroId], references: [id], onDelete: SetNull)
+  cards                GameLogCard[]
 
   @@index([teamId])
   @@index([teamId, formatId])
   @@index([teamId, metaId])
   @@index([teamId, deckId])
-  @@index([teamId, heroId])
+  @@index([teamId, opponentHeroId])
   @@index([teamId, pilotUserId])
   @@index([teamId, opponentDeckId])
+  @@index([teamId, opponentMetaDeckEntryId])
   @@index([teamId, opponentPilotUserId])
   // Supports the game-log list's keyset order (played_at DESC, id DESC) within a
   // team, so time-ordered pages scan the index instead of sorting (phase-13 perf).
@@ -884,10 +895,12 @@ model MetaDeckEntry {
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
-  meta          Meta                    @relation(fields: [metaId], references: [id], onDelete: Cascade)
-  team          Team                    @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  hero          Hero?                   @relation(fields: [heroId], references: [id], onDelete: SetNull)
-  gamePlanLinks GamePlanMetaDeckEntry[]
+  meta            Meta                    @relation(fields: [metaId], references: [id], onDelete: Cascade)
+  team            Team                    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  hero            Hero?                   @relation(fields: [heroId], references: [id], onDelete: SetNull)
+  gamePlanLinks   GamePlanMetaDeckEntry[]
+  gameLogsAsSelf  GameLog[]               @relation("GameLogSelfMetaDeckEntry")
+  gameLogsAsOpponent GameLog[]            @relation("GameLogOpponentMetaDeckEntry")
 
   @@index([teamId])
   @@index([metaId])

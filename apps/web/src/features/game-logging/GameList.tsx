@@ -8,6 +8,7 @@ import { useMembers } from "@/features/teams/use-members";
 
 import {
   describeOpponent,
+  describeSelf,
   formatConfidenceWeight,
   formatPlayedAt,
   formatResult,
@@ -124,8 +125,7 @@ export function GameList({ teamId }: { teamId: string | undefined }) {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">
-                    {maps.decks[game.sideA.deckId] ?? "Our deck"} vs{" "}
-                    {describeOpponent(game.sideB, maps)}
+                    {describeSelf(game.sideA, maps)} vs {describeOpponent(game.sideB, maps)}
                   </span>
                   <span className="text-sm font-semibold">
                     {formatResult(game.bestOf, game.result)}

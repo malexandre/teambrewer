@@ -17,7 +17,19 @@ export interface GameLogLabelMaps {
   members: Record<string, string>;
 }
 
-/** A human description of the opponent side, from whichever identifier it carries. */
+/** A human description of our side, from whichever matchup subject it carries. */
+export function describeSelf(sideA: GameLogSummary["sideA"], maps: GameLogLabelMaps): string {
+  if (sideA.deckId) return maps.decks[sideA.deckId] ?? "Our deck";
+  if (sideA.archetypeLabel) {
+    return sideA.heroId
+      ? `${maps.heroes[sideA.heroId] ?? "Hero"} — ${sideA.archetypeLabel}`
+      : sideA.archetypeLabel;
+  }
+  if (sideA.metaDeckEntryId) return "Meta deck";
+  return "Our side";
+}
+
+/** A human description of the opponent side, from whichever matchup subject it carries. */
 export function describeOpponent(sideB: GameLogSummary["sideB"], maps: GameLogLabelMaps): string {
   if (sideB.pilotUserId) {
     const pilot = maps.members[sideB.pilotUserId] ?? "A teammate";
@@ -25,9 +37,14 @@ export function describeOpponent(sideB: GameLogSummary["sideB"], maps: GameLogLa
     return deck ? `${pilot} (${deck})` : pilot;
   }
   const name = sideB.externalOpponentName ? `${sideB.externalOpponentName} — ` : "";
-  if (sideB.deckId) return `${name}${maps.decks[sideB.deckId] ?? "Reference deck"}`;
+  if (sideB.deckId) return `${name}${maps.decks[sideB.deckId] ?? "Team deck"}`;
+  if (sideB.metaDeckEntryId) return `${name}Meta deck`;
+  if (sideB.archetypeLabel) {
+    return sideB.heroId
+      ? `${name}${maps.heroes[sideB.heroId] ?? "Hero"} — ${sideB.archetypeLabel}`
+      : `${name}${sideB.archetypeLabel}`;
+  }
   if (sideB.heroId) return `${name}${maps.heroes[sideB.heroId] ?? "Unknown hero"}`;
-  if (sideB.archetypeLabel) return `${name}${sideB.archetypeLabel}`;
   return sideB.externalOpponentName ?? "Unknown opponent";
 }
 

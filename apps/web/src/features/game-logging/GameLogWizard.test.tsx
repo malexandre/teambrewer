@@ -132,13 +132,20 @@ function mockApi(options: { onCreate?: (body: unknown) => void } = {}) {
           formatId: "fmt-cc",
           metaId: null,
           playedAt: "2026-07-12T00:00:00.000Z",
-          sideA: { pilotUserId: "user-me", deckId: "deck-ours" },
+          sideA: {
+            pilotUserId: "user-me",
+            deckId: "deck-ours",
+            metaDeckEntryId: null,
+            heroId: null,
+            archetypeLabel: null,
+          },
           sideB: {
             pilotUserId: null,
             externalOpponentName: null,
             deckId: null,
-            heroId: "hero-dori",
-            archetypeLabel: null,
+            metaDeckEntryId: null,
+            heroId: null,
+            archetypeLabel: "Aggro Red",
           },
           firstPlayerSide: "A",
           bestOf: 1,
@@ -181,7 +188,7 @@ describe("GameLogWizard", () => {
     await screen.findByRole("option", { name: "Our Deck" });
     await user.selectOptions(screen.getByLabelText(/your deck/i), "deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
-    await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
+    await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");
     await user.click(screen.getByRole("button", { name: /next/i }));
     expect(await screen.findByRole("button", { name: /single game/i })).toHaveAttribute(
       "aria-pressed",
@@ -201,7 +208,7 @@ describe("GameLogWizard", () => {
     await screen.findByRole("option", { name: "Our Deck" });
     await user.selectOptions(screen.getByLabelText(/your deck/i), "deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
-    await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
+    await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");
     await user.click(screen.getByRole("button", { name: /next/i }));
     // step 2 → Next
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -232,7 +239,7 @@ describe("GameLogWizard", () => {
     await screen.findByRole("option", { name: "Our Deck" });
     await user.selectOptions(screen.getByLabelText(/your deck/i), "deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
-    await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
+    await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");
     await user.click(screen.getByRole("button", { name: /next/i }));
 
     // Step 2 → Step 3.
@@ -268,13 +275,20 @@ describe("GameLogWizard", () => {
       formatId: "fmt-cc",
       metaId: null,
       playedAt: "2026-07-10T00:00:00.000Z",
-      sideA: { pilotUserId: "user-me", deckId: "deck-ours" },
+      sideA: {
+        pilotUserId: "user-me",
+        deckId: "deck-ours",
+        metaDeckEntryId: null,
+        heroId: null,
+        archetypeLabel: null,
+      },
       sideB: {
         pilotUserId: null,
         externalOpponentName: null,
         deckId: null,
+        metaDeckEntryId: null,
         heroId: "hero-dori",
-        archetypeLabel: null,
+        archetypeLabel: "Draconic Dorinthea",
       },
       firstPlayerSide: "A",
       bestOf: 5,

@@ -202,6 +202,7 @@ export {
   createGameLogSchema,
   updateGameLogSchema,
   gameLogListQuerySchema,
+  gameSideAResponseSchema,
   gameSideBResponseSchema,
   gameLogSummarySchema,
   gameLogDetailSchema,

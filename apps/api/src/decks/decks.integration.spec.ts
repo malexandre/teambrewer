@@ -527,7 +527,9 @@ describe("Decks endpoints (integration)", () => {
           formatId: fabFormatId,
           pilotUserId: memberA.id,
           deckId: ourDeck.id,
-          heroId: fabHeroId,
+          // Opponent hero + label normalizes to the same ref as the hero entry.
+          opponentHeroId: fabHeroId,
+          opponentArchetypeLabel: "Dorinthea",
           confidenceWeight: 1,
           ...result,
         });
@@ -539,7 +541,7 @@ describe("Decks endpoints (integration)", () => {
         formatId: fabFormatId,
         pilotUserId: memberA.id,
         deckId: ourDeck.id,
-        archetypeLabel: "aggro red",
+        opponentArchetypeLabel: "aggro red",
         confidenceWeight: 1,
         gamesWonA: 2,
         gamesWonB: 0,
@@ -573,6 +575,78 @@ describe("Decks endpoints (integration)", () => {
       expect(archetypeRow.weightedWinRate).toBe(1);
       expect(archetypeRow.rawSampleCount).toBe(1);
       expect(archetypeRow.hasGamePlan).toBe(false);
+    });
+
+    it("aggregates two entries with the SAME hero but different labels distinctly", async () => {
+      const ourDeck = await createDeck(prisma, {
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+        name: "Ours",
+      });
+      const meta = await createMeta(prisma, { teamId: teamA.id, name: "July" });
+      // Two archetypes of the same hero, distinguished only by their label.
+      const aggroEntry = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        tier: "meta_defining",
+        heroId: fabHeroId,
+        label: "Aggro Dorinthea",
+        opponentSnapshotLabel: "Aggro Dorinthea",
+      });
+      const fatigueEntry = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        tier: "meta_defining",
+        heroId: fabHeroId,
+        label: "Fatigue Dorinthea",
+        opponentSnapshotLabel: "Fatigue Dorinthea",
+      });
+
+      // Two wins vs Aggro Dorinthea (matched by hero+label ref) …
+      for (let index = 0; index < 2; index += 1) {
+        await createGameLog(prisma, {
+          teamId: teamA.id,
+          loggedById: memberA.id,
+          formatId: fabFormatId,
+          pilotUserId: memberA.id,
+          deckId: ourDeck.id,
+          opponentHeroId: fabHeroId,
+          opponentArchetypeLabel: "Aggro Dorinthea",
+          confidenceWeight: 1,
+          gamesWonA: 2,
+          gamesWonB: 0,
+        });
+      }
+      // … and one loss vs Fatigue Dorinthea, linked directly to its entry.
+      await createGameLog(prisma, {
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        pilotUserId: memberA.id,
+        deckId: ourDeck.id,
+        opponentMetaDeckEntryId: fatigueEntry.id,
+        confidenceWeight: 1,
+        gamesWonA: 0,
+        gamesWonB: 2,
+      });
+
+      const response = await asMemberA(
+        http().get(`/api/decks/${ourDeck.id}/meta-readiness`).query({ metaId: meta.id }),
+      );
+      expect(response.status).toBe(200);
+      const rows: {
+        metaDeckEntryId: string;
+        weightedWinRate: number | null;
+        rawSampleCount: number;
+      }[] = response.body.rows;
+      const aggroRow = rows.find((row) => row.metaDeckEntryId === aggroEntry.id);
+      const fatigueRow = rows.find((row) => row.metaDeckEntryId === fatigueEntry.id);
+      // The Aggro logs do NOT leak into the Fatigue entry and vice versa.
+      expect(aggroRow?.weightedWinRate).toBe(1);
+      expect(aggroRow?.rawSampleCount).toBe(2);
+      expect(fatigueRow?.weightedWinRate).toBe(0);
+      expect(fatigueRow?.rawSampleCount).toBe(1);
     });
 
     it("defaults to the current meta and returns an empty read when none is current", async () => {

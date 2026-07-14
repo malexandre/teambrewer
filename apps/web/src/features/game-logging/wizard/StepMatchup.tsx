@@ -52,12 +52,7 @@ export function StepMatchup({
   setArchetypeLabel: (label: string) => void;
 }) {
   const identityLabel = useIdentityLabel(teamId);
-  // Only the identity-kind label is game-specific ("Opponent hero"/"Opponent
-  // legend"); the rest are generic.
-  const opponentKindLabels: Record<OpponentKind, string> = {
-    ...OPPONENT_KIND_LABELS,
-    hero: `Opponent ${identityLabel.toLowerCase()}`,
-  };
+  const opponentKindLabels = OPPONENT_KIND_LABELS;
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
@@ -98,8 +93,26 @@ export function StepMatchup({
           ))}
         </select>
 
-        {opponentKind === "hero" ? (
-          <HeroPicker teamId={teamId} value={opponentHeroId} onChange={setOpponentHeroId} />
+        {opponentKind === "archetype" ? (
+          <div className="flex flex-col gap-2">
+            <Input
+              aria-label="Archetype label"
+              placeholder="e.g. Aggro Red"
+              value={archetypeLabel}
+              onChange={(event) => setArchetypeLabel(event.target.value)}
+            />
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="opponent-hero">
+                Opponent {identityLabel.toLowerCase()} (optional)
+              </Label>
+              <HeroPicker
+                id="opponent-hero"
+                teamId={teamId}
+                value={opponentHeroId}
+                onChange={setOpponentHeroId}
+              />
+            </div>
+          </div>
         ) : null}
 
         {opponentKind === "teammate" ? (
@@ -147,15 +160,6 @@ export function StepMatchup({
               </option>
             ))}
           </select>
-        ) : null}
-
-        {opponentKind === "archetype" ? (
-          <Input
-            aria-label="Archetype label"
-            placeholder="e.g. Aggro Red"
-            value={archetypeLabel}
-            onChange={(event) => setArchetypeLabel(event.target.value)}
-          />
         ) : null}
       </div>
     </div>

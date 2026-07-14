@@ -215,9 +215,6 @@ export function GameLogWizard({
   function buildSideB(): CreateGameLogInput["sideB"] | null {
     const trimmedName = externalOpponentName.trim();
     const externalName = trimmedName.length > 0 ? trimmedName : undefined;
-    if (opponentKind === "hero") {
-      return opponentHeroId ? { heroId: opponentHeroId, externalOpponentName: externalName } : null;
-    }
     if (opponentKind === "teammate") {
       return opponentPilotUserId && opponentTeamDeckId
         ? { pilotUserId: opponentPilotUserId, deckId: opponentTeamDeckId }
@@ -226,10 +223,16 @@ export function GameLogWizard({
     if (opponentKind === "team_deck") {
       return opponentDeckId ? { deckId: opponentDeckId, externalOpponentName: externalName } : null;
     }
+    // Archetype subject: a required label with an optional hero qualifier.
     const trimmedLabel = archetypeLabel.trim();
-    return trimmedLabel.length > 0
-      ? { archetypeLabel: trimmedLabel, externalOpponentName: externalName }
-      : null;
+    if (trimmedLabel.length === 0) {
+      return null;
+    }
+    return {
+      archetypeLabel: trimmedLabel,
+      externalOpponentName: externalName,
+      ...(opponentHeroId ? { heroId: opponentHeroId } : {}),
+    };
   }
 
   function isStepMatchupComplete(): boolean {

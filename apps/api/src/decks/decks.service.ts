@@ -70,14 +70,15 @@ interface MetaEntryRow {
   createdAt: Date;
 }
 
-/** The side-B identity + confidence-weighted result fields of a game log, for readiness. */
+/** The opponent identity + confidence-weighted result fields of a game log, for readiness. */
 interface GameLogReadinessRow {
   gamesWonA: number;
   gamesWonB: number;
   confidenceWeight: number;
   opponentDeckId: string | null;
-  heroId: string | null;
-  archetypeLabel: string | null;
+  opponentMetaDeckEntryId: string | null;
+  opponentHeroId: string | null;
+  opponentArchetypeLabel: string | null;
 }
 
 /** The current-meta candidate shape (adds `name` to the pure-rule fields) for readiness. */
@@ -311,8 +312,9 @@ export class DecksService {
         gamesWonB: true,
         confidenceWeight: true,
         opponentDeckId: true,
-        heroId: true,
-        archetypeLabel: true,
+        opponentMetaDeckEntryId: true,
+        opponentHeroId: true,
+        opponentArchetypeLabel: true,
       },
     })) as GameLogReadinessRow[];
 
@@ -523,20 +525,27 @@ function sortEntriesByTier(entries: MetaEntryRow[]): MetaEntryRow[] {
 }
 
 /**
- * Whether a game log's opponent identity matches a meta deck entry's matchup subject.
- * A hero entry matches a game logged against that hero; a label-only entry matches a
- * game logged with the same free-text archetype label (case-insensitively). Team-deck
- * opponents don't match meta entries. (Direct entry-id matching + full hero+label
- * normalization arrive once game logs carry those fields — R-1 part C.)
+ * Whether a game log's opponent matches a meta deck entry. A game explicitly logged
+ * against a meta deck entry matches that entry directly (an explicit link is
+ * authoritative). Otherwise a game logged with a hero + archetype-label opponent
+ * matches when it normalizes to the same subject ref as the entry's hero + label — so
+ * repeated heroes under different labels aggregate distinctly. Team-deck and
+ * (self-only) opponents never match a meta entry. Side A (this deck) already filters
+ * the games, so only the opponent identity drives matching.
  */
 function gameMatchesEntry(game: GameLogReadinessRow, entry: MetaEntryRow): boolean {
-  if (entry.heroId !== null) {
-    return game.heroId === entry.heroId;
+  if (game.opponentMetaDeckEntryId !== null) {
+    return game.opponentMetaDeckEntryId === entry.id;
   }
-  return (
-    game.archetypeLabel !== null &&
-    game.archetypeLabel.trim().toLowerCase() === entry.label.trim().toLowerCase()
-  );
+  if (game.opponentArchetypeLabel === null) {
+    return false;
+  }
+  const gameRef = deriveMatchupSubjectRef({
+    heroId: game.opponentHeroId,
+    label: game.opponentArchetypeLabel,
+  });
+  const entryRef = deriveMatchupSubjectRef({ heroId: entry.heroId, label: entry.label });
+  return gameRef === entryRef;
 }
 
 /** Map a matched game log to the shared aggregation input (our-side outcome + weight). */

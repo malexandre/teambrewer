@@ -14,7 +14,7 @@ function validCreateInput(overrides: Record<string, unknown> = {}) {
   return {
     formatId: "format_cc",
     sideA: { pilotUserId: "user_a", deckId: "deck_ours" },
-    sideB: { heroId: "hero_dorinthea" },
+    sideB: { heroId: "hero_dorinthea", archetypeLabel: "Draconic Dorinthea" },
     firstPlayerSide: "A" as const,
     bestOf: 3 as const,
     result: { gamesWonA: 2, gamesWonB: 1 },
@@ -133,44 +133,57 @@ describe("createGameLogSchema", () => {
     ).toThrow();
   });
 
-  it("rejects a sideB with no opponent identifier", () => {
+  it("rejects a sideB with no subject", () => {
     expect(() => createGameLogSchema.parse(validCreateInput({ sideB: {} }))).toThrow();
   });
 
-  it("rejects a sideB with conflicting opponent identifiers", () => {
+  it("rejects a sideB with more than one subject form", () => {
     expect(() =>
       createGameLogSchema.parse(
-        validCreateInput({ sideB: { heroId: "hero_x", archetypeLabel: "Aggro" } }),
+        validCreateInput({ sideB: { deckId: "deck_theirs", archetypeLabel: "Aggro" } }),
       ),
     ).toThrow();
   });
 
-  it("rejects a teammate opponent that is also an external opponent", () => {
+  it("accepts a hero + label opponent subject", () => {
+    const parsed = createGameLogSchema.parse(
+      validCreateInput({ sideB: { heroId: "hero_x", archetypeLabel: "Aggro Fai" } }),
+    );
+    expect(parsed.sideB.heroId).toBe("hero_x");
+    expect(parsed.sideB.archetypeLabel).toBe("Aggro Fai");
+  });
+
+  it("rejects a hero opponent qualifier without an archetype label", () => {
     expect(() =>
-      createGameLogSchema.parse(
-        validCreateInput({
-          sideB: { pilotUserId: "user_b", deckId: "deck_theirs", heroId: "hero_x" },
-        }),
-      ),
+      createGameLogSchema.parse(validCreateInput({ sideB: { heroId: "hero_x" } })),
     ).toThrow();
   });
 
-  it("accepts a teammate opponent identified by pilot and deck", () => {
+  it("accepts a teammate opponent (pilot) alongside a deck subject", () => {
     const parsed = createGameLogSchema.parse(
       validCreateInput({ sideB: { pilotUserId: "user_b", deckId: "deck_theirs" } }),
     );
     expect(parsed.sideB.pilotUserId).toBe("user_b");
+    expect(parsed.sideB.deckId).toBe("deck_theirs");
   });
 
-  it("rejects a teammate opponent missing a deck", () => {
+  it("rejects an opponent with a pilot but no subject", () => {
     expect(() =>
       createGameLogSchema.parse(validCreateInput({ sideB: { pilotUserId: "user_b" } })),
     ).toThrow();
   });
 
-  it("rejects a missing sideA pilot or deck", () => {
+  it("accepts a sideA meta-deck-entry subject with no pilot (pilot is optional)", () => {
+    const parsed = createGameLogSchema.parse(
+      validCreateInput({ sideA: { metaDeckEntryId: "entry_1" } }),
+    );
+    expect(parsed.sideA.metaDeckEntryId).toBe("entry_1");
+    expect(parsed.sideA.pilotUserId).toBeUndefined();
+  });
+
+  it("rejects a sideA with no subject", () => {
     expect(() =>
-      createGameLogSchema.parse(validCreateInput({ sideA: { deckId: "deck_ours" } })),
+      createGameLogSchema.parse(validCreateInput({ sideA: { pilotUserId: "user_a" } })),
     ).toThrow();
   });
 });

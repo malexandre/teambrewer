@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api-client";
 import {
   DECK_MATURITY_FIELD,
   describeOpponent,
+  describeSelf,
   formatConfidenceWeight,
   formatPlayedAt,
   formatResult,
@@ -77,8 +78,10 @@ export function GameDetail({
     archiveGame.mutate(undefined, { onSuccess: () => void navigate({ to: "/games" }) });
   }
 
-  const ourDeck = maps.decks[game.sideA.deckId] ?? "Our deck";
-  const ourPilot = maps.members[game.sideA.pilotUserId] ?? "A teammate";
+  const ourDeck = describeSelf(game.sideA, maps);
+  const ourPilot = game.sideA.pilotUserId
+    ? (maps.members[game.sideA.pilotUserId] ?? "A teammate")
+    : "A teammate";
 
   return (
     <div className="flex flex-col gap-4">

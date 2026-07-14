@@ -137,7 +137,7 @@ describe("Game-log endpoints (integration)", () => {
   const validGame = () => ({
     formatId: fabFormatId,
     sideA: { pilotUserId: memberA.id, deckId: deckA.id },
-    sideB: { heroId: fabHeroId },
+    sideB: { heroId: fabHeroId, archetypeLabel: "Draconic Dorinthea" },
     firstPlayerSide: "A" as const,
     bestOf: 3 as const,
     result: { gamesWonA: 2, gamesWonB: 1 },
@@ -220,7 +220,7 @@ describe("Game-log endpoints (integration)", () => {
     it("rejects an opponent hero from another game (cross-game FK)", async () => {
       const response = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        sideB: { heroId: riftHeroId },
+        sideB: { heroId: riftHeroId, archetypeLabel: "Rift Deck" },
       });
       expect(response.status).toBe(404);
     });
@@ -380,7 +380,8 @@ describe("Game-log endpoints (integration)", () => {
         formatId: fabFormatId,
         pilotUserId: memberA.id,
         deckId: deckA.id,
-        heroId: fabHeroId,
+        opponentHeroId: fabHeroId,
+        opponentArchetypeLabel: "Draconic Dorinthea",
         metaId: meta.id,
       });
       await createGameLog(prisma, {
@@ -389,7 +390,7 @@ describe("Game-log endpoints (integration)", () => {
         formatId: fabFormatId,
         pilotUserId: memberA2.id,
         deckId: deckA2.id,
-        archetypeLabel: "Control",
+        opponentArchetypeLabel: "Control",
       });
       // A team-B log must never appear.
       await createGameLog(prisma, {
@@ -615,7 +616,8 @@ describe("Game-log endpoints (integration)", () => {
         formatId: fabFormatId,
         pilotUserId: memberA.id,
         deckId: deckA.id,
-        heroId: fabHeroId,
+        opponentHeroId: fabHeroId,
+        opponentArchetypeLabel: "Draconic Dorinthea",
         confidenceWeight: 1,
       });
       await createGameLog(prisma, {
@@ -624,7 +626,8 @@ describe("Game-log endpoints (integration)", () => {
         formatId: fabFormatId,
         pilotUserId: memberA.id,
         deckId: deckA.id,
-        heroId: fabHeroId,
+        opponentHeroId: fabHeroId,
+        opponentArchetypeLabel: "Draconic Dorinthea",
         confidenceWeight: 0.79,
       });
       await createGameLog(prisma, {
@@ -633,7 +636,8 @@ describe("Game-log endpoints (integration)", () => {
         formatId: fabFormatId,
         pilotUserId: memberA.id,
         deckId: deckA.id,
-        heroId: fabHeroId,
+        opponentHeroId: fabHeroId,
+        opponentArchetypeLabel: "Draconic Dorinthea",
         confidenceWeight: 0.5,
       });
       await createGameLog(prisma, {
@@ -642,14 +646,15 @@ describe("Game-log endpoints (integration)", () => {
         formatId: fabFormatId,
         pilotUserId: memberA.id,
         deckId: deckA.id,
-        heroId: fabHeroId,
+        opponentHeroId: fabHeroId,
+        opponentArchetypeLabel: "Draconic Dorinthea",
         confidenceWeight: 1,
         archivedAt: new Date(),
       });
 
       const grouped = await prisma.gameLog.groupBy({
-        by: ["heroId", "formatId"],
-        where: { teamId: teamA.id, archivedAt: null, heroId: fabHeroId },
+        by: ["opponentHeroId", "formatId"],
+        where: { teamId: teamA.id, archivedAt: null, opponentHeroId: fabHeroId },
         _count: { _all: true },
         _sum: { confidenceWeight: true },
       });

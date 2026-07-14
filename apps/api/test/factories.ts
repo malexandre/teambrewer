@@ -393,15 +393,19 @@ export interface CreateGameLogOptions {
   teamId: string;
   loggedById: string;
   formatId: string;
-  pilotUserId: string;
-  deckId: string;
+  pilotUserId?: string | null;
+  deckId?: string | null;
+  selfMetaDeckEntryId?: string | null;
+  selfHeroId?: string | null;
+  selfArchetypeLabel?: string | null;
   metaId?: string | null;
   playedAt?: Date;
   opponentPilotUserId?: string | null;
   externalOpponentName?: string | null;
   opponentDeckId?: string | null;
-  heroId?: string | null;
-  archetypeLabel?: string | null;
+  opponentMetaDeckEntryId?: string | null;
+  opponentHeroId?: string | null;
+  opponentArchetypeLabel?: string | null;
   firstPlayerSide?: GameSide;
   bestOf?: number;
   gamesWonA?: number;
@@ -425,11 +429,12 @@ export async function createGameLog(
   prisma: PrismaClient,
   options: CreateGameLogOptions,
 ): Promise<TestGameLog> {
-  const hasIdentifiedOpponent =
-    options.opponentPilotUserId ||
+  // Default side B to a bare archetype label unless another opponent subject is supplied.
+  const hasOpponentSubject =
     options.opponentDeckId ||
-    options.heroId ||
-    options.archetypeLabel;
+    options.opponentMetaDeckEntryId ||
+    options.opponentHeroId ||
+    options.opponentArchetypeLabel;
   const created = await prisma.gameLog.create({
     data: {
       teamId: options.teamId,
@@ -437,13 +442,18 @@ export async function createGameLog(
       formatId: options.formatId,
       metaId: options.metaId ?? null,
       playedAt: options.playedAt ?? new Date("2026-07-01T00:00:00.000Z"),
-      pilotUserId: options.pilotUserId,
-      deckId: options.deckId,
+      pilotUserId: options.pilotUserId ?? null,
+      deckId: options.deckId ?? null,
+      selfMetaDeckEntryId: options.selfMetaDeckEntryId ?? null,
+      selfHeroId: options.selfHeroId ?? null,
+      selfArchetypeLabel: options.selfArchetypeLabel ?? null,
       opponentPilotUserId: options.opponentPilotUserId ?? null,
       externalOpponentName: options.externalOpponentName ?? null,
       opponentDeckId: options.opponentDeckId ?? null,
-      heroId: options.heroId ?? null,
-      archetypeLabel: options.archetypeLabel ?? (hasIdentifiedOpponent ? null : "Aggro Red"),
+      opponentMetaDeckEntryId: options.opponentMetaDeckEntryId ?? null,
+      opponentHeroId: options.opponentHeroId ?? null,
+      opponentArchetypeLabel:
+        options.opponentArchetypeLabel ?? (hasOpponentSubject ? null : "Aggro Red"),
       firstPlayerSide: options.firstPlayerSide ?? "A",
       bestOf: options.bestOf ?? 3,
       gamesWonA: options.gamesWonA ?? 2,

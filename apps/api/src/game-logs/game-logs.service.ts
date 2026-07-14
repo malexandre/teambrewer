@@ -39,13 +39,17 @@ interface GameLogRow {
   formatId: string;
   metaId: string | null;
   playedAt: Date;
-  pilotUserId: string;
-  deckId: string;
+  pilotUserId: string | null;
+  deckId: string | null;
+  selfMetaDeckEntryId: string | null;
+  selfHeroId: string | null;
+  selfArchetypeLabel: string | null;
   opponentPilotUserId: string | null;
   externalOpponentName: string | null;
   opponentDeckId: string | null;
-  heroId: string | null;
-  archetypeLabel: string | null;
+  opponentMetaDeckEntryId: string | null;
+  opponentHeroId: string | null;
+  opponentArchetypeLabel: string | null;
   firstPlayerSide: GameSide;
   bestOf: number;
   gamesWonA: number;
@@ -68,13 +72,23 @@ interface GameLogRow {
   }[];
 }
 
-/** Resolved, validated side-B columns ready to persist. */
+/** Resolved, validated side-A (self) columns ready to persist. */
+interface ResolvedSideA {
+  pilotUserId: string | null;
+  deckId: string | null;
+  selfMetaDeckEntryId: string | null;
+  selfHeroId: string | null;
+  selfArchetypeLabel: string | null;
+}
+
+/** Resolved, validated side-B (opponent) columns ready to persist. */
 interface ResolvedSideB {
   opponentPilotUserId: string | null;
   externalOpponentName: string | null;
   opponentDeckId: string | null;
-  heroId: string | null;
-  archetypeLabel: string | null;
+  opponentMetaDeckEntryId: string | null;
+  opponentHeroId: string | null;
+  opponentArchetypeLabel: string | null;
 }
 
 /**
@@ -107,7 +121,9 @@ export class GameLogsService {
     if (query.deckId) {
       andClauses.push({ OR: [{ deckId: query.deckId }, { opponentDeckId: query.deckId }] });
     }
-    if (query.heroId) andClauses.push({ heroId: query.heroId });
+    if (query.heroId) {
+      andClauses.push({ OR: [{ selfHeroId: query.heroId }, { opponentHeroId: query.heroId }] });
+    }
     if (query.pilotUserId) {
       andClauses.push({
         OR: [{ pilotUserId: query.pilotUserId }, { opponentPilotUserId: query.pilotUserId }],
@@ -156,8 +172,7 @@ export class GameLogsService {
     this.assertResultConsistent(input.bestOf, input.result);
     const playedAt = input.playedAt ? new Date(input.playedAt) : new Date();
     const metaId = await this.resolveMetaId(input.metaId, playedAt);
-    await this.assertTeamMember(input.sideA.pilotUserId, "Our pilot is not a member of this team.");
-    await this.assertTeamDeck(input.sideA.deckId, "Our deck does not belong to this team.");
+    const sideA = await this.resolveSideA(team.gameId, input.sideA);
     const sideB = await this.resolveSideB(team.gameId, input.sideB);
     const capturedCards = await this.resolveCapturedCards(
       team.gameId,
@@ -176,13 +191,17 @@ export class GameLogsService {
         formatId: input.formatId,
         metaId,
         playedAt,
-        pilotUserId: input.sideA.pilotUserId,
-        deckId: input.sideA.deckId,
+        pilotUserId: sideA.pilotUserId,
+        deckId: sideA.deckId,
+        selfMetaDeckEntryId: sideA.selfMetaDeckEntryId,
+        selfHeroId: sideA.selfHeroId,
+        selfArchetypeLabel: sideA.selfArchetypeLabel,
         opponentPilotUserId: sideB.opponentPilotUserId,
         externalOpponentName: sideB.externalOpponentName,
         opponentDeckId: sideB.opponentDeckId,
-        heroId: sideB.heroId,
-        archetypeLabel: sideB.archetypeLabel,
+        opponentMetaDeckEntryId: sideB.opponentMetaDeckEntryId,
+        opponentHeroId: sideB.opponentHeroId,
+        opponentArchetypeLabel: sideB.opponentArchetypeLabel,
         firstPlayerSide: input.firstPlayerSide,
         bestOf: input.bestOf,
         gamesWonA: input.result.gamesWonA,
@@ -228,13 +247,8 @@ export class GameLogsService {
     }
     if (input.playedAt !== undefined) data["playedAt"] = new Date(input.playedAt);
     if (input.sideA !== undefined) {
-      await this.assertTeamMember(
-        input.sideA.pilotUserId,
-        "Our pilot is not a member of this team.",
-      );
-      await this.assertTeamDeck(input.sideA.deckId, "Our deck does not belong to this team.");
-      data["pilotUserId"] = input.sideA.pilotUserId;
-      data["deckId"] = input.sideA.deckId;
+      const sideA = await this.resolveSideA(team.gameId, input.sideA);
+      Object.assign(data, sideA);
     }
     if (input.sideB !== undefined) {
       const sideB = await this.resolveSideB(team.gameId, input.sideB);
@@ -404,6 +418,107 @@ export class GameLogsService {
     }
   }
 
+  /**
+   * Validate + normalize a matchup subject (a team deck, a meta deck entry, or an
+   * archetype label with an optional hero) into its three neutral columns. The
+   * exactly-one shape is already enforced by the shared schema; this adds the
+   * cross-team/game FK checks (→ 422). Returns generic keys the callers map onto the
+   * self- or opponent-prefixed columns.
+   */
+  private async resolveMatchupSubject(
+    gameId: string,
+    subject: {
+      deckId?: string | undefined;
+      metaDeckEntryId?: string | undefined;
+      heroId?: string | undefined;
+      archetypeLabel?: string | undefined;
+    },
+    sideLabel: string,
+  ): Promise<{
+    deckId: string | null;
+    metaDeckEntryId: string | null;
+    heroId: string | null;
+    archetypeLabel: string | null;
+  }> {
+    const empty = { deckId: null, metaDeckEntryId: null, heroId: null, archetypeLabel: null };
+    if (subject.deckId !== undefined) {
+      await this.assertTeamDeck(
+        subject.deckId,
+        `The ${sideLabel} deck does not belong to this team.`,
+      );
+      return { ...empty, deckId: subject.deckId };
+    }
+    if (subject.metaDeckEntryId !== undefined) {
+      await this.assertTeamMetaDeckEntry(
+        subject.metaDeckEntryId,
+        `The ${sideLabel} meta deck entry does not belong to this team.`,
+      );
+      return { ...empty, metaDeckEntryId: subject.metaDeckEntryId };
+    }
+    if (subject.heroId !== undefined) {
+      await assertHeroInGame(this.scoped.db, gameId, subject.heroId);
+    }
+    return {
+      ...empty,
+      heroId: subject.heroId ?? null,
+      archetypeLabel: subject.archetypeLabel ?? null,
+    };
+  }
+
+  /**
+   * Validate + normalize our side into its persisted columns. Our side is a matchup
+   * subject (team deck / meta deck entry / hero + label) plus an optional pilot who is
+   * validated as a team member (a same-team deck/entry is required; cross-team → 422).
+   */
+  private async resolveSideA(
+    gameId: string,
+    sideA: CreateGameLogInput["sideA"],
+  ): Promise<ResolvedSideA> {
+    const subject = await this.resolveMatchupSubject(gameId, sideA, "our side's");
+    let pilotUserId: string | null = null;
+    if (sideA.pilotUserId !== undefined) {
+      await this.assertTeamMember(sideA.pilotUserId, "Our pilot is not a member of this team.");
+      pilotUserId = sideA.pilotUserId;
+    }
+    return {
+      pilotUserId,
+      deckId: subject.deckId,
+      selfMetaDeckEntryId: subject.metaDeckEntryId,
+      selfHeroId: subject.heroId,
+      selfArchetypeLabel: subject.archetypeLabel,
+    };
+  }
+
+  /**
+   * Validate + normalize the opponent side into its persisted columns. The opponent is
+   * a matchup subject (any team deck / meta deck entry / hero + label) plus an optional
+   * teammate pilot (a team member) and an optional free-text external opponent name,
+   * both independent of the subject. The exactly-one subject shape is enforced by the
+   * schema; this adds the cross-team/game FK checks (→ 422).
+   */
+  private async resolveSideB(
+    gameId: string,
+    sideB: CreateGameLogInput["sideB"],
+  ): Promise<ResolvedSideB> {
+    const subject = await this.resolveMatchupSubject(gameId, sideB, "opponent");
+    let opponentPilotUserId: string | null = null;
+    if (sideB.pilotUserId !== undefined) {
+      await this.assertTeamMember(
+        sideB.pilotUserId,
+        "The opponent teammate is not a member of this team.",
+      );
+      opponentPilotUserId = sideB.pilotUserId;
+    }
+    return {
+      opponentPilotUserId,
+      externalOpponentName: sideB.externalOpponentName ?? null,
+      opponentDeckId: subject.deckId,
+      opponentMetaDeckEntryId: subject.metaDeckEntryId,
+      opponentHeroId: subject.heroId,
+      opponentArchetypeLabel: subject.archetypeLabel,
+    };
+  }
+
   /** Reject a `deckId` that does not belong to the team (cross-team FK → 422). */
   private async assertTeamDeck(deckId: string, message: string): Promise<void> {
     const deck = await this.scoped.db.deck.findFirst({
@@ -417,62 +532,17 @@ export class GameLogsService {
     }
   }
 
-  /**
-   * Validate + normalize the opponent side into its persisted columns. A teammate
-   * opponent references a team member on a team deck; an external opponent is one of
-   * any team deck, a hero in the team's game, or a free-text archetype label. The
-   * exactly-one shape is already enforced by the schema; this adds the cross-team/game
-   * FK checks (→ 422).
-   */
-  private async resolveSideB(
-    gameId: string,
-    sideB: CreateGameLogInput["sideB"],
-  ): Promise<ResolvedSideB> {
-    const empty: ResolvedSideB = {
-      opponentPilotUserId: null,
-      externalOpponentName: null,
-      opponentDeckId: null,
-      heroId: null,
-      archetypeLabel: null,
-    };
-
-    if (sideB.pilotUserId !== undefined) {
-      await this.assertTeamMember(
-        sideB.pilotUserId,
-        "The opponent teammate is not a member of this team.",
-      );
-      await this.assertTeamDeck(
-        sideB.deckId as string,
-        "The opponent teammate's deck does not belong to this team.",
-      );
-      return {
-        ...empty,
-        opponentPilotUserId: sideB.pilotUserId,
-        opponentDeckId: sideB.deckId ?? null,
-      };
-    }
-
-    const externalOpponentName = sideB.externalOpponentName ?? null;
-    if (sideB.deckId !== undefined) {
-      const deck = await this.scoped.db.deck.findFirst({
-        where: { id: sideB.deckId },
-        select: { id: true },
+  /** Reject a meta-deck-entry id that does not belong to the team (cross-team FK → 422). */
+  private async assertTeamMetaDeckEntry(metaDeckEntryId: string, message: string): Promise<void> {
+    const entry = await this.scoped.db.metaDeckEntry.findFirst({
+      where: { id: metaDeckEntryId },
+      select: { id: true },
+    });
+    if (!entry) {
+      throw new UnprocessableEntityException({
+        error: { code: errorCode.domainRuleViolation, message },
       });
-      if (!deck) {
-        throw new UnprocessableEntityException({
-          error: {
-            code: errorCode.domainRuleViolation,
-            message: "The opponent deck does not belong to this team.",
-          },
-        });
-      }
-      return { ...empty, externalOpponentName, opponentDeckId: sideB.deckId };
     }
-    if (sideB.heroId !== undefined) {
-      await assertHeroInGame(this.scoped.db, gameId, sideB.heroId);
-      return { ...empty, externalOpponentName, heroId: sideB.heroId };
-    }
-    return { ...empty, externalOpponentName, archetypeLabel: sideB.archetypeLabel ?? null };
   }
 
   /** Validate captured cards belong to the team's game and map to GameLogCard rows. */
@@ -586,13 +656,20 @@ function toGameLogSummary(row: GameLogRow): GameLogSummary {
     formatId: row.formatId,
     metaId: row.metaId,
     playedAt: row.playedAt.toISOString(),
-    sideA: { pilotUserId: row.pilotUserId, deckId: row.deckId },
+    sideA: {
+      pilotUserId: row.pilotUserId,
+      deckId: row.deckId,
+      metaDeckEntryId: row.selfMetaDeckEntryId,
+      heroId: row.selfHeroId,
+      archetypeLabel: row.selfArchetypeLabel,
+    },
     sideB: {
       pilotUserId: row.opponentPilotUserId,
       externalOpponentName: row.externalOpponentName,
       deckId: row.opponentDeckId,
-      heroId: row.heroId,
-      archetypeLabel: row.archetypeLabel,
+      metaDeckEntryId: row.opponentMetaDeckEntryId,
+      heroId: row.opponentHeroId,
+      archetypeLabel: row.opponentArchetypeLabel,
     },
     firstPlayerSide: row.firstPlayerSide,
     bestOf: row.bestOf as BestOf,

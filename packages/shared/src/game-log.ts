@@ -192,65 +192,80 @@ export const playedAtSchema = z
     message: "A valid played-at date is required.",
   });
 
-// --- Sides ------------------------------------------------------------------
+// --- Sides (matchup subjects) -----------------------------------------------
 
-/** Our side: always a team-member pilot on one of the team's decks. */
-export const gameSideASchema = z.object({
-  pilotUserId: z.string().min(1, "A pilot is required for our side."),
-  deckId: z.string().min(1, "A deck is required for our side."),
-});
-export type GameSideA = z.infer<typeof gameSideASchema>;
+/**
+ * Both game-log sides are **matchup subjects**: exactly one of a team `deckId`, a
+ * `metaDeckEntryId`, or a free-text `archetypeLabel` (with an optional `heroId`
+ * qualifier). `deckId`/`metaDeckEntryId`/`archetypeLabel` are the three mutually
+ * exclusive forms; a `heroId` is only meaningful alongside an `archetypeLabel`.
+ */
+const matchupSubjectFormKeys = ["deckId", "metaDeckEntryId", "archetypeLabel"] as const;
 
-/** The opponent identifier forms (external opponent picks exactly one). */
-const opponentIdentifierKeys = ["deckId", "heroId", "archetypeLabel"] as const;
-
-function countOpponentIdentifiers(value: {
+function countSubjectForms(value: {
   deckId?: unknown;
-  heroId?: unknown;
+  metaDeckEntryId?: unknown;
   archetypeLabel?: unknown;
 }): number {
-  return opponentIdentifierKeys.filter((key) => value[key] !== undefined && value[key] !== null)
+  return matchupSubjectFormKeys.filter((key) => value[key] !== undefined && value[key] !== null)
     .length;
 }
 
+/** Add the exactly-one-subject + hero-needs-label issues to a side's refinement. */
+function refineMatchupSubject(
+  value: {
+    deckId?: string | undefined;
+    metaDeckEntryId?: string | undefined;
+    heroId?: string | undefined;
+    archetypeLabel?: string | undefined;
+  },
+  ctx: z.RefinementCtx,
+  sideLabel: string,
+): void {
+  if (countSubjectForms(value) !== 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `${sideLabel} must be exactly one of: a team deck, a meta deck entry, or an archetype label.`,
+    });
+  }
+  if (value.heroId && !value.archetypeLabel) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `A ${sideLabel.toLowerCase()} hero qualifier needs an archetype label.`,
+    });
+  }
+}
+
 /**
- * The opponent side: **either** a teammate (`pilotUserId` + a team `deckId`, no
- * other identifiers) **or** an external opponent (no `pilotUserId`) identified by
- * exactly one of a reference `deckId`, a `heroId`, or a free-text `archetypeLabel`,
- * with an optional `externalOpponentName`.
+ * Our side: a matchup subject (team deck / meta deck entry / archetype label + optional
+ * hero) plus an optional `pilotUserId` (who piloted our side).
+ */
+export const gameSideASchema = z
+  .object({
+    pilotUserId: z.string().min(1).optional(),
+    deckId: z.string().min(1).optional(),
+    metaDeckEntryId: z.string().min(1).optional(),
+    heroId: z.string().min(1).optional(),
+    archetypeLabel: archetypeLabelSchema.optional(),
+  })
+  .superRefine((value, ctx) => refineMatchupSubject(value, ctx, "Our side"));
+export type GameSideA = z.infer<typeof gameSideASchema>;
+
+/**
+ * The opponent side: a matchup subject (team deck / meta deck entry / archetype label
+ * + optional hero) plus an optional `opponentPilotUserId` (a teammate opponent) and an
+ * optional `externalOpponentName`, both independent of the subject.
  */
 export const gameSideBSchema = z
   .object({
     pilotUserId: z.string().min(1).optional(),
     externalOpponentName: z.string().trim().min(1).max(120).optional(),
     deckId: z.string().min(1).optional(),
+    metaDeckEntryId: z.string().min(1).optional(),
     heroId: z.string().min(1).optional(),
     archetypeLabel: archetypeLabelSchema.optional(),
   })
-  .superRefine((value, ctx) => {
-    const isTeammate = value.pilotUserId !== undefined && value.pilotUserId !== null;
-    if (isTeammate) {
-      if (!value.deckId) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "A teammate opponent needs a deck.",
-        });
-      }
-      if (value.externalOpponentName || value.heroId || value.archetypeLabel) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message:
-            "A teammate opponent cannot also be an external opponent, hero, or archetype label.",
-        });
-      }
-    } else if (countOpponentIdentifiers(value) !== 1) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "An external opponent must be identified by exactly one of: a reference deck, a hero, or an archetype label.",
-      });
-    }
-  });
+  .superRefine((value, ctx) => refineMatchupSubject(value, ctx, "The opponent"));
 export type GameSideB = z.infer<typeof gameSideBSchema>;
 
 // --- Create / update inputs -------------------------------------------------
@@ -340,11 +355,21 @@ export type GameLogListQuery = z.infer<typeof gameLogListQuerySchema>;
 
 // --- Response shapes --------------------------------------------------------
 
-/** The resolved opponent side as returned by the API (unused forms are null). */
+/** The resolved self side as returned by the API (unused subject forms are null). */
+export const gameSideAResponseSchema = z.object({
+  pilotUserId: z.string().nullable(),
+  deckId: z.string().nullable(),
+  metaDeckEntryId: z.string().nullable(),
+  heroId: z.string().nullable(),
+  archetypeLabel: z.string().nullable(),
+});
+
+/** The resolved opponent side as returned by the API (unused subject forms are null). */
 export const gameSideBResponseSchema = z.object({
   pilotUserId: z.string().nullable(),
   externalOpponentName: z.string().nullable(),
   deckId: z.string().nullable(),
+  metaDeckEntryId: z.string().nullable(),
   heroId: z.string().nullable(),
   archetypeLabel: z.string().nullable(),
 });
@@ -356,7 +381,7 @@ export const gameLogSummarySchema = z.object({
   formatId: z.string(),
   metaId: z.string().nullable(),
   playedAt: z.string(),
-  sideA: gameSideASchema,
+  sideA: gameSideAResponseSchema,
   sideB: gameSideBResponseSchema,
   firstPlayerSide: gameSideSchema,
   bestOf: bestOfSchema,

@@ -1,12 +1,15 @@
 import type { GameLogDetail } from "@teambrewer/shared";
 
-/** How the opponent is identified. Drives which opponent sub-control is shown. */
-export type OpponentKind = "hero" | "teammate" | "archetype" | "team_deck";
+/**
+ * How the opponent is identified. Drives which opponent sub-control is shown. The
+ * opponent is a matchup subject: an `archetype` (a free-text label with an optional
+ * hero qualifier), a `team_deck`, or a `teammate` (a pilot on a team deck).
+ */
+export type OpponentKind = "archetype" | "teammate" | "team_deck";
 
 export const OPPONENT_KIND_LABELS: Record<OpponentKind, string> = {
-  hero: "Opponent hero",
+  archetype: "Archetype",
   teammate: "Teammate",
-  archetype: "Archetype label",
   team_deck: "Team deck",
 };
 
@@ -32,7 +35,7 @@ export function opponentStateFromLog(gameLog: GameLogDetail | undefined): Oppone
     archetypeLabel: "",
     externalOpponentName: sideB?.externalOpponentName ?? "",
   };
-  if (!sideB) return { kind: "hero", ...base };
+  if (!sideB) return { kind: "archetype", ...base };
   if (sideB.pilotUserId) {
     return {
       kind: "teammate",
@@ -42,8 +45,12 @@ export function opponentStateFromLog(gameLog: GameLogDetail | undefined): Oppone
     };
   }
   if (sideB.deckId) return { kind: "team_deck", ...base, opponentDeckId: sideB.deckId };
-  if (sideB.heroId) return { kind: "hero", ...base, heroId: sideB.heroId };
-  if (sideB.archetypeLabel)
-    return { kind: "archetype", ...base, archetypeLabel: sideB.archetypeLabel };
-  return { kind: "hero", ...base };
+  // Hero + label (and, as a fallback, any meta-entry opponent the wizard can't yet
+  // pick) surface as the archetype subject.
+  return {
+    kind: "archetype",
+    ...base,
+    heroId: sideB.heroId ?? "",
+    archetypeLabel: sideB.archetypeLabel ?? "",
+  };
 }
