@@ -5,10 +5,10 @@ import { E2E_CARD_NAME, E2E_METALOOP_SETUP_TOKEN, E2E_PASSWORD, E2E_REFERENCE } 
 
 /**
  * The signature meta-pivot loop, end to end through the UI:
- *   create a meta (with a tiered deck entry) → create a deck auto-linked to that
- *   current meta → see per-deck readiness → "add a card idea" (a +card task) →
- *   advance the task and record its report → create an event linked to the meta,
- *   then RSVP.
+ *   create a meta for a format (with a tiered deck entry) → create a deck of that
+ *   format auto-linked to the format's most recent meta → see per-deck readiness →
+ *   "add a card idea" (a +card task) → advance the task and record its report →
+ *   create an event linked to the meta, then RSVP.
  */
 test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) => {
   const metaName = "E2E Summer Meta";
@@ -27,11 +27,12 @@ test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) 
   await expect(page.getByTestId("backup-codes")).toBeVisible();
   await page.getByRole("button", { name: "Continue to app" }).click();
 
-  // 2. Create a meta whose window spans today (so it is the "current" meta), then land
-  //    on its hub and add a Tier-1 (meta-defining) hero deck entry.
+  // 2. Create a meta for the Classic Constructed format, then land on its hub and add a
+  //    Tier-1 (meta-defining) hero deck entry.
   await page.getByRole("link", { name: "Metas", exact: true }).click();
   await page.getByRole("button", { name: "New meta" }).click();
   await page.locator("#meta-name").fill(metaName);
+  await page.locator("#meta-format").selectOption({ label: E2E_REFERENCE.formatName });
   await page.locator("#meta-start").fill("2020-01-01");
   await page.locator("#meta-end").fill("2035-12-31");
   await page.getByRole("button", { name: "Create meta" }).click();
@@ -46,7 +47,8 @@ test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) 
     page.getByRole("listitem").filter({ hasText: E2E_REFERENCE.heroName }).first(),
   ).toBeVisible();
 
-  // 3. Create a deck — the current meta is pre-linked on the form — and open it.
+  // 3. Create a deck of the same format — the format's most recent meta is pre-linked on
+  //    the form — and open it.
   await page.getByRole("link", { name: "Decks", exact: true }).click();
   await page.getByRole("button", { name: "New deck" }).click();
   await page.locator("#deck-name").fill(deckName);

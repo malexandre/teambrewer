@@ -177,11 +177,12 @@ describe("Riftbound cross-game acceptance (integration)", () => {
     expect(teammateDeck.status).toBe(201);
     const teammateDeckId = teammateDeck.body.id as string;
 
-    // Meta + a tiered deck entry (the field to beat, target = a Legend). The window
-    // spans the game's played-at date so the log auto-suggests this meta.
+    // Meta (for the team's Riftbound format) + a tiered deck entry (the field to beat,
+    // target = a Legend). The game log below links to this meta explicitly.
     const meta = await asRiftboundMember(
       request(app.getHttpServer()).post("/api/metas").send({
         name: "Riftbound Season 1",
+        formatId: riftboundFormatId,
         startDate: "2026-06-01",
         endDate: "2026-12-31",
       }),

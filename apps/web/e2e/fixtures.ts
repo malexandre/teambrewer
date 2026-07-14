@@ -90,9 +90,10 @@ export const E2E_GAMEPLAN_DECK_NAME = "E2E Game-Plan Deck";
 /**
  * A dedicated onboardable user for the core meta-pivot loop journey — independent of
  * the other specs (own single-use token). Belongs to alpha only. Drives the whole
- * primary loop through the UI: create a meta with a tiered deck entry → create a deck
- * (auto-linked to the current meta) → readiness → add a card idea (a `+card` task) →
- * advance the task with a report → create an event linked to the meta and RSVP.
+ * primary loop through the UI: create a meta (for a format) with a tiered deck entry →
+ * create a deck of that format (auto-linked to the format's most recent meta) →
+ * readiness → add a card idea (a `+card` task) → advance the task with a report →
+ * create an event linked to the meta and RSVP.
  */
 export const E2E_METALOOP_USER = {
   id: "e2e-user-metaloop",
