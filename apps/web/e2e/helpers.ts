@@ -19,10 +19,15 @@ export async function dragCardOnto(page: Page, handle: Locator, target: Locator)
   const endY = to.y + to.height / 2;
   await page.mouse.move(startX, startY);
   await page.mouse.down();
-  await page.mouse.move(startX + 12, startY + 12, { steps: 5 }); // clear the activation distance
-  await page.mouse.move(endX, endY, { steps: 12 });
-  await page.mouse.move(endX, endY + 4, { steps: 3 }); // settle over the target
+  await page.waitForTimeout(60);
+  await page.mouse.move(startX + 10, startY + 10, { steps: 6 }); // clear the activation distance
+  await page.waitForTimeout(60);
+  await page.mouse.move(endX, endY, { steps: 20 }); // travel to the target droppable
+  await page.waitForTimeout(60);
+  await page.mouse.move(endX, endY + 2, { steps: 3 }); // settle so collision resolves
+  await page.waitForTimeout(60);
   await page.mouse.up();
+  await page.waitForTimeout(60);
 }
 
 /**
