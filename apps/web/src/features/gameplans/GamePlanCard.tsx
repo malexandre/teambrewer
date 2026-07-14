@@ -1,4 +1,4 @@
-import type { MatchupGamePlan } from "@teambrewer/shared";
+import type { MatchupGamePlan, MetaDeckEntry } from "@teambrewer/shared";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
 
 import { GamePlanEditor } from "./GamePlanEditor";
+import { GamePlanMetaAssignment } from "./GamePlanMetaAssignment";
 import { useArchiveGamePlan } from "./use-game-plan-mutations";
 
 /**
@@ -21,11 +22,17 @@ export function GamePlanCard({
   deckId,
   formatId,
   gamePlan,
+  metaName,
+  metaDeckEntries,
 }: {
   teamId: string | undefined;
   deckId: string;
   formatId: string;
   gamePlan: MatchupGamePlan;
+  /** The current meta's name (for the assignment label), or null when none is current. */
+  metaName: string | null;
+  /** The current meta's tiered deck entries, offered as assignment targets. */
+  metaDeckEntries: MetaDeckEntry[];
 }) {
   const { activeTeam } = useActiveTeam();
   const isTeamAdmin = activeTeam?.role === "team_admin";
@@ -68,6 +75,13 @@ export function GamePlanCard({
       </div>
 
       <CardRichText teamId={teamId} body={gamePlan.body} className="whitespace-pre-wrap text-sm" />
+
+      <GamePlanMetaAssignment
+        teamId={teamId}
+        gamePlan={gamePlan}
+        metaName={metaName}
+        metaDeckEntries={metaDeckEntries}
+      />
 
       <p className="text-xs text-muted-foreground">Updated by {gamePlan.updatedBy.displayName}</p>
 

@@ -34,26 +34,58 @@ const CURRENT_USER = {
   discordUsername: null,
 };
 
-const plan = {
-  id: "gp1",
-  ourDeckId: "deck-1",
-  ourDeckName: "Aggro Dori",
-  formatId: "format-1",
-  opponentHeroId: "hero-1",
-  opponentArchetypeLabel: "Briar",
-  opponentRef: "hero:hero-1|label:briar",
-  opponentSnapshotLabel: "Briar",
-  body: "Race the clock; keep +[[card-1]] for the on-hit.",
-  metaDeckEntryIds: [],
-  updatedBy: { userId: "user-1", username: "alice", displayName: "Alice" },
+function planWith(metaDeckEntryIds: string[]) {
+  return {
+    id: "gp1",
+    ourDeckId: "deck-1",
+    ourDeckName: "Aggro Dori",
+    formatId: "format-1",
+    opponentHeroId: "hero-1",
+    opponentArchetypeLabel: "Briar",
+    opponentRef: "hero:hero-1|label:briar",
+    opponentSnapshotLabel: "Briar",
+    body: "Race the clock; keep +[[card-1]] for the on-hit.",
+    metaDeckEntryIds,
+    updatedBy: { userId: "user-1", username: "alice", displayName: "Alice" },
+    archivedAt: null,
+    createdAt: "2026-07-12T00:00:00.000Z",
+    updatedAt: "2026-07-12T00:00:00.000Z",
+  };
+}
+
+const currentMeta = {
+  id: "meta-1",
+  name: "Summer Season",
+  description: "",
+  startDate: "2026-06-01T00:00:00.000Z",
+  endDate: "2026-08-31T00:00:00.000Z",
   archivedAt: null,
-  createdAt: "2026-07-12T00:00:00.000Z",
-  updatedAt: "2026-07-12T00:00:00.000Z",
+  createdAt: "2026-06-01T00:00:00.000Z",
+  updatedAt: "2026-06-01T00:00:00.000Z",
 };
 
-function mockApi(): void {
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+const oscilioEntry = {
+  id: "entry-oscilio",
+  metaId: "meta-1",
+  tier: "meta_defining",
+  heroId: null,
+  label: "Oscilio",
+  opponentSnapshotLabel: "Oscilio",
+  notes: "",
+  createdAt: "2026-06-01T00:00:00.000Z",
+  updatedAt: "2026-06-01T00:00:00.000Z",
+};
+
+/**
+ * Wire the reads the section depends on. `patchedEntryIds` is stateful so a PATCH that
+ * replaces the plan's `metaDeckEntryIds` is reflected when the invalidated list refetches
+ * (matching the R-1 replace-the-whole-set contract). Captured PATCH bodies are returned.
+ */
+function mockApi(patchBodies: unknown[] = []): void {
+  let attachedEntryIds: string[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = typeof input === "string" ? input : input.toString();
+    const method = init?.method ?? "GET";
     if (url.endsWith("/api/me/teams")) return json({ data: [TEAM] });
     if (url.endsWith("/api/me")) return json(CURRENT_USER);
     if (url.includes("/api/heroes")) {
@@ -62,8 +94,16 @@ function mockApi(): void {
     if (url.includes("/api/cards/card-1")) {
       return json({ id: "card-1", name: "Command and Conquer", pitch: 1, imageUrl: null });
     }
+    if (url.includes("/api/metas/current")) return json(currentMeta);
+    if (url.includes("/api/metas/meta-1/deck-entries")) return json({ data: [oscilioEntry] });
+    if (url.match(/\/api\/game-plans\/gp1$/) && method === "PATCH") {
+      const body = init?.body ? JSON.parse(init.body as string) : {};
+      patchBodies.push(body);
+      attachedEntryIds = (body as { metaDeckEntryIds?: string[] }).metaDeckEntryIds ?? [];
+      return json(planWith(attachedEntryIds));
+    }
     if (url.includes("/api/game-plans")) {
-      return json({ data: [plan], nextCursor: null });
+      return json({ data: [planWith(attachedEntryIds)], nextCursor: null });
     }
     throw new Error(`Unexpected request: ${url}`);
   });
@@ -119,5 +159,38 @@ describe("GamePlanSection", () => {
 
     await screen.findByText("vs Briar");
     expect(screen.queryByRole("button", { name: "Write a game-plan" })).not.toBeInTheDocument();
+  });
+
+  it("assigns a plan to a current-meta deck entry and reflects it as attached", async () => {
+    const patchBodies: unknown[] = [];
+    mockApi(patchBodies);
+    renderSection(
+      <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
+    );
+
+    await screen.findByText("vs Briar");
+    // Oscilio is an unassigned current-meta entry, offered as an assign target.
+    await userEvent.click(await screen.findByRole("button", { name: "+ Oscilio" }));
+
+    // The PATCH replaces the whole set with the newly-attached id (R-1 contract).
+    expect(patchBodies).toContainEqual({ metaDeckEntryIds: ["entry-oscilio"] });
+    // After the invalidated list refetches, Oscilio shows as attached (with an unassign).
+    expect(await screen.findByRole("button", { name: "Unassign Oscilio" })).toBeInTheDocument();
+  });
+
+  it("unassigns a plan from a meta deck entry", async () => {
+    const patchBodies: unknown[] = [];
+    mockApi(patchBodies);
+    renderSection(
+      <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
+    );
+
+    await screen.findByText("vs Briar");
+    await userEvent.click(await screen.findByRole("button", { name: "+ Oscilio" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Unassign Oscilio" }));
+
+    // The last PATCH replaces the set with an empty array (detached).
+    expect(patchBodies.at(-1)).toEqual({ metaDeckEntryIds: [] });
+    expect(await screen.findByRole("button", { name: "+ Oscilio" })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useCurrentMeta, useMetaDeckEntries } from "@/features/metas/use-metas";
 
 import { GamePlanCard } from "./GamePlanCard";
 import { GamePlanEditor } from "./GamePlanEditor";
@@ -25,9 +26,13 @@ export function GamePlanSection({
   deckArchived: boolean;
 }) {
   const { data, isPending } = useGamePlans(teamId, { ourDeckId: deckId });
+  const { data: currentMeta } = useCurrentMeta(teamId);
+  const { data: metaDeckEntryData } = useMetaDeckEntries(teamId, currentMeta?.id);
   const [writing, setWriting] = useState(false);
 
   const gamePlans = data?.data ?? [];
+  const metaDeckEntries = metaDeckEntryData?.data ?? [];
+  const metaName = currentMeta?.name ?? null;
 
   return (
     <section className="flex flex-col gap-3" aria-label="Matchup game-plans">
@@ -62,6 +67,8 @@ export function GamePlanSection({
               deckId={deckId}
               formatId={formatId}
               gamePlan={gamePlan}
+              metaName={metaName}
+              metaDeckEntries={metaDeckEntries}
             />
           ))}
         </div>
