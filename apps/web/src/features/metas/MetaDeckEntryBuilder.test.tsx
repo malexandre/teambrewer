@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { MetaDeckEntry } from "@teambrewer/shared";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -135,8 +135,9 @@ describe("MetaDeckEntryBuilder", () => {
     );
     expect(screen.getByRole("heading", { name: "Meta-defining" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /fringe/i })).toBeInTheDocument();
+    // Each entry renders as a clickable square; details/notes live behind it.
+    expect(screen.getByRole("button", { name: "Details for Aggro Red" })).toBeInTheDocument();
     expect(screen.getByText("Aggro Red")).toBeInTheDocument();
-    expect(screen.getByText("The deck to beat.")).toBeInTheDocument();
   });
 
   it("requires at least a hero or a label before adding", async () => {
@@ -191,7 +192,7 @@ describe("MetaDeckEntryBuilder", () => {
     });
   });
 
-  it("shows the hero as the heading with the archetype label as a secondary detail", async () => {
+  it("renders each entry as a hero square with the archetype overlaid", async () => {
     const heroQualified: MetaDeckEntry[] = [
       {
         id: "entry-oscilio",
@@ -210,13 +211,27 @@ describe("MetaDeckEntryBuilder", () => {
       <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={heroQualified} canEdit />,
     );
 
-    // The resolved hero name leads (bold heading, a <p> as opposed to the
-    // "Dorinthea" <option> in the add form's hero picker); the archetype label
-    // is the smaller, muted secondary line.
-    const heroHeading = await screen.findByText("Dorinthea", { selector: "p" });
-    expect(heroHeading).toHaveClass("font-medium");
-    const archetypeDetail = screen.getByText("GIAF");
-    expect(archetypeDetail).toHaveClass("text-muted-foreground");
+    // The hero (mock has no image) fills the square as a name tile; the archetype
+    // label is overlaid. Both are <span>s, distinct from the "Dorinthea" <option>
+    // in the add form's hero picker. The square is a single clickable button, with
+    // pencil/cross edit controls exposed by aria-label.
+    expect(await screen.findByText("Dorinthea", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("GIAF", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Details for Dorinthea" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit Dorinthea" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Dorinthea" })).toBeInTheDocument();
+  });
+
+  it("opens the detail dialog with the entry's notes when its square is clicked", async () => {
+    mockApi();
+    const user = userEvent.setup();
+    renderWithClient(
+      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={entries} canEdit />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Details for Aggro Red" }));
+    const dialog = await screen.findByRole("dialog", { name: "Aggro Red" });
+    expect(within(dialog).getByText("The deck to beat.")).toBeInTheDocument();
   });
 
   it("does not block a second entry sharing a hero, and surfaces the server duplicate error", async () => {
@@ -268,7 +283,7 @@ describe("MetaDeckEntryBuilder", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /edit aggro red/i }));
-    const notes = screen.getByLabelText(/notes for aggro red/i);
+    const notes = screen.getByLabelText("Details");
     await user.clear(notes);
     await user.type(notes, "Now the top deck.");
     await user.click(screen.getByRole("button", { name: /^save$/i }));
