@@ -1,6 +1,7 @@
 import {
   type CreateDeckInput,
   type DeckDetail,
+  type DeckMetaEntryLink,
   type DeckVisibility,
   type UpdateDeckInput,
 } from "@teambrewer/shared";
@@ -10,8 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
-import { formatMetaDate } from "@/features/metas/meta-display";
-import { mostRecentMetaForFormat, useMetas } from "@/features/metas/use-metas";
+import { formatMetaDate, SELECT_CLASS } from "@/features/metas/meta-display";
+import {
+  mostRecentMetaForFormat,
+  useMetaDeckEntriesByMeta,
+  useMetas,
+} from "@/features/metas/use-metas";
 import { ApiError } from "@/lib/api-client";
 
 import { DeckVisibilityControl } from "./DeckVisibilityControl";
@@ -78,6 +83,22 @@ export function DeckForm({
   }, [deck, metaListData, formatId]);
   const selectedMetaIds = metaIds ?? [];
 
+  // Per-meta entry link: within a linked meta, which of its deck entries this deck is
+  // the team's build of. Seeded from the deck's stored links on edit.
+  const [entryByMeta, setEntryByMeta] = useState<Record<string, string>>(() =>
+    deck
+      ? Object.fromEntries(
+          deck.linkedMetas
+            .filter((meta) => meta.metaDeckEntryId)
+            .map((meta) => [meta.id, meta.metaDeckEntryId as string]),
+        )
+      : {},
+  );
+  const entriesById = useMetaDeckEntriesByMeta(teamId, selectedMetaIds);
+  function entriesForMeta(metaId: string) {
+    return [...entriesById.values()].filter((entry) => entry.metaId === metaId);
+  }
+
   function toggleMeta(metaId: string) {
     metaSelectionCustomizedRef.current = true;
     setMetaIds((current) => {
@@ -86,6 +107,25 @@ export function DeckForm({
         ? selected.filter((id) => id !== metaId)
         : [...selected, metaId];
     });
+  }
+
+  function chooseEntry(metaId: string, entryId: string): void {
+    setEntryByMeta((current) => {
+      const next = { ...current };
+      if (entryId) {
+        next[metaId] = entryId;
+      } else {
+        delete next[metaId];
+      }
+      return next;
+    });
+  }
+
+  /** The entry links for the metas still selected (dropped entries for unselected metas). */
+  function buildMetaEntryLinks(): DeckMetaEntryLink[] {
+    return selectedMetaIds.flatMap((metaId) =>
+      entryByMeta[metaId] ? [{ metaId, metaDeckEntryId: entryByMeta[metaId] }] : [],
+    );
   }
 
   const mutation = isEditing ? updateDeck : createDeck;
@@ -131,6 +171,7 @@ export function DeckForm({
         visibility,
         tags: parseTags(tags),
         metaIds: selectedMetaIds,
+        metaEntryLinks: buildMetaEntryLinks(),
       };
       updateDeck.mutate(input, { onSuccess: onSaved });
       return;
@@ -148,6 +189,7 @@ export function DeckForm({
       // Only send an explicit set once initialized; otherwise the server links the most
       // recent meta of the deck's format by default.
       ...(metaIds !== undefined ? { metaIds } : {}),
+      ...(buildMetaEntryLinks().length > 0 ? { metaEntryLinks: buildMetaEntryLinks() } : {}),
     };
     createDeck.mutate(input, { onSuccess: onSaved });
   }
@@ -219,21 +261,43 @@ export function DeckForm({
           </p>
         ) : (
           <ul className="flex flex-col gap-1">
-            {metas.map((meta) => (
-              <li key={meta.id}>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={selectedMetaIds.includes(meta.id)}
-                    onChange={() => toggleMeta(meta.id)}
-                  />
-                  <span>{meta.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatMetaDate(meta.startDate)} – {formatMetaDate(meta.endDate)}
-                  </span>
-                </label>
-              </li>
-            ))}
+            {metas.map((meta) => {
+              const isSelected = selectedMetaIds.includes(meta.id);
+              const metaEntries = entriesForMeta(meta.id);
+              return (
+                <li key={meta.id} className="flex flex-col gap-1">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleMeta(meta.id)}
+                    />
+                    <span>{meta.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatMetaDate(meta.startDate)} – {formatMetaDate(meta.endDate)}
+                    </span>
+                  </label>
+                  {isSelected && metaEntries.length > 0 ? (
+                    <label className="ml-6 flex items-center gap-2 text-xs text-muted-foreground">
+                      This deck is
+                      <select
+                        className={SELECT_CLASS}
+                        aria-label={`This deck's meta deck in ${meta.name}`}
+                        value={entryByMeta[meta.id] ?? ""}
+                        onChange={(event) => chooseEntry(meta.id, event.target.value)}
+                      >
+                        <option value="">— not a listed meta deck —</option>
+                        {metaEntries.map((entry) => (
+                          <option key={entry.id} value={entry.id}>
+                            {entry.opponentSnapshotLabel}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </fieldset>

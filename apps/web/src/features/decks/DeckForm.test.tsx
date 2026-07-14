@@ -157,4 +157,83 @@ describe("DeckForm", () => {
     expect(created).toHaveLength(1);
     expect(created[0]).toMatchObject({ name: "Aggro Dori", formatId: "fmt-cc" });
   });
+
+  it("links a per-meta deck entry and submits it as metaEntryLinks", async () => {
+    const created: Array<Record<string, unknown>> = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      const method = init?.method ?? "GET";
+      if (url.includes("/api/game-config"))
+        return json({ gameId: "flesh-and-blood", identityLabel: "Hero", defaultBestOf: 1 });
+      if (url.includes("/api/formats"))
+        return json({
+          data: [
+            {
+              id: "fmt-cc",
+              gameId: "flesh-and-blood",
+              key: "cc",
+              name: "Classic Constructed",
+              isConstructed: true,
+            },
+          ],
+        });
+      if (url.includes("/api/heroes")) return json({ data: [] });
+      if (url.includes("/deck-entries"))
+        return json({
+          data: [
+            {
+              id: "entry-1",
+              metaId: "meta-1",
+              tier: "meta_defining",
+              heroId: null,
+              label: "Dash IO",
+              opponentSnapshotLabel: "Dash IO",
+              notes: "",
+              createdAt: "2026-07-01T00:00:00.000Z",
+              updatedAt: "2026-07-01T00:00:00.000Z",
+            },
+          ],
+        });
+      if (url.includes("/api/metas"))
+        return json({
+          data: [
+            {
+              id: "meta-1",
+              teamId: "team-1",
+              formatId: "fmt-cc",
+              formatName: "Classic Constructed",
+              name: "Summer",
+              startDate: "2026-07-01T00:00:00.000Z",
+              endDate: "2026-08-01T00:00:00.000Z",
+              description: "",
+              archivedAt: null,
+              createdAt: "2026-07-01T00:00:00.000Z",
+              updatedAt: "2026-07-01T00:00:00.000Z",
+            },
+          ],
+          nextCursor: null,
+        });
+      if (url.includes("/api/decks/recognize-url") && method === "POST")
+        return json({ recognized: { provider: "fabrary", externalId: "abc" } });
+      if (url.includes("/api/decks") && method === "POST") {
+        created.push(init?.body ? JSON.parse(init.body as string) : {});
+        return json({ id: "deck-1", linkedMetas: [] }, 201);
+      }
+      return json({}, 404);
+    });
+    const user = userEvent.setup();
+    renderWithClient(<DeckForm teamId="team-1" onSaved={vi.fn()} />);
+
+    await user.type(screen.getByLabelText(/name/i), "Our Dash IO");
+    await user.selectOptions(await screen.findByRole("combobox", { name: /format/i }), "fmt-cc");
+    await user.type(screen.getByLabelText(/external deck link/i), "https://fabrary.net/decks/abc");
+    // The meta is auto-selected (most recent of the format); its entry select appears.
+    await user.selectOptions(
+      await screen.findByRole("combobox", { name: /this deck's meta deck in summer/i }),
+      "entry-1",
+    );
+    await user.click(screen.getByRole("button", { name: /create deck/i }));
+
+    expect(created[0]?.metaEntryLinks).toEqual([{ metaId: "meta-1", metaDeckEntryId: "entry-1" }]);
+  });
 });

@@ -111,11 +111,17 @@ export function MatchupSubjectPicker({
           <option value="">Select a deck…</option>
           {deckOptions.length > 0 ? (
             <optgroup label="Team decks">
-              {deckOptions.map((deck) => (
-                <option key={deck.id} value={`deck:${deck.id}`}>
-                  {deck.name}
-                </option>
-              ))}
+              {deckOptions.map((deck) => {
+                // If this team deck is the team's build of a meta deck in the game's
+                // meta, mark it so it's easy to identify (per-meta link).
+                const linked = deck.linkedMetaEntries.find((link) => link.metaId === metaId);
+                return (
+                  <option key={deck.id} value={`deck:${deck.id}`}>
+                    {deck.name}
+                    {linked ? ` — ≈ ${linked.label} (meta)` : ""}
+                  </option>
+                );
+              })}
             </optgroup>
           ) : null}
           {metaEntries.length > 0 ? (

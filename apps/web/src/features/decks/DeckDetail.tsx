@@ -102,6 +102,9 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
               {deck.linkedMetas.map((meta) => (
                 <li key={meta.id} className="rounded-md bg-muted px-2 py-0.5 text-xs">
                   {meta.name}
+                  {meta.metaDeckEntryLabel ? (
+                    <span className="text-muted-foreground"> · ≈ {meta.metaDeckEntryLabel}</span>
+                  ) : null}
                 </li>
               ))}
             </ul>
