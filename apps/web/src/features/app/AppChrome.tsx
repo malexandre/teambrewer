@@ -415,7 +415,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
           </Link>
         </header>
         {showAdminSubMenu ? <SubMenu items={ADMIN_SUBNAV} pathname={pathname} /> : null}
-        <main className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-6">{children}</main>
+        <main className="mx-auto w-full max-w-[1200px] flex-1 p-4 md:p-6">{children}</main>
       </div>
 
       {/* Floating notification button (top-right of the viewport). */}
