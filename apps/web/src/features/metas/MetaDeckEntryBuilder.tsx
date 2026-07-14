@@ -152,7 +152,7 @@ export function MetaDeckEntryBuilder({
                     const hero = heroFor(entry);
                     const displayLabel = displayLabelFor(entry);
                     return (
-                      <li key={entry.id} className="relative">
+                      <li key={entry.id} className="group relative">
                         <button
                           type="button"
                           onClick={() => setDetailEntryId(entry.id)}
@@ -177,12 +177,12 @@ export function MetaDeckEntryBuilder({
                           ) : null}
                         </button>
                         {canEdit ? (
-                          <div className="absolute right-1 top-1 flex gap-1">
+                          <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
                             <button
                               type="button"
                               aria-label={`Edit ${displayLabel}`}
                               onClick={() => startEditing(entry)}
-                              className="rounded bg-black/22 p-1 text-white shadow-sm transition hover:bg-black/50"
+                              className="rounded bg-black/30 p-1 text-white shadow-sm transition hover:bg-black/60"
                             >
                               <Pencil className="h-3.5 w-3.5" aria-hidden />
                             </button>
@@ -191,7 +191,7 @@ export function MetaDeckEntryBuilder({
                               aria-label={`Remove ${displayLabel}`}
                               disabled={removeEntry.isPending}
                               onClick={() => removeEntry.mutate(entry.id)}
-                              className="rounded bg-black/22 p-1 text-white shadow-sm transition hover:bg-destructive"
+                              className="rounded bg-black/30 p-1 text-white shadow-sm transition hover:bg-destructive"
                             >
                               <X className="h-3.5 w-3.5" aria-hidden />
                             </button>
