@@ -18,7 +18,7 @@ import { MetasService } from "./metas.service.js";
   controllers: [MetasController],
   providers: [MetasService],
   // Exported so later workstreams (e.g. decks meta-readiness) can compose the
-  // current-meta resolution + deck-entry reads.
+  // meta + deck-entry reads.
   exports: [MetasService],
 })
 export class MetasModule {}

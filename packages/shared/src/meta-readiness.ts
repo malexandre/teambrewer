@@ -15,7 +15,7 @@ import { metaTierSchema } from "./meta-deck-entries.js";
  * are validated same-team server-side.
  */
 
-/** Query for `GET /api/decks/:deckId/meta-readiness`; defaults to the current meta. */
+/** Query for `GET /api/decks/:deckId/meta-readiness`; defaults to the most recent meta of the deck's format. */
 export const deckMetaReadinessQuerySchema = z.object({
   metaId: z.string().min(1).optional(),
 });
@@ -39,9 +39,9 @@ export const deckMetaReadinessRowSchema = z.object({
 export type DeckMetaReadinessRow = z.infer<typeof deckMetaReadinessRowSchema>;
 
 /**
- * `GET /api/decks/:deckId/meta-readiness` response. When no meta is current and none
- * was requested, `metaId`/`metaName` are empty and `rows` is empty (a graceful
- * no-current-meta state the UI renders without erroring).
+ * `GET /api/decks/:deckId/meta-readiness` response. When the deck's format has no meta
+ * and none was requested, `metaId`/`metaName` are empty and `rows` is empty (a graceful
+ * no-meta state the UI renders without erroring).
  */
 export const deckMetaReadinessResponseSchema = z.object({
   deckId: z.string(),

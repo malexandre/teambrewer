@@ -19,7 +19,6 @@ import { CollaborationActivityService } from "../collaboration/activity.service.
 import { decodeKeysetCursor, encodeKeysetCursor } from "../common/keyset-cursor.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
-import { resolveCurrentMeta } from "./current-meta.js";
 
 /**
  * The persisted meta shape this service maps to the shared contracts, joined with its
@@ -114,25 +113,6 @@ export class MetasService {
       data: page.map(toMetaSummary),
       nextCursor: hasMore && last ? encodeKeysetCursor(last.startDate, last.id) : null,
     };
-  }
-
-  /**
-   * The current meta — the non-archived meta whose window contains today (latest
-   * `startDate` wins on overlap). 404 when none is current, so the frontend renders
-   * an empty state without special-casing a `null` body.
-   */
-  async getCurrentMeta(now: Date = new Date()): Promise<MetaDetail> {
-    const rows = (await this.scoped.db.meta.findMany({
-      where: { archivedAt: null },
-      include: META_INCLUDE,
-    })) as MetaRow[];
-    const current = resolveCurrentMeta(rows, now);
-    if (!current) {
-      throw new NotFoundException({
-        error: { code: errorCode.notFound, message: "No meta is current right now." },
-      });
-    }
-    return toMetaDetail(current);
   }
 
   /** A single meta with its full detail (404 when missing/cross-tenant/archived). */

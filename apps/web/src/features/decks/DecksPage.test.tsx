@@ -39,9 +39,6 @@ function mockApi(): void {
     }
     if (url.includes("/api/formats")) return json({ data: [] });
     if (url.includes("/api/heroes")) return json({ data: [] });
-    if (url.includes("/api/metas/current")) {
-      return json({ error: { code: "NOT_FOUND", message: "none" } }, 404);
-    }
     if (url.includes("/api/metas")) return json({ data: [], nextCursor: null });
     if (url.includes("/api/decks")) return json({ data: [], nextCursor: null });
     return json({}, 404);

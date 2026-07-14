@@ -26,7 +26,7 @@ import {
 import { CollaborationActivityService } from "../collaboration/activity.service.js";
 import { decodeKeysetCursor, encodeKeysetCursor } from "../common/keyset-cursor.js";
 import { assertFormatInGame, assertHeroInGame } from "../common/reference-data-guards.js";
-import { resolveCurrentMeta } from "../metas/current-meta.js";
+import { findMostRecentMetaForFormat } from "../metas/most-recent-meta.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 import { canModifyGameLog } from "./game-log-authorization.js";
@@ -171,7 +171,7 @@ export class GameLogsService {
     await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
     this.assertResultConsistent(input.bestOf, input.result);
     const playedAt = input.playedAt ? new Date(input.playedAt) : new Date();
-    const metaId = await this.resolveMetaId(input.metaId, playedAt);
+    const metaId = await this.resolveMetaId(input.metaId, input.formatId);
     const sideA = await this.resolveSideA(team.gameId, input.sideA);
     const sideB = await this.resolveSideB(team.gameId, input.sideB);
     const capturedCards = await this.resolveCapturedCards(
@@ -372,12 +372,12 @@ export class GameLogsService {
   /**
    * Resolve the meta a created log counts toward. When the client supplies a `metaId`
    * it is honored (a supplied id is validated same-team; `null` records no meta). When
-   * omitted (`undefined`), the meta whose window contains `playedAt` is auto-suggested
-   * via the shared current-meta rule (latest `startDate` wins on overlap; null if none).
+   * omitted (`undefined`), the most recent meta of the log's own format is auto-suggested
+   * (greatest `startDate`, non-archived; null when that format has no meta).
    */
   private async resolveMetaId(
     suppliedMetaId: string | null | undefined,
-    playedAt: Date,
+    formatId: string,
   ): Promise<string | null> {
     if (suppliedMetaId === null) {
       return null;
@@ -386,12 +386,8 @@ export class GameLogsService {
       await this.assertMetaInTeam(suppliedMetaId);
       return suppliedMetaId;
     }
-    // Auto-suggest from the (team-scoped, non-archived) metas as of playedAt.
-    const candidates = (await this.scoped.db.meta.findMany({
-      where: { archivedAt: null },
-      select: { id: true, startDate: true, endDate: true, createdAt: true },
-    })) as { id: string; startDate: Date; endDate: Date; createdAt: Date }[];
-    return resolveCurrentMeta(candidates, playedAt)?.id ?? null;
+    const mostRecent = await findMostRecentMetaForFormat(this.scoped.db, formatId);
+    return mostRecent?.id ?? null;
   }
 
   /** Reject a `metaId` that does not belong to the team (cross-team FK → 404). */

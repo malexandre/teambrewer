@@ -68,13 +68,11 @@ export const queryKeys = {
   /**
    * Metas & their tiered deck lists (meta-pivot redesign), keyed by the active team
    * first so switching teams yields a different cache entry and one team's metas
-   * never bleed into another's. `filters` keys each list variant; `currentMeta` is
-   * its own key (distinct from a meta whose id is "current"); the deck-entry list is
-   * keyed under its meta.
+   * never bleed into another's. `filters` keys each list variant; the deck-entry list
+   * is keyed under its meta.
    */
   metas: (teamId: string, filters: Record<string, string>) => [teamId, "metas", filters] as const,
   meta: (teamId: string, metaId: string) => [teamId, "meta", metaId] as const,
-  currentMeta: (teamId: string) => [teamId, "current-meta"] as const,
   metaDeckEntries: (teamId: string, metaId: string) =>
     [teamId, "meta", metaId, "deck-entries"] as const,
 

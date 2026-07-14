@@ -93,9 +93,6 @@ function mockApi(options: { onCreate?: (body: unknown) => void } = {}) {
         ],
       });
     }
-    if (url.includes("/api/metas/current")) {
-      return json({}, 404);
-    }
     if (url.includes("/api/metas")) {
       return json({ data: [], nextCursor: null });
     }

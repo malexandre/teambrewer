@@ -62,12 +62,9 @@ const spring = {
   updatedAt: "2026-03-01T00:00:00.000Z",
 };
 
-function mockMetas(options: { currentIsSummer: boolean }) {
+function mockMetas() {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = typeof input === "string" ? input : input.toString();
-    if (url.includes("/api/metas/current")) {
-      return options.currentIsSummer ? json({ ...summer, description: "" }) : json({}, 404);
-    }
     if (url.includes("/api/metas")) {
       return json({ data: [summer, spring], nextCursor: null });
     }
@@ -80,22 +77,14 @@ describe("MetaList", () => {
     vi.restoreAllMocks();
   });
 
-  it("excludes the current meta and heads the section 'Other metas'", async () => {
-    mockMetas({ currentIsSummer: true });
-    renderInApp(<MetaList teamId="team-1" />);
-
-    expect(await screen.findByRole("heading", { name: /other metas/i })).toBeInTheDocument();
-    // The current meta (Summer) is surfaced by the page's callout, not this list.
-    expect(await screen.findByText("Spring Season")).toBeInTheDocument();
-    expect(screen.queryByText("Summer Season")).not.toBeInTheDocument();
-  });
-
-  it("lists every meta under 'All metas' when none is current", async () => {
-    mockMetas({ currentIsSummer: false });
+  it("lists every meta newest-first under 'All metas', showing each format", async () => {
+    mockMetas();
     renderInApp(<MetaList teamId="team-1" />);
 
     expect(await screen.findByRole("heading", { name: /all metas/i })).toBeInTheDocument();
     expect(await screen.findByText("Summer Season")).toBeInTheDocument();
     expect(await screen.findByText("Spring Season")).toBeInTheDocument();
+    // Each row shows the meta's format name.
+    expect(screen.getAllByText(/Classic Constructed/).length).toBeGreaterThan(0);
   });
 });

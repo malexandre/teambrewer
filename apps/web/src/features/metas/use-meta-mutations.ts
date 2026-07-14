@@ -110,7 +110,6 @@ function invalidateMetaLists(
 ): void {
   if (!teamId) return;
   void queryClient.invalidateQueries({ queryKey: [teamId, "metas"] });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.currentMeta(teamId) });
 }
 
 function invalidateDeckEntries(

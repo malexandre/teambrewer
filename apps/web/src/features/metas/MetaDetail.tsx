@@ -19,15 +19,7 @@ import { useMetaDeckEntries } from "./use-metas";
  * tiered opponent-deck list. Permissions are a shared team board — any member may
  * edit the meta, its deck list, and archive it. Editing opens the form in a modal.
  */
-export function MetaDetail({
-  teamId,
-  meta,
-  isCurrent,
-}: {
-  teamId: string | undefined;
-  meta: MetaDetailType;
-  isCurrent: boolean;
-}) {
+export function MetaDetail({ teamId, meta }: { teamId: string | undefined; meta: MetaDetailType }) {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
 
@@ -46,13 +38,11 @@ export function MetaDetail({
         title={meta.name}
         description={
           <div className="flex flex-wrap items-center gap-2">
-            {isCurrent ? (
-              <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-                Current
-              </span>
-            ) : null}
+            <span className="rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+              {meta.formatName}
+            </span>
             <span>
-              {meta.formatName} · {formatMetaDate(meta.startDate)} → {formatMetaDate(meta.endDate)}
+              {formatMetaDate(meta.startDate)} → {formatMetaDate(meta.endDate)}
             </span>
           </div>
         }

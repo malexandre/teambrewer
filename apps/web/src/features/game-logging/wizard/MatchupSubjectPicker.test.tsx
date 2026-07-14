@@ -100,7 +100,7 @@ function Harness({ side }: { side: "self" | "opponent" }) {
         onChange={setState}
         deckOptions={DECKS}
         memberOptions={MEMBERS}
-        currentMetaId="meta-1"
+        metaId="meta-1"
       />
       <output data-testid="emitted">
         {JSON.stringify(side === "self" ? buildSideAInput(state) : buildSideBInput(state))}

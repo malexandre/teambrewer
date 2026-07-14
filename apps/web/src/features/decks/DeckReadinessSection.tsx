@@ -59,10 +59,10 @@ function ReadinessRow({ row }: { row: DeckMetaReadinessRow }) {
 
 /**
  * The per-deck **Readiness** section on the deck detail: how ready this deck is against
- * each deck in the current meta (confidence-weighted win rate + raw sample + a thin-data
- * badge, and whether a game-plan exists). Reuses the kept matchup math server-side; the
- * "current meta" defaults on the server. Empty / no-current-meta states are handled
- * gracefully.
+ * each deck in the meta (confidence-weighted win rate + raw sample + a thin-data badge,
+ * and whether a game-plan exists). Reuses the kept matchup math server-side; the meta
+ * defaults to the most recent one of the deck's format on the server. Empty / no-meta
+ * states are handled gracefully.
  */
 export function DeckReadinessSection({
   teamId,

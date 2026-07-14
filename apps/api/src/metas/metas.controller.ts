@@ -32,8 +32,8 @@ import { MetasService } from "./metas.service.js";
  * Team-scoped meta + meta-deck-entry endpoints (docs/features/metas.md). Every
  * route is guarded by {@link TeamContextGuard}; the verified team comes from
  * `@CurrentTeam()`, never the body. Request bodies/queries are validated at the
- * boundary with the shared Zod schemas. `GET /metas/current` is declared before
- * the `:metaId` route so "current" is matched as the dedicated resolver, not an id.
+ * boundary with the shared Zod schemas. There is no "current meta" resolver — the
+ * list is newest-first and per-format defaults are resolved where they are needed.
  */
 @Controller("metas")
 @UseGuards(TeamContextGuard)
@@ -43,11 +43,6 @@ export class MetasController {
   @Get()
   list(@Query() query: unknown): Promise<MetaListResponse> {
     return this.metas.list(metaListQuerySchema.parse(query));
-  }
-
-  @Get("current")
-  getCurrentMeta(): Promise<MetaDetail> {
-    return this.metas.getCurrentMeta();
   }
 
   @Post()

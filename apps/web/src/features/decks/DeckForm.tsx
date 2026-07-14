@@ -4,14 +4,14 @@ import {
   type DeckVisibility,
   type UpdateDeckInput,
 } from "@teambrewer/shared";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { formatMetaDate } from "@/features/metas/meta-display";
-import { useCurrentMeta, useMetas } from "@/features/metas/use-metas";
+import { mostRecentMetaForFormat, useMetas } from "@/features/metas/use-metas";
 import { ApiError } from "@/lib/api-client";
 
 import { DeckVisibilityControl } from "./DeckVisibilityControl";
@@ -60,26 +60,26 @@ export function DeckForm({
   const updateDeck = useUpdateDeck(teamId, deck?.id ?? "");
   const recognize = useRecognizeDeckUrl(teamId);
 
-  // Meta linking: on edit, seed the deck's current links; on create, default-select
-  // the current meta once it resolves (undefined = not yet initialized, so submitting
-  // before metas load omits `metaIds` and lets the server apply the current-meta default).
+  // Meta linking: on edit, seed the deck's current links; on create, default-select the
+  // most recent meta of the currently-selected format (mirroring the server's per-format
+  // default), re-applied until the member customizes the selection. Submitting before a
+  // format is chosen leaves nothing linked (the server links nothing for a format with
+  // no meta).
   const { data: metaListData } = useMetas(teamId);
-  const { data: currentMeta, isPending: currentMetaPending } = useCurrentMeta(teamId);
+  const metas = metaListData?.data ?? [];
   const [metaIds, setMetaIds] = useState<string[] | undefined>(
     deck ? deck.linkedMetas.map((meta) => meta.id) : undefined,
   );
+  const metaSelectionCustomizedRef = useRef(false);
   useEffect(() => {
-    if (deck || metaIds !== undefined) return;
-    if (currentMeta) {
-      setMetaIds([currentMeta.id]);
-    } else if (!currentMetaPending) {
-      setMetaIds([]);
-    }
-  }, [deck, metaIds, currentMeta, currentMetaPending]);
+    if (deck || metaSelectionCustomizedRef.current) return;
+    const recent = mostRecentMetaForFormat(metaListData?.data ?? [], formatId);
+    setMetaIds(recent ? [recent.id] : []);
+  }, [deck, metaListData, formatId]);
   const selectedMetaIds = metaIds ?? [];
-  const metas = metaListData?.data ?? [];
 
   function toggleMeta(metaId: string) {
+    metaSelectionCustomizedRef.current = true;
     setMetaIds((current) => {
       const selected = current ?? [];
       return selected.includes(metaId)
@@ -145,8 +145,8 @@ export function DeckForm({
       tags: parseTags(tags),
       // Notes start empty and are written later via the deck page's +card editor.
       notes: "",
-      // Only send an explicit set once initialized; otherwise the server links the
-      // current meta by default.
+      // Only send an explicit set once initialized; otherwise the server links the most
+      // recent meta of the deck's format by default.
       ...(metaIds !== undefined ? { metaIds } : {}),
     };
     createDeck.mutate(input, { onSuccess: onSaved });

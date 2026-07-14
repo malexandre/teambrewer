@@ -34,7 +34,7 @@ import { decodeKeysetCursor, encodeKeysetCursor } from "../common/keyset-cursor.
 import { assertFormatInGame, assertHeroInGame } from "../common/reference-data-guards.js";
 import { GAME_CATALOG } from "../games/game-catalog.js";
 import { GameAdapterRegistry } from "../games/game-adapter.registry.js";
-import { resolveCurrentMeta } from "../metas/current-meta.js";
+import { findMostRecentMetaForFormat } from "../metas/most-recent-meta.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 import { canModifyDeck, isDeckVisibleTo } from "./deck-authorization.js";
@@ -79,15 +79,6 @@ interface GameLogReadinessRow {
   opponentMetaDeckEntryId: string | null;
   opponentHeroId: string | null;
   opponentArchetypeLabel: string | null;
-}
-
-/** The current-meta candidate shape (adds `name` to the pure-rule fields) for readiness. */
-interface ReadinessMetaCandidate {
-  id: string;
-  name: string;
-  startDate: Date;
-  endDate: Date;
-  createdAt: Date;
 }
 
 /** Fallback `source` label for a link no adapter recognized. */
@@ -159,15 +150,15 @@ export class DecksService {
 
   /**
    * Create a deck; stamps teamId/gameId/ownerId from context and recognizes the link.
-   * Links metas per {@link CreateDeckInput.metaIds}: omitting it links the current
-   * meta by default; passing it (even an empty array) overrides that.
+   * Links metas per {@link CreateDeckInput.metaIds}: omitting it links the most recent
+   * meta of the deck's format by default; passing it (even an empty array) overrides that.
    */
   async create(team: TeamContext, input: CreateDeckInput): Promise<DeckDetail> {
     await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
     if (input.heroId) {
       await assertHeroInGame(this.scoped.db, team.gameId, input.heroId);
     }
-    const metaIdsToLink = await this.resolveMetaIdsToLink(input.metaIds);
+    const metaIdsToLink = await this.resolveMetaIdsToLink(input.metaIds, input.formatId);
 
     const recognized = this.recognizeUrl(team.gameId, input.externalUrl);
     const created = (await this.scoped.db.deck.create({
@@ -286,7 +277,7 @@ export class DecksService {
     query: DeckMetaReadinessQuery,
   ): Promise<DeckMetaReadinessResponse> {
     const deck = await this.loadVisibleDeck(team, deckId);
-    const meta = await this.resolveReadinessMeta(query.metaId);
+    const meta = await this.resolveReadinessMeta(query.metaId, deck.formatId);
     if (!meta) {
       return { deckId, metaId: "", metaName: "", rows: [] };
     }
@@ -351,10 +342,12 @@ export class DecksService {
 
   /**
    * Resolve the meta for a readiness read: an explicit non-archived, same-team meta
-   * (→ 404 otherwise), or the current meta, or null when none is current.
+   * (→ 404 otherwise), or the most recent meta of the deck's own format, or null when
+   * that format has no meta.
    */
   private async resolveReadinessMeta(
     metaId: string | undefined,
+    deckFormatId: string,
   ): Promise<{ id: string; name: string } | null> {
     if (metaId !== undefined) {
       const meta = (await this.scoped.db.meta.findFirst({
@@ -368,11 +361,7 @@ export class DecksService {
       }
       return meta;
     }
-    const candidates = (await this.scoped.db.meta.findMany({
-      where: { archivedAt: null },
-      select: { id: true, name: true, startDate: true, endDate: true, createdAt: true },
-    })) as ReadinessMetaCandidate[];
-    return resolveCurrentMeta(candidates, new Date());
+    return findMostRecentMetaForFormat(this.scoped.db, deckFormatId);
   }
 
   /** Best-effort deck-URL recognition (URL-pattern only, never a content fetch). */
@@ -405,20 +394,19 @@ export class DecksService {
   }
 
   /**
-   * The metas to link on deck-create. `undefined` (omitted) links the current meta
-   * by default (or nothing when none is current); an explicit list (even empty) is
-   * validated same-team and used as-is.
+   * The metas to link on deck-create. `undefined` (omitted) links the most recent meta
+   * of the deck's own format by default (or nothing when that format has no meta); an
+   * explicit list (even empty) is validated same-team and used as-is.
    */
-  private async resolveMetaIdsToLink(metaIds: string[] | undefined): Promise<string[]> {
+  private async resolveMetaIdsToLink(
+    metaIds: string[] | undefined,
+    formatId: string,
+  ): Promise<string[]> {
     if (metaIds !== undefined) {
       return this.assertTeamMetas(metaIds);
     }
-    const candidates = (await this.scoped.db.meta.findMany({
-      where: { archivedAt: null },
-      select: { id: true, startDate: true, endDate: true, createdAt: true },
-    })) as { id: string; startDate: Date; endDate: Date; createdAt: Date }[];
-    const current = resolveCurrentMeta(candidates, new Date());
-    return current ? [current.id] : [];
+    const mostRecent = await findMostRecentMetaForFormat(this.scoped.db, formatId);
+    return mostRecent ? [mostRecent.id] : [];
   }
 
   /** Reject any meta id that is not a non-archived meta of the team (cross-team → 422). */

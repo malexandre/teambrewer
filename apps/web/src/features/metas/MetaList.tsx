@@ -1,32 +1,26 @@
 import { Link } from "@tanstack/react-router";
 
 import { formatMetaDate } from "./meta-display";
-import { useCurrentMeta, useMetas } from "./use-metas";
+import { useMetas } from "./use-metas";
 
 /**
- * The team's non-archived metas as a distinct section beneath the page's "Current
- * meta" callout. When a meta is current it is surfaced by that callout, so this
- * list **excludes** it and heads itself "Other metas"; when none is current it
- * lists every meta under "All metas". Mobile-first; each row links to the meta hub.
+ * The team's non-archived metas as a single newest-first list (by start date), each
+ * row showing the meta's format and window. There is no "current meta": the newest of
+ * each format is simply first. Mobile-first; each row links to the meta hub.
  */
 export function MetaList({ teamId }: { teamId: string | undefined }) {
   const { data, isPending, isError } = useMetas(teamId);
-  const { data: currentMeta } = useCurrentMeta(teamId);
-  const allMetas = data?.data ?? [];
-  const metas = currentMeta ? allMetas.filter((meta) => meta.id !== currentMeta.id) : allMetas;
-  const heading = currentMeta ? "Other metas" : "All metas";
+  const metas = data?.data ?? [];
 
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold">{heading}</h3>
+      <h3 className="text-sm font-semibold">All metas</h3>
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading metas…</p>
       ) : isError ? (
         <p className="text-sm text-destructive">Could not load metas.</p>
       ) : metas.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {currentMeta ? "No other metas yet." : "No metas yet."}
-        </p>
+        <p className="text-sm text-muted-foreground">No metas yet.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {metas.map((meta) => (

@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/ui/section";
-import { useCurrentMeta, useMetaDeckEntries } from "@/features/metas/use-metas";
+import { mostRecentMetaForFormat, useMetaDeckEntries, useMetas } from "@/features/metas/use-metas";
 
 import { GamePlanCard } from "./GamePlanCard";
 import { GamePlanEditor } from "./GamePlanEditor";
@@ -27,13 +27,14 @@ export function GamePlanSection({
   deckArchived: boolean;
 }) {
   const { data, isPending } = useGamePlans(teamId, { ourDeckId: deckId });
-  const { data: currentMeta } = useCurrentMeta(teamId);
-  const { data: metaDeckEntryData } = useMetaDeckEntries(teamId, currentMeta?.id);
+  const { data: metaListData } = useMetas(teamId);
+  const meta = mostRecentMetaForFormat(metaListData?.data ?? [], formatId);
+  const { data: metaDeckEntryData } = useMetaDeckEntries(teamId, meta?.id);
   const [writing, setWriting] = useState(false);
 
   const gamePlans = data?.data ?? [];
   const metaDeckEntries = metaDeckEntryData?.data ?? [];
-  const metaName = currentMeta?.name ?? null;
+  const metaName = meta?.name ?? null;
 
   return (
     <Section

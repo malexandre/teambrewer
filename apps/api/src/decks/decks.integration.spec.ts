@@ -164,34 +164,75 @@ describe("Decks endpoints (integration)", () => {
   });
 
   describe("Meta linking (DeckMeta)", () => {
-    // The default meta window (2026-07-01 → 2026-08-01) contains "today" in the
-    // test environment, so a default-created meta is the current one.
-    const currentWindow = {
+    // The default now links the most recent meta (max startDate) of the DECK's format.
+    // The deck under test uses fabFormatId; a separate FaB format proves discrimination.
+    const newerWindow = {
       startDate: new Date("2026-07-01T00:00:00.000Z"),
       endDate: new Date("2026-08-01T00:00:00.000Z"),
     };
-    const pastWindow = {
+    const olderWindow = {
       startDate: new Date("2020-01-01T00:00:00.000Z"),
       endDate: new Date("2020-02-01T00:00:00.000Z"),
     };
+    const createBlitzFormat = () =>
+      createFormat(prisma, {
+        gameId: "flesh-and-blood",
+        key: "blitz",
+        name: "Blitz",
+        isConstructed: false,
+      });
 
-    it("links the current meta by default when metaIds is omitted", async () => {
-      const current = await createMeta(prisma, { teamId: teamA.id, name: "Now", ...currentWindow });
+    it("links the most recent meta of the deck's format by default when metaIds is omitted", async () => {
+      // Older + newer metas of the deck's format, plus a meta of another format that
+      // must NOT be chosen even though it starts later.
+      await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "Old",
+        ...olderWindow,
+      });
+      const newer = await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "Now",
+        ...newerWindow,
+      });
+      const blitz = await createBlitzFormat();
+      await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: blitz.id,
+        name: "Blitz meta",
+        startDate: new Date("2030-01-01T00:00:00.000Z"),
+        endDate: new Date("2030-02-01T00:00:00.000Z"),
+      });
+
       const response = await asMemberA(http().post("/api/decks")).send(validBody());
       expect(response.status).toBe(201);
-      expect(response.body.linkedMetas).toEqual([{ id: current.id, name: "Now" }]);
+      expect(response.body.linkedMetas).toEqual([{ id: newer.id, name: "Now" }]);
     });
 
-    it("links nothing when no meta is current and metaIds is omitted", async () => {
-      await createMeta(prisma, { teamId: teamA.id, name: "Old", ...pastWindow });
+    it("links nothing when the deck's format has no meta and metaIds is omitted", async () => {
+      // Only a meta of a DIFFERENT format exists → the deck's format has none.
+      const blitz = await createBlitzFormat();
+      await createMeta(prisma, { teamId: teamA.id, formatId: blitz.id, name: "Blitz meta" });
       const response = await asMemberA(http().post("/api/decks")).send(validBody());
       expect(response.status).toBe(201);
       expect(response.body.linkedMetas).toEqual([]);
     });
 
     it("overrides the default with an explicit metaIds set", async () => {
-      await createMeta(prisma, { teamId: teamA.id, name: "Now", ...currentWindow });
-      const other = await createMeta(prisma, { teamId: teamA.id, name: "Other", ...pastWindow });
+      await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "Now",
+        ...newerWindow,
+      });
+      const other = await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "Other",
+        ...olderWindow,
+      });
       const response = await asMemberA(http().post("/api/decks")).send({
         ...validBody(),
         metaIds: [other.id],
@@ -201,7 +242,12 @@ describe("Decks endpoints (integration)", () => {
     });
 
     it("links nothing when metaIds is an explicit empty array", async () => {
-      await createMeta(prisma, { teamId: teamA.id, name: "Now", ...currentWindow });
+      await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "Now",
+        ...newerWindow,
+      });
       const response = await asMemberA(http().post("/api/decks")).send({
         ...validBody(),
         metaIds: [],
@@ -211,8 +257,18 @@ describe("Decks endpoints (integration)", () => {
     });
 
     it("replaces the linked metas on update", async () => {
-      const first = await createMeta(prisma, { teamId: teamA.id, name: "First", ...currentWindow });
-      const second = await createMeta(prisma, { teamId: teamA.id, name: "Second", ...pastWindow });
+      const first = await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "First",
+        ...newerWindow,
+      });
+      const second = await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "Second",
+        ...olderWindow,
+      });
       const created = await asMemberA(http().post("/api/decks")).send({
         ...validBody(),
         metaIds: [first.id],
@@ -649,7 +705,7 @@ describe("Decks endpoints (integration)", () => {
       expect(fatigueRow?.rawSampleCount).toBe(1);
     });
 
-    it("defaults to the current meta and returns an empty read when none is current", async () => {
+    it("defaults to the most recent meta of the deck's format (not another format's)", async () => {
       const ourDeck = await createDeck(prisma, {
         teamId: teamA.id,
         ownerId: memberA.id,
@@ -661,18 +717,48 @@ describe("Decks endpoints (integration)", () => {
       expect(empty.body.metaId).toBe("");
       expect(empty.body.rows).toEqual([]);
 
-      // A current meta (default window contains today) is picked up without a metaId.
-      const meta = await createMeta(prisma, { teamId: teamA.id, name: "Current" });
+      // A meta of ANOTHER format is not chosen — the deck's format still has none.
+      const blitz = await createFormat(prisma, {
+        gameId: "flesh-and-blood",
+        key: "blitz",
+        name: "Blitz",
+        isConstructed: false,
+      });
+      await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: blitz.id,
+        name: "Blitz meta",
+        startDate: new Date("2030-01-01T00:00:00.000Z"),
+        endDate: new Date("2030-02-01T00:00:00.000Z"),
+      });
+      const stillEmpty = await asMemberA(http().get(`/api/decks/${ourDeck.id}/meta-readiness`));
+      expect(stillEmpty.body.metaId).toBe("");
+
+      // Two metas of the deck's format → the newer one (max startDate) is defaulted.
+      await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "Old",
+        startDate: new Date("2020-01-01T00:00:00.000Z"),
+        endDate: new Date("2020-02-01T00:00:00.000Z"),
+      });
+      const newer = await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "Now",
+        startDate: new Date("2026-07-01T00:00:00.000Z"),
+        endDate: new Date("2026-08-01T00:00:00.000Z"),
+      });
       await createMetaDeckEntry(prisma, {
-        metaId: meta.id,
+        metaId: newer.id,
         teamId: teamA.id,
         heroId: fabHeroId,
         opponentSnapshotLabel: "Dorinthea",
       });
-      const withCurrent = await asMemberA(http().get(`/api/decks/${ourDeck.id}/meta-readiness`));
-      expect(withCurrent.status).toBe(200);
-      expect(withCurrent.body.metaId).toBe(meta.id);
-      expect(withCurrent.body.rows).toHaveLength(1);
+      const withDefault = await asMemberA(http().get(`/api/decks/${ourDeck.id}/meta-readiness`));
+      expect(withDefault.status).toBe(200);
+      expect(withDefault.body.metaId).toBe(newer.id);
+      expect(withDefault.body.rows).toHaveLength(1);
     });
 
     it("does not read another team's deck readiness (cross-tenant → 404)", async () => {

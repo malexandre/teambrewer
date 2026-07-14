@@ -22,11 +22,12 @@ import type { PrismaClient } from "../generated/prisma/client.js";
 
 /**
  * Endpoint tests for metas and their tiered deck lists. The critical properties are
- * tenant isolation (a team never reaches another team's metas/entries), the
- * current-meta resolution, the deck-entry matchup-subject rules (label required,
- * optional hero qualifier, repeated heroes, cross-game hero, exact duplicates), and
- * that a meta emits its lifecycle activity. A two-team Flesh and Blood world plus a
- * Riftbound game (for cross-game rejection) backs the suite.
+ * tenant isolation (a team never reaches another team's metas/entries), the required
+ * format (missing → 400, cross-game → 422, editable), the newest-first list order, the
+ * deck-entry matchup-subject rules (label required, optional hero qualifier, repeated
+ * heroes, cross-game hero, exact duplicates), and that a meta emits its lifecycle
+ * activity. A two-team Flesh and Blood world plus a Riftbound game (for cross-game
+ * rejection) backs the suite.
  */
 describe("Metas endpoints (integration)", () => {
   let app: INestApplication;
@@ -212,48 +213,6 @@ describe("Metas endpoints (integration)", () => {
       );
       expect(secondPage.body.data).toHaveLength(1);
       expect(secondPage.body.nextCursor).toBeNull();
-    });
-  });
-
-  describe("GET /api/metas/current", () => {
-    it("resolves the current meta and prefers the latest-starting on overlap", async () => {
-      await createMeta(prisma, {
-        teamId: teamA.id,
-        name: "Old and wide",
-        startDate: new Date("2020-01-01"),
-        endDate: new Date("2100-01-01"),
-      });
-      const newer = await createMeta(prisma, {
-        teamId: teamA.id,
-        name: "Newer",
-        startDate: new Date("2021-01-01"),
-        endDate: new Date("2099-01-01"),
-      });
-
-      const response = await asMemberA(http().get("/api/metas/current"));
-      expect(response.status).toBe(200);
-      expect(response.body.id).toBe(newer.id);
-      expect(response.body.name).toBe("Newer");
-    });
-
-    it("returns 404 when no meta contains today", async () => {
-      await createMeta(prisma, {
-        teamId: teamA.id,
-        startDate: new Date("2000-01-01"),
-        endDate: new Date("2000-02-01"),
-      });
-      const response = await asMemberA(http().get("/api/metas/current"));
-      expect(response.status).toBe(404);
-    });
-
-    it("never resolves another team's meta as current", async () => {
-      await createMeta(prisma, {
-        teamId: teamB.id,
-        startDate: new Date("2020-01-01"),
-        endDate: new Date("2100-01-01"),
-      });
-      const response = await asMemberA(http().get("/api/metas/current"));
-      expect(response.status).toBe(404);
     });
   });
 

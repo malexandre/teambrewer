@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { useDecks } from "@/features/decks/use-decks";
-import { useCurrentMeta, useMetas } from "@/features/metas/use-metas";
+import { mostRecentMetaForFormat, useMetas } from "@/features/metas/use-metas";
 import { useMembers } from "@/features/teams/use-members";
 import { ApiError } from "@/lib/api-client";
 
@@ -73,7 +73,6 @@ export function GameLogWizard({
   const { data: teamDecks } = useDecks(teamId, {});
   const { data: members } = useMembers(teamId);
   const { data: metas } = useMetas(teamId);
-  const { data: currentMeta, isPending: currentMetaPending } = useCurrentMeta(teamId);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   // On edit, expand the optional notes/cards step up front when the log already
@@ -107,10 +106,10 @@ export function GameLogWizard({
   const [winType, setWinType] = useState<WinType | "">(gameLog?.winType ?? "");
   const [lossReason, setLossReason] = useState<LossReason | "">(gameLog?.lossReason ?? "");
   // The meta this game counts toward. `undefined` = not yet initialized (create mode,
-  // before the current meta resolves) → the payload omits `metaId` and the server
-  // auto-suggests from `playedAt`. `""` = the member explicitly chose "No meta" → the
-  // payload sends `metaId: null`. A concrete id is sent as-is. On edit it seeds from
-  // the stored meta (its auto-suggested value included).
+  // before the format's most recent meta resolves) → the payload omits `metaId` and the
+  // server auto-suggests from the format. `""` = the member explicitly chose "No meta" →
+  // the payload sends `metaId: null`. A concrete id is sent as-is. On edit it seeds from
+  // the stored meta.
   const [metaId, setMetaId] = useState<string | undefined>(
     gameLog ? (gameLog.metaId ?? "") : undefined,
   );
@@ -167,17 +166,21 @@ export function GameLogWizard({
     }
   }, [defaultBestOf, isEditing]);
 
-  // In create mode, default the meta link to the current meta once it resolves (mirrors
-  // the server's auto-suggest for a game played today), leaving the member free to
-  // change or clear it. `""` when no meta is current. Never runs on edit.
+  // In create mode, default the meta link to the most recent meta of the selected format
+  // (mirroring the server's per-format auto-suggest), re-applied when the format changes
+  // until the member customizes it. `""` when the format has no meta. Never runs on edit.
+  const mostRecentMeta = mostRecentMetaForFormat(metas?.data ?? [], formatId);
+  const metaSelectionCustomizedRef = useRef(false);
   useEffect(() => {
-    if (isEditing || metaId !== undefined) return;
-    if (currentMeta) {
-      setMetaId(currentMeta.id);
-    } else if (!currentMetaPending) {
-      setMetaId("");
-    }
-  }, [isEditing, metaId, currentMeta, currentMetaPending]);
+    if (isEditing || metaSelectionCustomizedRef.current) return;
+    setMetaId(mostRecentMeta ? mostRecentMeta.id : "");
+  }, [isEditing, metas, formatId, mostRecentMeta]);
+
+  /** The member picked or cleared the meta explicitly — stop auto-defaulting from the format. */
+  function chooseMeta(next: string): void {
+    metaSelectionCustomizedRef.current = true;
+    setMetaId(next);
+  }
 
   function setFactor<Value extends string>(
     field: ConfidenceFactorField<Value>,
@@ -326,7 +329,7 @@ export function GameLogWizard({
           setOpponentSubject={setOpponentSubject}
           deckOptions={deckOptions}
           memberOptions={memberOptions}
-          currentMetaId={currentMeta?.id}
+          metaId={mostRecentMeta?.id}
         />
       ) : null}
 
@@ -369,7 +372,7 @@ export function GameLogWizard({
           onCaptureCard={rememberCard}
           cardNameOf={(cardId) => cardNames.get(cardId) ?? "Card"}
           metaId={metaId ?? ""}
-          setMetaId={setMetaId}
+          setMetaId={chooseMeta}
           metaOptions={metaOptions}
           winType={winType}
           setWinType={setWinType}

@@ -54,10 +54,7 @@ function mockApi(
     if (url.includes("/api/decks/recognize-url") && method === "POST") {
       return json({ recognized: { provider: "fabrary", externalId: "abc" } });
     }
-    // No current meta by default (404 → the form links nothing); the metas list is empty.
-    if (url.includes("/api/metas/current")) {
-      return json({ error: { code: "NOT_FOUND", message: "No meta is current." } }, 404);
-    }
+    // The metas list is empty by default → the form links nothing.
     if (url.includes("/api/metas")) {
       return json({ data: [], nextCursor: null });
     }

@@ -21,7 +21,7 @@ export function StepMatchup({
   setOpponentSubject,
   deckOptions,
   memberOptions,
-  currentMetaId,
+  metaId,
 }: {
   teamId: string | undefined;
   formatId: string;
@@ -32,7 +32,7 @@ export function StepMatchup({
   setOpponentSubject: (next: MatchupSubjectState) => void;
   deckOptions: DeckSummary[];
   memberOptions: TeamMember[];
-  currentMetaId: string | undefined;
+  metaId: string | undefined;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -48,7 +48,7 @@ export function StepMatchup({
         onChange={setSelfSubject}
         deckOptions={deckOptions}
         memberOptions={memberOptions}
-        currentMetaId={currentMetaId}
+        metaId={metaId}
       />
 
       <MatchupSubjectPicker
@@ -58,7 +58,7 @@ export function StepMatchup({
         onChange={setOpponentSubject}
         deckOptions={deckOptions}
         memberOptions={memberOptions}
-        currentMetaId={currentMetaId}
+        metaId={metaId}
       />
     </div>
   );

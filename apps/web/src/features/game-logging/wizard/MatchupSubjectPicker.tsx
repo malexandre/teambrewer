@@ -35,7 +35,7 @@ export function MatchupSubjectPicker({
   onChange,
   deckOptions,
   memberOptions,
-  currentMetaId,
+  metaId,
 }: {
   teamId: string | undefined;
   /** Which side this picker edits — drives the labels and the opponent-only extras. */
@@ -44,12 +44,12 @@ export function MatchupSubjectPicker({
   onChange: (next: MatchupSubjectState) => void;
   deckOptions: DeckSummary[];
   memberOptions: TeamMember[];
-  /** The current meta (if any) whose entries populate the meta-deck mode. */
-  currentMetaId: string | undefined;
+  /** The meta (if any) whose entries populate the meta-deck mode — the most recent of the format. */
+  metaId: string | undefined;
 }) {
   const identityLabel = useIdentityLabel(teamId);
   const { data: heroesData } = useHeroes(teamId);
-  const { data: metaEntriesData } = useMetaDeckEntries(teamId, currentMetaId);
+  const { data: metaEntriesData } = useMetaDeckEntries(teamId, metaId);
   const heroes = heroesData?.data ?? [];
   const metaEntries = metaEntriesData?.data ?? [];
 
@@ -129,13 +129,15 @@ export function MatchupSubjectPicker({
               </option>
             ))}
           </select>
-          {currentMetaId && metaEntries.length === 0 ? (
+          {metaId && metaEntries.length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              The current meta has no decks to beat yet.
+              This format&apos;s meta has no decks to beat yet.
             </p>
           ) : null}
-          {!currentMetaId ? (
-            <p className="text-xs text-muted-foreground">There is no current meta to pick from.</p>
+          {!metaId ? (
+            <p className="text-xs text-muted-foreground">
+              There is no meta for this format to pick from.
+            </p>
           ) : null}
         </div>
       ) : null}

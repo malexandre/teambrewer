@@ -53,7 +53,7 @@ function planWith(metaDeckEntryIds: string[]) {
   };
 }
 
-const currentMeta = {
+const formatMeta = {
   id: "meta-1",
   name: "Summer Season",
   formatId: "format-1",
@@ -96,8 +96,8 @@ function mockApi(patchBodies: unknown[] = []): void {
     if (url.includes("/api/cards/card-1")) {
       return json({ id: "card-1", name: "Command and Conquer", pitch: 1, imageUrl: null });
     }
-    if (url.includes("/api/metas/current")) return json(currentMeta);
     if (url.includes("/api/metas/meta-1/deck-entries")) return json({ data: [oscilioEntry] });
+    if (url.includes("/api/metas")) return json({ data: [formatMeta], nextCursor: null });
     if (url.match(/\/api\/game-plans\/gp1$/) && method === "PATCH") {
       const body = init?.body ? JSON.parse(init.body as string) : {};
       patchBodies.push(body);

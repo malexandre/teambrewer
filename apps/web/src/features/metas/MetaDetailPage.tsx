@@ -4,14 +4,13 @@ import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
 
 import { MetaDetail } from "./MetaDetail";
-import { useCurrentMeta, useMeta } from "./use-metas";
+import { useMeta } from "./use-metas";
 
 /** Detail route for a single meta; renders 404-safe states around {@link MetaDetail}. */
 export function MetaDetailPage({ metaId }: { metaId: string }) {
   const { activeTeam } = useActiveTeam();
   const teamId = activeTeam?.teamId;
   const { data: meta, isPending, error } = useMeta(teamId, metaId);
-  const { data: currentMeta } = useCurrentMeta(teamId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,7 +26,7 @@ export function MetaDetailPage({ metaId }: { metaId: string }) {
             : "Could not load this meta."}
         </p>
       ) : meta ? (
-        <MetaDetail teamId={teamId} meta={meta} isCurrent={currentMeta?.id === meta.id} />
+        <MetaDetail teamId={teamId} meta={meta} />
       ) : null}
     </div>
   );

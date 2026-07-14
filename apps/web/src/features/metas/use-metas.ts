@@ -6,9 +6,10 @@ import {
   metaDetailSchema,
   type MetaListResponse,
   metaListResponseSchema,
+  type MetaSummary,
 } from "@teambrewer/shared";
 
-import { ApiError, apiClient } from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 
 /** The active team's non-archived metas (newest window first), via GET /api/metas. */
@@ -26,31 +27,18 @@ export function useMetas(teamId: string | undefined) {
 }
 
 /**
- * The current meta (the window that contains today), via GET /api/metas/current.
- * The endpoint answers 404 when none is current; we surface that as `null` data so
- * callers render an empty state rather than an error.
+ * The most recent meta of a given format from an already-loaded metas list (the metas
+ * list is newest-first, so this mirrors the server's per-format default). Returns
+ * `undefined` when the format has no meta yet.
  */
-export function useCurrentMeta(teamId: string | undefined) {
-  return useQuery<MetaDetail | null>({
-    queryKey: teamId ? queryKeys.currentMeta(teamId) : ["current-meta", "none"],
-    queryFn: async () => {
-      if (!teamId) {
-        throw new Error("No active team.");
-      }
-      try {
-        return await apiClient.get<MetaDetail>(`/metas/current`, {
-          teamId,
-          schema: metaDetailSchema,
-        });
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 404) {
-          return null;
-        }
-        throw error;
-      }
-    },
-    enabled: Boolean(teamId),
-  });
+export function mostRecentMetaForFormat(
+  metas: MetaSummary[],
+  formatId: string | undefined,
+): MetaSummary | undefined {
+  if (!formatId) {
+    return undefined;
+  }
+  return metas.find((meta) => meta.formatId === formatId);
 }
 
 /** A single meta's detail, via GET /api/metas/:metaId. */
