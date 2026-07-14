@@ -191,7 +191,7 @@ describe("MetaDeckEntryBuilder", () => {
     });
   });
 
-  it("shows the label as the heading with the hero name as a secondary detail", async () => {
+  it("shows the hero as the heading with the archetype label as a secondary detail", async () => {
     const heroQualified: MetaDeckEntry[] = [
       {
         id: "entry-oscilio",
@@ -210,10 +210,13 @@ describe("MetaDeckEntryBuilder", () => {
       <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={heroQualified} canEdit />,
     );
 
-    // The label leads; the resolved hero name is the secondary line (a <p>, as
-    // opposed to the "Dorinthea" <option> in the add form's hero picker).
-    expect(screen.getByText("GIAF")).toBeInTheDocument();
-    expect(await screen.findByText("Dorinthea", { selector: "p" })).toBeInTheDocument();
+    // The resolved hero name leads (bold heading, a <p> as opposed to the
+    // "Dorinthea" <option> in the add form's hero picker); the archetype label
+    // is the smaller, muted secondary line.
+    const heroHeading = await screen.findByText("Dorinthea", { selector: "p" });
+    expect(heroHeading).toHaveClass("font-medium");
+    const archetypeDetail = screen.getByText("GIAF");
+    expect(archetypeDetail).toHaveClass("text-muted-foreground");
   });
 
   it("does not block a second entry sharing a hero, and surfaces the server duplicate error", async () => {

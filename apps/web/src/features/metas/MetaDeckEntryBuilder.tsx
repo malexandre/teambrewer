@@ -70,9 +70,9 @@ export function MetaDeckEntryBuilder({
     return heroNamesById.get(entry.heroId) ?? null;
   }
 
-  /** The entry's primary display name: its label when set, else the derived snapshot (the hero). */
+  /** The entry's primary (bold) display name: the hero when it has one, else the label. */
   function displayLabelFor(entry: MetaDeckEntry): string {
-    return entry.label || entry.opponentSnapshotLabel;
+    return heroNameFor(entry) ?? (entry.label || entry.opponentSnapshotLabel);
   }
 
   function startEditing(entry: MetaDeckEntry) {
@@ -208,9 +208,9 @@ export function MetaDeckEntryBuilder({
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium">{displayLabelFor(entry)}</p>
-                            {entry.label && heroNameFor(entry) ? (
+                            {heroNameFor(entry) && entry.label ? (
                               <p className="truncate text-xs text-muted-foreground">
-                                {heroNameFor(entry)}
+                                {entry.label}
                               </p>
                             ) : null}
                             {entry.notes ? (
