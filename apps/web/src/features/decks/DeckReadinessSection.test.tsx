@@ -75,13 +75,13 @@ describe("DeckReadinessSection", () => {
     expect(await screen.findByText("Dorinthea · Aggro")).toBeInTheDocument();
     // The label-only row shows its archetype label alone.
     expect(screen.getByText("Aggro Red")).toBeInTheDocument();
-    // 0.6667 → 67%, with the raw sample shown.
+    // 0.6667 → 67% (Win rate column), with the raw sample size in the Games column.
     expect(screen.getByText(/67%/)).toBeInTheDocument();
-    expect(screen.getByText(/N 4/)).toBeInTheDocument();
+    expect(screen.getByText("4")).toBeInTheDocument();
     // A Tier-1 (meta-defining) matchup with no plan surfaces a "Needs a plan" pill;
-    // the planned one shows plan ✓.
+    // the planned one shows a "✓ Planned" marker.
     expect(screen.getByText("Needs a plan")).toBeInTheDocument();
-    expect(screen.getByText("plan ✓")).toBeInTheDocument();
+    expect(screen.getByText("✓ Planned")).toBeInTheDocument();
     // Low-trust rows carry a "thin data" badge (the pastel confidence indicator).
     expect(screen.getAllByText("thin data")).toHaveLength(2);
     // A null rate (no decisive games) renders as an em dash.

@@ -28,10 +28,10 @@ function formatWinRate(rate: number | null): string {
 }
 
 /**
- * A single readiness row: opponent label + a tier badge, the confidence-weighted win
- * rate with its raw sample, a trust badge (thin/solid data), and the game-plan state.
- * A Tier-1 (`meta_defining`) matchup with no game-plan surfaces a "Needs a plan" pill
- * — the field's defining decks must have a plan.
+ * A single readiness table row: tier rank, the matchup subject (hero · label), the
+ * confidence-weighted win rate, the raw sample size, a trust badge (thin/solid data),
+ * and the game-plan state. A Tier-1 (`meta_defining`) matchup with no game-plan
+ * surfaces a "Needs a plan" pill — the field's defining decks must have a plan.
  */
 function ReadinessRow({
   row,
@@ -44,34 +44,40 @@ function ReadinessRow({
   const needsPlan = row.tier === "meta_defining" && !row.hasGamePlan;
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-2 text-sm">
-      <div className="flex min-w-0 flex-col gap-1">
-        <span className="font-medium">{opponentLabel}</span>
-        <Badge tone={META_TIER_TONE[row.tier]} size="sm" dot className="self-start">
+    <tr className="border-b border-border/60 last:border-0">
+      <td className="py-2 pr-3 align-middle">
+        <Badge tone={META_TIER_TONE[row.tier]} size="sm" dot>
           {META_TIER_LABELS[row.tier]}
         </Badge>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="tabular-nums">
-          {formatWinRate(row.weightedWinRate)}
-          <span className="text-muted-foreground"> · N {row.rawSampleCount}</span>
-        </span>
-        <Badge tone={trust.tone}>{trust.label}</Badge>
+      </td>
+      <td className="py-2 pr-3 align-middle font-medium">{opponentLabel}</td>
+      <td className="py-2 pr-3 text-right align-middle tabular-nums">
+        {formatWinRate(row.weightedWinRate)}
+      </td>
+      <td className="py-2 pr-3 text-right align-middle tabular-nums text-muted-foreground">
+        {row.rawSampleCount}
+      </td>
+      <td className="py-2 pr-3 align-middle">
+        <Badge tone={trust.tone} size="sm">
+          {trust.label}
+        </Badge>
+      </td>
+      <td className="py-2 align-middle">
         {needsPlan ? (
-          <Badge tone="danger" title="A meta-defining deck must have a game-plan">
+          <Badge tone="danger" size="sm" title="A meta-defining deck must have a game-plan">
             Needs a plan
           </Badge>
         ) : row.hasGamePlan ? (
-          <span className="text-xs text-muted-foreground" title="A game-plan exists">
-            plan ✓
+          <span className="text-xs font-medium text-success-foreground" title="A game-plan exists">
+            ✓ Planned
           </span>
         ) : (
           <span className="text-xs text-muted-foreground" title="No game-plan yet">
-            plan ✗
+            — none
           </span>
         )}
-      </div>
-    </li>
+      </td>
+    </tr>
   );
 }
 
@@ -130,15 +136,29 @@ export function DeckReadinessSection({
       ) : data.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">This meta has no decks yet.</p>
       ) : (
-        <ul className="flex flex-col gap-1">
-          {data.rows.map((row) => (
-            <ReadinessRow
-              key={row.metaDeckEntryId}
-              row={row}
-              opponentLabel={opponentLabelForRow(row)}
-            />
-          ))}
-        </ul>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
+                <th className="py-2 pr-3 font-medium">Rank</th>
+                <th className="py-2 pr-3 font-medium">Matchup</th>
+                <th className="py-2 pr-3 text-right font-medium">Win rate</th>
+                <th className="py-2 pr-3 text-right font-medium">Games</th>
+                <th className="py-2 pr-3 font-medium">Data</th>
+                <th className="py-2 font-medium">Plan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((row) => (
+                <ReadinessRow
+                  key={row.metaDeckEntryId}
+                  row={row}
+                  opponentLabel={opponentLabelForRow(row)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Section>
   );

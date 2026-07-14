@@ -124,30 +124,50 @@ export function GameList({ teamId }: { teamId: string | undefined }) {
       ) : data.data.length === 0 ? (
         <p className="text-sm text-muted-foreground">No games logged yet.</p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {data.data.map((game) => (
-            <li key={game.id}>
-              <Link
-                to="/games/$gameLogId"
-                params={{ gameLogId: game.id }}
-                className="flex flex-col gap-1 rounded-md border border-border p-3 hover:bg-muted"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">
-                    {describeSelf(game.sideA, maps)} vs {describeOpponent(game.sideB, maps)}
-                  </span>
-                  <Badge tone={gameResultTone(game.result)}>
-                    {formatResult(game.bestOf, game.result)}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span>{formatPlayedAt(game.playedAt)}</span>
-                  <span>counts as ~{formatConfidenceWeight(game.confidenceWeight)}</span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
+                <th className="py-2 pr-3 font-medium">Date</th>
+                <th className="py-2 pr-3 font-medium">Matchup</th>
+                <th className="py-2 pr-3 font-medium">Result</th>
+                <th className="py-2 text-right font-medium">Weight</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.data.map((game) => (
+                <tr
+                  key={game.id}
+                  className="border-b border-border/60 last:border-0 hover:bg-accent/40"
+                >
+                  <td className="py-2 pr-3 align-middle whitespace-nowrap text-muted-foreground tabular-nums">
+                    {formatPlayedAt(game.playedAt)}
+                  </td>
+                  <td className="py-2 pr-3 align-middle font-medium">
+                    <Link
+                      to="/games/$gameLogId"
+                      params={{ gameLogId: game.id }}
+                      className="hover:text-primary hover:underline"
+                    >
+                      {describeSelf(game.sideA, maps)} vs {describeOpponent(game.sideB, maps)}
+                    </Link>
+                  </td>
+                  <td className="py-2 pr-3 align-middle">
+                    <Badge tone={gameResultTone(game.result)} size="sm">
+                      {formatResult(game.bestOf, game.result)}
+                    </Badge>
+                  </td>
+                  <td
+                    className="py-2 text-right align-middle tabular-nums text-muted-foreground"
+                    title="Confidence weight"
+                  >
+                    ~{formatConfidenceWeight(game.confidenceWeight)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );
