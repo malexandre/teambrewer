@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
 import { TASK_STATUS_LABELS } from "@/features/tasks/task-display";
 import { TaskForm } from "@/features/tasks/TaskForm";
 import { useTasks } from "@/features/tasks/use-tasks";
@@ -26,16 +27,18 @@ export function DeckCardIdeasSection({
   const tasks = data?.data ?? [];
 
   return (
-    <section className="flex flex-col gap-2" aria-label="Card ideas">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Card ideas &amp; tasks</h3>
-        {!adding ? (
+    <Section
+      title="Card ideas & tasks"
+      aria-label="Card ideas"
+      bodyClassName="gap-2"
+      actions={
+        !adding ? (
           <Button type="button" size="sm" variant="outline" onClick={() => setAdding(true)}>
             Add card idea
           </Button>
-        ) : null}
-      </div>
-
+        ) : null
+      }
+    >
       {adding ? (
         <TaskForm
           teamId={teamId}
@@ -67,6 +70,6 @@ export function DeckCardIdeasSection({
           ))}
         </ul>
       )}
-    </section>
+    </Section>
   );
 }

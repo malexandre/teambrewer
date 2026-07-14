@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/ui/page-header";
+import { Section } from "@/components/ui/section";
 import { Tabs, type TabDefinition } from "@/components/ui/tabs";
 import { useFormats } from "@/features/cards/use-formats";
 import { useHeroes } from "@/features/cards/use-heroes";
@@ -61,67 +63,69 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
 
   const generalTab = (
     <div className="flex flex-col gap-4">
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-muted-foreground">Format</dt>
-          <dd>{formatName ?? "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">{identityLabel}</dt>
-          <dd>{heroName ?? "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Source</dt>
-          <dd>{deck.source}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Visibility</dt>
-          <dd>{DECK_VISIBILITY_LABELS[deck.visibility]}</dd>
-        </div>
-        {deck.tags.length > 0 ? (
-          <div className="sm:col-span-2">
-            <dt className="text-muted-foreground">Tags</dt>
-            <dd className="flex flex-wrap gap-1">
-              {deck.tags.map((tag) => (
-                <span key={tag} className="rounded-md bg-muted px-2 py-0.5 text-xs">
-                  {tag}
-                </span>
-              ))}
-            </dd>
+      <Section title="Overview" aria-label="Overview">
+        <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-muted-foreground">Format</dt>
+            <dd>{formatName ?? "—"}</dd>
           </div>
-        ) : null}
-      </dl>
+          <div>
+            <dt className="text-muted-foreground">{identityLabel}</dt>
+            <dd>{heroName ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Source</dt>
+            <dd>{deck.source}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Visibility</dt>
+            <dd>{DECK_VISIBILITY_LABELS[deck.visibility]}</dd>
+          </div>
+          {deck.tags.length > 0 ? (
+            <div className="sm:col-span-2">
+              <dt className="text-muted-foreground">Tags</dt>
+              <dd className="flex flex-wrap gap-1">
+                {deck.tags.map((tag) => (
+                  <span key={tag} className="rounded-md bg-muted px-2 py-0.5 text-xs">
+                    {tag}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
 
-      <section className="flex flex-col gap-1" aria-label="Linked metas">
-        <h3 className="text-sm font-semibold">Linked metas</h3>
-        {deck.linkedMetas.length > 0 ? (
-          <ul className="flex flex-wrap gap-1">
-            {deck.linkedMetas.map((meta) => (
-              <li key={meta.id} className="rounded-md bg-muted px-2 py-0.5 text-xs">
-                {meta.name}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">Not linked to any meta.</p>
-        )}
-      </section>
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-semibold">Linked metas</span>
+          {deck.linkedMetas.length > 0 ? (
+            <ul className="flex flex-wrap gap-1">
+              {deck.linkedMetas.map((meta) => (
+                <li key={meta.id} className="rounded-md bg-muted px-2 py-0.5 text-xs">
+                  {meta.name}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Not linked to any meta.</p>
+          )}
+        </div>
 
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-semibold">Status</span>
-        <DeckStatusControl
-          status={deck.status}
-          disabled={!canModify || changeStatus.isPending}
-          onChange={(next) => changeStatus.mutate(next)}
-        />
-        {changeStatus.isError ? (
-          <p role="alert" className="text-sm text-destructive">
-            {changeStatus.error instanceof ApiError
-              ? changeStatus.error.message
-              : "Could not change status."}
-          </p>
-        ) : null}
-      </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-semibold">Status</span>
+          <DeckStatusControl
+            status={deck.status}
+            disabled={!canModify || changeStatus.isPending}
+            onChange={(next) => changeStatus.mutate(next)}
+          />
+          {changeStatus.isError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {changeStatus.error instanceof ApiError
+                ? changeStatus.error.message
+                : "Could not change status."}
+            </p>
+          ) : null}
+        </div>
+      </Section>
 
       <DeckNotesSection teamId={teamId} deck={deck} canEdit={canModify && !isArchived} />
 
@@ -157,56 +161,65 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
       id: "activity",
       label: "Activity",
       panel: (
-        <div className="flex flex-col gap-4">
+        <Section aria-label="Activity" bodyClassName="gap-4">
           <CommentThread teamId={teamId} subjectType="deck" subjectId={deck.id} canComment />
           <ActivityFeed
             teamId={teamId}
             filters={{ subjectType: "deck", subjectId: deck.id }}
             title="Deck activity"
           />
-        </div>
+        </Section>
       ),
     },
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold tracking-tight">{deck.name}</h2>
-          {canModify ? (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setIsEditOpen(true)}>
-                Edit
-              </Button>
-              <Button size="sm" variant="ghost" onClick={archive} disabled={archiveDeck.isPending}>
-                Archive
-              </Button>
-            </div>
-          ) : null}
-        </div>
-
-        <a
-          href={deck.externalUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="inline-flex w-fit items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Open deck list ↗
-        </a>
-
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span>{formatName ?? "—"}</span>
-          {heroName ? (
-            <>
-              <span aria-hidden>·</span>
-              <span>{heroName}</span>
-            </>
-          ) : null}
-          <span aria-hidden>·</span>
-          <span className="rounded-md bg-muted px-2 py-0.5">{DECK_STATUS_LABELS[deck.status]}</span>
-        </div>
-      </header>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={deck.name}
+        description={
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>{formatName ?? "—"}</span>
+            {heroName ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>{heroName}</span>
+              </>
+            ) : null}
+            <span aria-hidden>·</span>
+            <span className="rounded-md bg-muted px-2 py-0.5">
+              {DECK_STATUS_LABELS[deck.status]}
+            </span>
+          </div>
+        }
+        actions={
+          <>
+            <a
+              href={deck.externalUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Open deck list ↗
+            </a>
+            {canModify ? (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setIsEditOpen(true)}>
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={archive}
+                  disabled={archiveDeck.isPending}
+                >
+                  Archive
+                </Button>
+              </>
+            ) : null}
+          </>
+        }
+      />
 
       <Tabs
         ariaLabel="Deck sections"

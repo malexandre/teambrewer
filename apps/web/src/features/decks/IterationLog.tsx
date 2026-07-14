@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
 import { ApiError } from "@/lib/api-client";
 
 import { useAddIterationEntry } from "./use-deck-mutations";
@@ -33,9 +34,7 @@ export function IterationLog({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold">Iteration log</h3>
-
+    <Section title="Iteration log" aria-label="Iteration log">
       {canAddEntry ? (
         <form onSubmit={submit} className="flex flex-col gap-2">
           <textarea
@@ -72,6 +71,6 @@ export function IterationLog({
           ))}
         </ul>
       )}
-    </div>
+    </Section>
   );
 }

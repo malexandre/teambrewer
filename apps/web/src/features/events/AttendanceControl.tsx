@@ -1,6 +1,7 @@
 import { type AttendanceStatus, attendanceStatusSchema } from "@teambrewer/shared";
 
 import { Button } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { ApiError } from "@/lib/api-client";
 
@@ -28,9 +29,7 @@ export function AttendanceControl({
   const myRsvp = roster.find((entry) => entry.user.userId === user?.id)?.status ?? null;
 
   return (
-    <section className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold">Attendance</h3>
-
+    <Section title="Attendance" aria-label="Attendance">
       <div className="flex flex-wrap items-center gap-2">
         {attendanceStatusSchema.options.map((option) => {
           const isActive = myRsvp === option;
@@ -72,6 +71,6 @@ export function AttendanceControl({
           ))}
         </ul>
       )}
-    </section>
+    </Section>
   );
 }

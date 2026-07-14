@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Section } from "@/components/ui/section";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
@@ -459,14 +460,12 @@ export function AdminMembersPage() {
     <AdminTeamScope description="Add existing accounts and manage roles for this team.">
       {(teamId) => (
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium">Add an existing member</h3>
+          <Section title="Add an existing member" aria-label="Add an existing member">
             <AddExistingMemberForm teamId={teamId} />
-          </div>
-          <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium">Members</h3>
+          </Section>
+          <Section title="Members" aria-label="Members">
             <MembersAdmin teamId={teamId} />
-          </div>
+          </Section>
         </div>
       )}
     </AdminTeamScope>

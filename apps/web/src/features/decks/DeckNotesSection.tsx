@@ -2,6 +2,7 @@ import type { DeckDetail } from "@teambrewer/shared";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
 import { CardRichText } from "@/features/cards/CardRichText";
 import { MentionComposer } from "@/features/collaboration/MentionComposer";
 import { ApiError } from "@/lib/api-client";
@@ -28,16 +29,18 @@ export function DeckNotesSection({
   const updateDeck = useUpdateDeck(teamId, deck.id);
 
   return (
-    <section className="flex flex-col gap-2" aria-label="Notes">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Notes</h3>
-        {canEdit && !editing ? (
+    <Section
+      title="Notes"
+      aria-label="Notes"
+      bodyClassName="gap-2"
+      actions={
+        canEdit && !editing ? (
           <Button type="button" size="sm" variant="outline" onClick={() => setEditing(true)}>
             {deck.notes ? "Edit notes" : "Add notes"}
           </Button>
-        ) : null}
-      </div>
-
+        ) : null
+      }
+    >
       {editing ? (
         <MentionComposer
           teamId={teamId}
@@ -65,6 +68,6 @@ export function DeckNotesSection({
             : "Could not save the notes."}
         </p>
       ) : null}
-    </section>
+    </Section>
   );
 }

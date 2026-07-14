@@ -1,6 +1,8 @@
 import type { DeckMetaReadinessRow } from "@teambrewer/shared";
 import { META_TIER_LABELS } from "@teambrewer/shared";
 
+import { Section } from "@/components/ui/section";
+
 import { useDeckMetaReadiness } from "./use-meta-readiness";
 
 /** Format a 0–1 weighted win rate as a percentage, or an em dash when there is none. */
@@ -72,10 +74,11 @@ export function DeckReadinessSection({
   const { data, isPending, isError } = useDeckMetaReadiness(teamId, deckId);
 
   return (
-    <section className="flex flex-col gap-2" aria-label="Meta readiness">
-      <h3 className="text-sm font-semibold">
-        Readiness{data && data.metaName ? ` · ${data.metaName}` : ""}
-      </h3>
+    <Section
+      title={`Readiness${data && data.metaName ? ` · ${data.metaName}` : ""}`}
+      aria-label="Meta readiness"
+      bodyClassName="gap-2"
+    >
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading readiness…</p>
       ) : isError ? (
@@ -93,6 +96,6 @@ export function DeckReadinessSection({
           ))}
         </ul>
       )}
-    </section>
+    </Section>
   );
 }

@@ -3,6 +3,8 @@ import type { GameLogDetail as GameLogDetailType } from "@teambrewer/shared";
 import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { Section } from "@/components/ui/section";
 import { useHeroes } from "@/features/cards/use-heroes";
 import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
 import { CommentThread } from "@/features/collaboration/CommentThread";
@@ -71,26 +73,26 @@ export function GameDetail({
     : "A teammate";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">
-          {ourDeck} vs {describeOpponent(game.sideB, maps)}
-        </h2>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
-              void navigate({ to: "/games/$gameLogId/edit", params: { gameLogId: game.id } })
-            }
-          >
-            Edit
-          </Button>
-          <Button size="sm" variant="ghost" onClick={archive} disabled={archiveGame.isPending}>
-            Archive
-          </Button>
-        </div>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={`${ourDeck} vs ${describeOpponent(game.sideB, maps)}`}
+        actions={
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                void navigate({ to: "/games/$gameLogId/edit", params: { gameLogId: game.id } })
+              }
+            >
+              Edit
+            </Button>
+            <Button size="sm" variant="ghost" onClick={archive} disabled={archiveGame.isPending}>
+              Archive
+            </Button>
+          </>
+        }
+      />
 
       {archiveGame.isError ? (
         <p role="alert" className="text-sm text-destructive">
@@ -98,27 +100,28 @@ export function GameDetail({
         </p>
       ) : null}
 
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-muted-foreground">Result</dt>
-          <dd>{formatResult(game.bestOf, game.result)}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Confidence weight</dt>
-          <dd>~{formatConfidenceWeight(game.confidenceWeight)}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">First player</dt>
-          <dd>{game.firstPlayerSide === "A" ? ourPilot : describeOpponent(game.sideB, maps)}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Played</dt>
-          <dd>{formatPlayedAt(game.playedAt)}</dd>
-        </div>
-      </dl>
+      <Section title="Result" aria-label="Result">
+        <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-muted-foreground">Result</dt>
+            <dd>{formatResult(game.bestOf, game.result)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Confidence weight</dt>
+            <dd>~{formatConfidenceWeight(game.confidenceWeight)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">First player</dt>
+            <dd>{game.firstPlayerSide === "A" ? ourPilot : describeOpponent(game.sideB, maps)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Played</dt>
+            <dd>{formatPlayedAt(game.playedAt)}</dd>
+          </div>
+        </dl>
+      </Section>
 
-      <section className="flex flex-col gap-1">
-        <h3 className="text-sm font-semibold">Confidence factors</h3>
+      <Section title="Confidence factors" aria-label="Confidence factors">
         <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
           <div className="flex justify-between gap-2">
             <dt className="text-muted-foreground">{SKILL_PARITY_FIELD.label}</dt>
@@ -137,54 +140,59 @@ export function GameDetail({
             <dd>{optionLabel(PILOT_FAMILIARITY_FIELD, game.confidenceFactors.pilotFamiliarity)}</dd>
           </div>
         </dl>
-      </section>
+      </Section>
 
-      {game.learnings ? (
-        <section className="flex flex-col gap-1">
-          <h3 className="text-sm font-semibold">Learnings</h3>
-          <p className="whitespace-pre-wrap text-sm">{game.learnings}</p>
-        </section>
+      {game.learnings || game.impressiveCards.length > 0 || game.underperformingCards.length > 0 ? (
+        <Section title="Notes & cards" aria-label="Notes and cards">
+          {game.learnings ? (
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold">Learnings</span>
+              <p className="whitespace-pre-wrap text-sm">{game.learnings}</p>
+            </div>
+          ) : null}
+
+          {game.impressiveCards.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold">Impressive cards</span>
+              <ul className="flex flex-col gap-1 text-sm">
+                {game.impressiveCards.map((entry) => (
+                  <li key={entry.card.id} className="flex justify-between gap-2">
+                    <span>{entry.card.name}</span>
+                    <span className="text-muted-foreground">
+                      {GAME_LOG_CARD_SIDE_LABELS[entry.side]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {game.underperformingCards.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold">Underperforming cards</span>
+              <ul className="flex flex-col gap-1 text-sm">
+                {game.underperformingCards.map((entry) => (
+                  <li key={entry.card.id} className="flex justify-between gap-2">
+                    <span>{entry.card.name}</span>
+                    <span className="text-muted-foreground">
+                      {GAME_LOG_CARD_SIDE_LABELS[entry.side]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </Section>
       ) : null}
 
-      {game.impressiveCards.length > 0 ? (
-        <section className="flex flex-col gap-1">
-          <h3 className="text-sm font-semibold">Impressive cards</h3>
-          <ul className="flex flex-col gap-1 text-sm">
-            {game.impressiveCards.map((entry) => (
-              <li key={entry.card.id} className="flex justify-between gap-2">
-                <span>{entry.card.name}</span>
-                <span className="text-muted-foreground">
-                  {GAME_LOG_CARD_SIDE_LABELS[entry.side]}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {game.underperformingCards.length > 0 ? (
-        <section className="flex flex-col gap-1">
-          <h3 className="text-sm font-semibold">Underperforming cards</h3>
-          <ul className="flex flex-col gap-1 text-sm">
-            {game.underperformingCards.map((entry) => (
-              <li key={entry.card.id} className="flex justify-between gap-2">
-                <span>{entry.card.name}</span>
-                <span className="text-muted-foreground">
-                  {GAME_LOG_CARD_SIDE_LABELS[entry.side]}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <CommentThread teamId={teamId} subjectType="game_log" subjectId={game.id} canComment />
-
-      <ActivityFeed
-        teamId={teamId}
-        filters={{ subjectType: "game_log", subjectId: game.id }}
-        title="Game activity"
-      />
+      <Section aria-label="Discussion" bodyClassName="gap-4">
+        <CommentThread teamId={teamId} subjectType="game_log" subjectId={game.id} canComment />
+        <ActivityFeed
+          teamId={teamId}
+          filters={{ subjectType: "game_log", subjectId: game.id }}
+          title="Game activity"
+        />
+      </Section>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Section } from "@/components/ui/section";
 import { useHeroes } from "@/features/cards/use-heroes";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { HeroPicker } from "@/features/decks/HeroPicker";
@@ -119,9 +120,7 @@ export function MetaDeckEntryBuilder({
   }
 
   return (
-    <section className="flex flex-col gap-4">
-      <h3 className="text-sm font-semibold">The field — decks to beat</h3>
-
+    <Section title="The field — decks to beat" aria-label="Decks to beat">
       {entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">No decks in this meta yet.</p>
       ) : (
@@ -309,6 +308,6 @@ export function MetaDeckEntryBuilder({
           ) : null}
         </div>
       ) : null}
-    </section>
+    </Section>
   );
 }

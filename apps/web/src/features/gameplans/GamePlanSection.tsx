@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
 import { useCurrentMeta, useMetaDeckEntries } from "@/features/metas/use-metas";
 
 import { GamePlanCard } from "./GamePlanCard";
@@ -35,16 +36,17 @@ export function GamePlanSection({
   const metaName = currentMeta?.name ?? null;
 
   return (
-    <section className="flex flex-col gap-3" aria-label="Matchup game-plans">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Matchup game-plans</h3>
-        {!deckArchived && !writing ? (
+    <Section
+      title="Matchup game-plans"
+      aria-label="Matchup game-plans"
+      actions={
+        !deckArchived && !writing ? (
           <Button type="button" size="sm" variant="outline" onClick={() => setWriting(true)}>
             Write a game-plan
           </Button>
-        ) : null}
-      </div>
-
+        ) : null
+      }
+    >
       {writing ? (
         <GamePlanEditor
           teamId={teamId}
@@ -73,6 +75,6 @@ export function GamePlanSection({
           ))}
         </div>
       )}
-    </section>
+    </Section>
   );
 }

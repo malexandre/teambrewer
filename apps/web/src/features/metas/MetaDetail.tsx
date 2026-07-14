@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/ui/page-header";
+import { Section } from "@/components/ui/section";
 import { ApiError } from "@/lib/api-client";
 
 import { MetaDeckEntryBuilder } from "./MetaDeckEntryBuilder";
@@ -39,29 +41,32 @@ export function MetaDetail({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold tracking-tight">{meta.name}</h2>
-          {isCurrent ? (
-            <span className="rounded-md bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-              Current
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={meta.name}
+        description={
+          <div className="flex flex-wrap items-center gap-2">
+            {isCurrent ? (
+              <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+                Current
+              </span>
+            ) : null}
+            <span>
+              {formatMetaDate(meta.startDate)} → {formatMetaDate(meta.endDate)}
             </span>
-          ) : null}
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-            Edit
-          </Button>
-          <Button size="sm" variant="ghost" onClick={archive} disabled={archiveMeta.isPending}>
-            Archive
-          </Button>
-        </div>
-      </div>
-
-      <p className="text-sm text-muted-foreground">
-        {formatMetaDate(meta.startDate)} → {formatMetaDate(meta.endDate)}
-      </p>
+          </div>
+        }
+        actions={
+          <>
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+            <Button size="sm" variant="ghost" onClick={archive} disabled={archiveMeta.isPending}>
+              Archive
+            </Button>
+          </>
+        }
+      />
 
       {archiveMeta.isError ? (
         <p role="alert" className="text-sm text-destructive">
@@ -72,10 +77,9 @@ export function MetaDetail({
       ) : null}
 
       {meta.description ? (
-        <section className="flex flex-col gap-1">
-          <h3 className="text-sm font-semibold">Description</h3>
+        <Section title="Description" aria-label="Description" bodyClassName="gap-1">
           <p className="whitespace-pre-wrap text-sm">{meta.description}</p>
-        </section>
+        </Section>
       ) : null}
 
       <MetaDeckEntryBuilder teamId={teamId} metaId={meta.id} entries={entries} canEdit />

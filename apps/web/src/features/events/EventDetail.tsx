@@ -3,6 +3,8 @@ import type { EventDetail as EventDetailType } from "@teambrewer/shared";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { Section } from "@/components/ui/section";
 import { useMetas } from "@/features/metas/use-metas";
 
 import { AttendanceControl } from "./AttendanceControl";
@@ -49,40 +51,44 @@ export function EventDetail({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">{event.name}</h2>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-            Edit
-          </Button>
-          <Button size="sm" variant="ghost" onClick={archive} disabled={archiveEvent.isPending}>
-            Archive
-          </Button>
-        </div>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={event.name}
+        actions={
+          <>
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+            <Button size="sm" variant="ghost" onClick={archive} disabled={archiveEvent.isPending}>
+              Archive
+            </Button>
+          </>
+        }
+      />
 
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-muted-foreground">Date</dt>
-          <dd>{formatEventDate(event.date)}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Location</dt>
-          <dd>{event.location ?? "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Meta</dt>
-          <dd>{metaName ?? "—"}</dd>
-        </div>
-      </dl>
+      <Section title="Details" aria-label="Details">
+        <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-muted-foreground">Date</dt>
+            <dd>{formatEventDate(event.date)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Location</dt>
+            <dd>{event.location ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Meta</dt>
+            <dd>{metaName ?? "—"}</dd>
+          </div>
+        </dl>
 
-      {event.description ? (
-        <section className="flex flex-col gap-1">
-          <h3 className="text-sm font-semibold">Description</h3>
-          <p className="whitespace-pre-wrap text-sm">{event.description}</p>
-        </section>
-      ) : null}
+        {event.description ? (
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold">Description</span>
+            <p className="whitespace-pre-wrap text-sm">{event.description}</p>
+          </div>
+        ) : null}
+      </Section>
 
       <AttendanceControl teamId={teamId} eventId={event.id} />
     </div>
