@@ -89,8 +89,9 @@ function TaskColumn({
       ref={setNodeRef}
       data-column={status}
       className={cn(
-        // w-60 lanes: four + gaps (996px) fit the ~1152px content width without scrolling.
-        "flex w-60 shrink-0 flex-col gap-2 rounded-lg border p-2 transition-colors",
+        // w-64 lanes: four + gaps (1060px) fit the ~1152px content width without scrolling
+        // (w-72 would be 1188px and bring the scrollbar back).
+        "flex w-64 shrink-0 flex-col gap-2 rounded-lg border p-2 transition-colors",
         isOver ? "border-primary bg-accent/40" : "border-border bg-muted/40",
       )}
     >
