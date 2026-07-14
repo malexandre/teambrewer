@@ -4,6 +4,7 @@ import {
   attendanceStatusSchema,
   createEventSchema,
   eventListQuerySchema,
+  eventSummarySchema,
   setAttendanceSchema,
   updateEventSchema,
 } from "./events.js";
@@ -95,6 +96,34 @@ describe("setAttendanceSchema", () => {
 
   it("rejects an invalid RSVP", () => {
     expect(() => setAttendanceSchema.parse({ status: "maybe" })).toThrow();
+  });
+});
+
+describe("eventSummarySchema", () => {
+  const validSummary = {
+    id: "event-1",
+    name: "Calling: Sydney",
+    gameId: "flesh-and-blood",
+    metaId: null,
+    date: "2026-09-12T00:00:00.000Z",
+    location: "Sydney",
+    goingCount: 3,
+    interestedCount: 1,
+    archivedAt: null,
+    createdAt: "2026-07-12T00:00:00.000Z",
+    updatedAt: "2026-07-12T00:00:00.000Z",
+  };
+
+  it("carries the going/interested RSVP counts", () => {
+    const parsed = eventSummarySchema.parse(validSummary);
+    expect(parsed.goingCount).toBe(3);
+    expect(parsed.interestedCount).toBe(1);
+  });
+
+  it("requires the RSVP counts to be present", () => {
+    const withoutGoing: Record<string, unknown> = { ...validSummary };
+    delete withoutGoing["goingCount"];
+    expect(eventSummarySchema.safeParse(withoutGoing).success).toBe(false);
   });
 });
 

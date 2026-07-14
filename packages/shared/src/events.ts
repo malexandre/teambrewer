@@ -99,7 +99,13 @@ export const eventListQuerySchema = z.object({
 });
 export type EventListQuery = z.infer<typeof eventListQuerySchema>;
 
-/** An event as returned in list responses (description omitted; see detail). */
+/**
+ * An event as returned in list responses (description omitted; see detail). Carries
+ * a lightweight RSVP tally — `goingCount`/`interestedCount` (the number of members
+ * whose attendance status is `going`/`interested`) — so the list can show turnout on
+ * each row without a per-event round-trip. The API computes both with a single
+ * grouped count over the page's events.
+ */
 export const eventSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -107,6 +113,8 @@ export const eventSummarySchema = z.object({
   metaId: z.string().nullable(),
   date: z.string(),
   location: z.string().nullable(),
+  goingCount: z.number().int(),
+  interestedCount: z.number().int(),
   archivedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),

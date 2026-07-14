@@ -55,13 +55,21 @@ export function EventList({ teamId }: { teamId: string | undefined }) {
               <Link
                 to="/events/$eventId"
                 params={{ eventId: event.id }}
-                className="flex flex-col gap-1 rounded-md border border-border p-3 hover:bg-accent"
+                className="flex items-center justify-between gap-3 rounded-md border border-border p-3 hover:bg-accent"
               >
-                <span className="font-medium">{event.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {formatEventDate(event.date)}
-                  {event.location ? ` · ${event.location}` : ""}
-                  {event.metaId ? ` · ${metaNames.get(event.metaId) ?? "Meta"}` : ""}
+                <span className="flex flex-col gap-1">
+                  <span className="font-medium">{event.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatEventDate(event.date)}
+                    {event.location ? ` · ${event.location}` : ""}
+                    {event.metaId ? ` · ${metaNames.get(event.metaId) ?? "Meta"}` : ""}
+                  </span>
+                </span>
+                <span
+                  className="shrink-0 text-xs font-medium text-muted-foreground"
+                  aria-label={`${event.goingCount} going`}
+                >
+                  {event.goingCount} going
                 </span>
               </Link>
             </li>

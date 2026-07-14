@@ -91,10 +91,43 @@ export class EventsService {
     const hasMore = rows.length > query.limit;
     const page = hasMore ? rows.slice(0, query.limit) : rows;
     const last = page.at(-1);
+
+    const attendanceCounts = await this.countAttendanceByStatus(page.map((event) => event.id));
     return {
-      data: page.map(toEventSummary),
+      data: page.map((event) =>
+        toEventSummary(event, attendanceCounts.get(event.id) ?? emptyAttendanceCounts()),
+      ),
       nextCursor: hasMore && last ? encodeKeysetCursor(last.date, last.id) : null,
     };
+  }
+
+  /**
+   * Tally each event's RSVPs by status in a single grouped count over the page's
+   * events — never one query per row. Attendance carries no `teamId`; the event ids
+   * come from the team-scoped list above, so filtering by them is the tenant
+   * boundary. Returns a map from event id to its going/interested counts.
+   */
+  private async countAttendanceByStatus(
+    eventIds: string[],
+  ): Promise<Map<string, AttendanceCounts>> {
+    const countsByEvent = new Map<string, AttendanceCounts>();
+    if (eventIds.length === 0) {
+      return countsByEvent;
+    }
+
+    const grouped = await this.scoped.db.attendance.groupBy({
+      by: ["eventId", "status"],
+      where: { eventId: { in: eventIds } },
+      _count: { _all: true },
+    });
+
+    for (const group of grouped) {
+      const counts = countsByEvent.get(group.eventId) ?? emptyAttendanceCounts();
+      if (group.status === "going") counts.goingCount = group._count._all;
+      else counts.interestedCount = group._count._all;
+      countsByEvent.set(group.eventId, counts);
+    }
+    return countsByEvent;
   }
 
   /** A single event with its attendance summary (404 when missing/cross-tenant/archived). */
@@ -251,7 +284,17 @@ function eventNotFound(): NotFoundException {
   });
 }
 
-function toEventSummary(event: EventRow): EventSummary {
+/** The going/interested RSVP tally embedded in an event summary row. */
+interface AttendanceCounts {
+  goingCount: number;
+  interestedCount: number;
+}
+
+function emptyAttendanceCounts(): AttendanceCounts {
+  return { goingCount: 0, interestedCount: 0 };
+}
+
+function toEventSummary(event: EventRow, counts: AttendanceCounts): EventSummary {
   return {
     id: event.id,
     name: event.name,
@@ -259,6 +302,8 @@ function toEventSummary(event: EventRow): EventSummary {
     metaId: event.metaId,
     date: event.date.toISOString(),
     location: event.location,
+    goingCount: counts.goingCount,
+    interestedCount: counts.interestedCount,
     archivedAt: event.archivedAt ? event.archivedAt.toISOString() : null,
     createdAt: event.createdAt.toISOString(),
     updatedAt: event.updatedAt.toISOString(),
@@ -266,10 +311,14 @@ function toEventSummary(event: EventRow): EventSummary {
 }
 
 function toEventDetail(event: EventDetailRow): EventDetail {
+  const attendanceSummary = summarizeAttendance(event.attendances);
   return {
-    ...toEventSummary(event),
+    ...toEventSummary(event, {
+      goingCount: attendanceSummary.going,
+      interestedCount: attendanceSummary.interested,
+    }),
     description: event.description,
-    attendanceSummary: summarizeAttendance(event.attendances),
+    attendanceSummary,
   };
 }
 

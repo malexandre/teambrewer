@@ -163,6 +163,41 @@ describe("Events endpoints (integration)", () => {
       expect(byMeta.body.data).toHaveLength(1);
       expect(byMeta.body.data[0].name).toBe("Linked");
     });
+
+    it("includes each event's going/interested RSVP counts", async () => {
+      // Craft one event with 2 going + 1 interested, and a second, untouched event
+      // so the counts are proven to be per-event (not a team-wide tally).
+      const withRsvps = await createEvent(prisma, { teamId: teamA.id, name: "With RSVPs" });
+      await createEvent(prisma, { teamId: teamA.id, name: "No RSVPs" });
+      await createAttendance(prisma, {
+        eventId: withRsvps.id,
+        userId: adminA.id,
+        status: "going",
+      });
+      await createAttendance(prisma, {
+        eventId: withRsvps.id,
+        userId: memberA.id,
+        status: "going",
+      });
+      await createAttendance(prisma, {
+        eventId: withRsvps.id,
+        userId: memberA2.id,
+        status: "interested",
+      });
+
+      const response = await asMemberA(http().get("/api/events"));
+      expect(response.status).toBe(200);
+      const rowsByName = new Map<string, { goingCount: number; interestedCount: number }>(
+        response.body.data.map(
+          (event: { name: string; goingCount: number; interestedCount: number }) => [
+            event.name,
+            { goingCount: event.goingCount, interestedCount: event.interestedCount },
+          ],
+        ),
+      );
+      expect(rowsByName.get("With RSVPs")).toEqual({ goingCount: 2, interestedCount: 1 });
+      expect(rowsByName.get("No RSVPs")).toEqual({ goingCount: 0, interestedCount: 0 });
+    });
   });
 
   describe("GET /api/events/:eventId", () => {
