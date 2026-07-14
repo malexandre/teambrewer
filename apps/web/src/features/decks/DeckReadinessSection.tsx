@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Section } from "@/components/ui/section";
 import { useHeroes } from "@/features/cards/use-heroes";
 import { matchupSubjectDisplayName, META_TIER_TONE } from "@/features/metas/meta-display";
+import { cn } from "@/lib/utils";
 
 import { useDeckMetaReadiness } from "./use-meta-readiness";
 
@@ -17,9 +18,9 @@ const TRUST_BADGE: Record<
   DeckMetaReadinessRow["trustIndicator"],
   { tone: BadgeTone; label: string }
 > = {
-  low: { tone: "danger", label: "thin data" },
-  medium: { tone: "warning", label: "thin data" },
-  high: { tone: "success", label: "solid data" },
+  low: { tone: "danger", label: "Thin data" },
+  medium: { tone: "warning", label: "Thin data" },
+  high: { tone: "success", label: "Solid data" },
 };
 
 /** Format a 0–1 weighted win rate as a percentage, or an em dash when there is none. */
@@ -63,17 +64,28 @@ function ReadinessRow({
         </Badge>
       </td>
       <td className="py-2 align-middle">
-        {needsPlan ? (
-          <Badge tone="danger" size="sm" title="A meta-defining deck must have a game-plan">
-            Needs a plan
-          </Badge>
-        ) : row.hasGamePlan ? (
-          <span className="text-xs font-medium text-success-foreground" title="A game-plan exists">
-            ✓ Planned
+        {row.hasGamePlan ? (
+          <span
+            role="img"
+            aria-label="Has a game-plan"
+            title="Has a game-plan"
+            className="font-semibold text-success-foreground"
+          >
+            ✓
           </span>
         ) : (
-          <span className="text-xs text-muted-foreground" title="No game-plan yet">
-            — none
+          <span
+            role="img"
+            aria-label={needsPlan ? "Needs a plan" : "No game-plan"}
+            title={
+              needsPlan ? "Needs a plan (a meta-defining deck should have one)" : "No game-plan"
+            }
+            className={cn(
+              "font-semibold",
+              needsPlan ? "text-danger-foreground" : "text-muted-foreground",
+            )}
+          >
+            ✗
           </span>
         )}
       </td>

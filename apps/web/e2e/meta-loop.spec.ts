@@ -62,8 +62,8 @@ test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) 
   await page.getByRole("tab", { name: "Matchup Matrix" }).click();
   const readiness = page.getByRole("region", { name: "Meta readiness" });
   await expect(readiness.getByText(E2E_REFERENCE.heroName)).toBeVisible();
-  // A Tier-1 (meta-defining) matchup with no game-plan surfaces a "Needs a plan" pill.
-  await expect(readiness.getByText("Needs a plan")).toBeVisible();
+  // A Tier-1 (meta-defining) matchup with no game-plan flags "Needs a plan" (a ✗ glyph).
+  await expect(readiness.getByRole("img", { name: "Needs a plan" })).toBeVisible();
 
   // 5. "Add card idea" (under the "Card ideas & Tasks" tab) opens a task pre-linked to
   //    this deck; add an inline +card and create it.

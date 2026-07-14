@@ -78,7 +78,7 @@ export function DeckList({ teamId }: { teamId: string | undefined }) {
       ) : decks.length === 0 ? (
         <p className="text-sm text-muted-foreground">No decks match these filters.</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {decks.map((deck) => {
             const hero = deck.heroId ? heroesById.get(deck.heroId) : undefined;
             return (
@@ -86,10 +86,10 @@ export function DeckList({ teamId }: { teamId: string | undefined }) {
                 <Link
                   to="/decks/$deckId"
                   params={{ deckId: deck.id }}
-                  className="flex h-full gap-3 rounded-lg border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/50 hover:bg-accent/40"
+                  className="flex h-full gap-2.5 rounded-lg border border-border bg-card p-2.5 shadow-sm transition-colors hover:border-primary/50 hover:bg-accent/40"
                 >
-                  {/* Hero card art (top-cropped), with a name fallback when there's no image. */}
-                  <div className="grid h-24 w-[68px] shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-muted">
+                  {/* Hero card art (top-cropped); a name fallback only when there's no image. */}
+                  <div className="grid h-[68px] w-12 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-muted">
                     {hero?.imageUrl ? (
                       <img
                         src={hero.imageUrl}
@@ -97,21 +97,23 @@ export function DeckList({ teamId }: { teamId: string | undefined }) {
                         className="h-full w-full object-cover object-top"
                       />
                     ) : (
-                      <span className="line-clamp-3 px-1 text-center text-[0.7rem] font-medium text-muted-foreground">
+                      <span className="line-clamp-3 px-1 text-center text-[0.65rem] font-medium text-muted-foreground">
                         {hero?.name ?? "No hero"}
                       </span>
                     )}
                   </div>
 
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="truncate font-semibold leading-tight" title={deck.name}>
+                    <span
+                      className="line-clamp-2 text-sm font-semibold leading-tight"
+                      title={deck.name}
+                    >
                       {deck.name}
                     </span>
                     <span className="truncate text-xs text-muted-foreground">
                       {formatNames.get(deck.formatId) ?? "Unknown format"}
-                      {deck.heroId ? ` · ${hero?.name ?? "Unknown hero"}` : ""}
                     </span>
-                    <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
+                    <div className="mt-auto flex flex-wrap items-center gap-1 pt-1">
                       <Badge tone={DECK_STATUS_TONE[deck.status]} size="sm" dot>
                         {DECK_STATUS_LABELS[deck.status]}
                       </Badge>

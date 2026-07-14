@@ -78,12 +78,12 @@ describe("DeckReadinessSection", () => {
     // 0.6667 → 67% (Win rate column), with the raw sample size in the Games column.
     expect(screen.getByText(/67%/)).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
-    // A Tier-1 (meta-defining) matchup with no plan surfaces a "Needs a plan" pill;
-    // the planned one shows a "✓ Planned" marker.
-    expect(screen.getByText("Needs a plan")).toBeInTheDocument();
-    expect(screen.getByText("✓ Planned")).toBeInTheDocument();
-    // Low-trust rows carry a "thin data" badge (the pastel confidence indicator).
-    expect(screen.getAllByText("thin data")).toHaveLength(2);
+    // A Tier-1 (meta-defining) matchup with no plan flags "Needs a plan"; the planned
+    // one shows a check. Both are icon-role glyphs with accessible labels.
+    expect(screen.getByRole("img", { name: "Needs a plan" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Has a game-plan" })).toBeInTheDocument();
+    // Low-trust rows carry a "Thin data" badge (the pastel confidence indicator).
+    expect(screen.getAllByText("Thin data")).toHaveLength(2);
     // A null rate (no decisive games) renders as an em dash.
     expect(screen.getByText("—")).toBeInTheDocument();
   });
