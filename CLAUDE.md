@@ -58,14 +58,18 @@ re-centring the app on the **metagame** instead of individual events. The primar
 - **Lightweight events**: an `Event` is now name / date / location / description / optional `metaId`
   + **RSVP** (`going | interested`). Gauntlets, deck-selection, retrospective, status, and importance
   are gone (the gauntlet moved to Meta).
-- **Navigation**: a left **sidebar** main menu (Decks · Metas · Events · Games · Tasks · Admin\* ·
-  Settings) + a top **submenu bar** for sections with sub-pages (Admin → Teams · Accounts · Members),
-  collapsing to an accessible drawer on mobile. The authenticated **landing page is Decks**.
+- **Navigation**: a left **sidebar** main menu with an icon per section (Decks · Metas · Events · Games ·
+  Tasks · Admin\* · Settings), **collapsible** to an icon rail (preference persisted). The sidebar **foot
+  owns identity** — the active-team switcher, the connected account (displayName + @username), the theme
+  toggle, and sign-out. There is **no top header**; the section **submenu** (Admin → Teams · Accounts ·
+  Members) is a slim in-content bar, and **notifications are a floating top-right button**. On mobile the
+  sidebar collapses to an accessible drawer (opened from a slim mobile bar). The authenticated **landing
+  page is Decks**.
 - **Removed** entirely: the dashboard, the knowledge base (primers / decisions / polls), the standalone
   matchups tab, the top-level activity tab, the team roster tab (Discord covers it; `@`-autocomplete
   still uses `/members`), and the standalone cards page (the card DB + `CardPicker` remain).
 
-Everything is **local-green** on `main`: **415 API + 266 shared + 147 web** unit/integration tests and
+Everything is **local-green** on `main`: **415 API + 266 shared + 153 web** unit/integration tests and
 **9 Playwright e2e journeys** (8 desktop + the phone-viewport game-logging flow), plus `pnpm lint`,
 `pnpm typecheck`, and `pnpm build`. (`pnpm test:e2e` reuses a running dev server — stop it first, or
 every journey fails at the setup page.)
