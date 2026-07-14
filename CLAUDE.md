@@ -22,29 +22,42 @@ mandatory TOTP, or Discord SSO — invite-only, no email); the **tenant-isolatio
 collaboration core (comments, `@mentions` → notifications, activity); and PWA/ops hardening. That
 history is real — the per-phase detail lives in the git log and [`docs/plans/`](docs/plans/README.md).
 
-**The current state is the "meta-pivot" redesign** (branch `feat/meta-pivot`), which re-centres the
-app on the **metagame** instead of individual events. See
-[ADR-0010](docs/decisions/0010-meta-as-organizing-hub.md) (supersedes the event-as-hub ADR-0004).
-The primary loop is now **decks ↔ the current meta ↔ tasks**:
+**The "meta-pivot" redesign is merged to `main`** (ADR-0010, supersedes the event-as-hub ADR-0004),
+re-centring the app on the **metagame** instead of individual events. The primary loop is
+**decks ↔ metas ↔ tasks**:
 
-- **Meta** (team-scoped) is the organizing hub: a dated window (`[startDate, endDate]`) owning a
-  **tiered list of decks to beat** (`MetaDeckEntry` with a `MetaTier`: meta-defining / contender /
-  counter-meta / fringe). "Current meta" = the one whose window contains today. Decks link to metas
-  (`DeckMeta`, defaulting to the current meta on create). See [`docs/features/metas.md`](docs/features/metas.md).
+- **Meta** (team-scoped) is the organizing hub: a dated window (`[startDate, endDate]`) for a **required
+  format**, owning a **tiered list of decks to beat** (`MetaDeckEntry` with a `MetaTier`: meta-defining /
+  contender / counter-meta / fringe). An entry is a matchup subject — an optional hero **and** an
+  optional free-text label, of which at least one is present. There is **no live "current meta"**: metas
+  are ordered newest-first and per-format defaults resolve to the most recent meta of a format. Decks
+  link to metas (`DeckMeta`, default-linking the format's most recent meta on create). See
+  [`docs/features/metas.md`](docs/features/metas.md).
+- **Deck ↔ meta-entry linkage**: per meta, a team deck can be marked as the team's build of one of that
+  meta's entries (`DeckMeta.metaDeckEntryId`). Games where a teammate piloted a linked deck **feed** that
+  entry's readiness, and the game logger badges the deck. Already-recorded games can be **retro-linked**
+  to an entry (`link-candidates` / `link-games`); deleting an entry **backfills** its hero + label onto
+  its linked games so they keep their matchup identity.
 - **Per-deck readiness** replaces the standalone matchups tab: the confidence-weighted matchup math
-  (still single-sourced in `packages/shared`, fed by `GameLog`) is surfaced as a **Readiness** section
-  on the deck page — weighted win rate + raw sample + thin-data flag + whether a game-plan exists
-  (Tier-1 decks flagged when unplanned). Matchup **game-plans** stay, per deck, with `+card` bodies.
+  (single-sourced in `packages/shared`, fed by `GameLog`) is surfaced as a **Readiness** section on the
+  deck page — weighted win rate + raw sample + thin-data flag + whether a game-plan exists (Tier-1 decks
+  flagged when unplanned). Matchup **game-plans** stay, per deck, with `+card` bodies.
+- **Game logging**: each side is a matchup subject (team deck / meta deck entry / hero + optional label,
+  chosen from one grouped select) plus a **player category** (`teammate | circuit_player | other`) — we
+  record the *kind* of player, not a specific pilot/opponent name. `GameLog` carries an optional `metaId`
+  (no `eventId`). A subject is always shown **hero-first, then `· label`** (never a bare label when a
+  hero is known); the shared `matchupSubjectDisplayName` is the single source. The one exception is the
+  meta board's hero *squares*, which show the hero image instead of the name.
 - **Tasks** (unified) merge the two old testing-queue models into one free-form `Task` (title,
   description, optional deck link, status `proposed → assigned → finished|abandoned` with a
   report-on-finish rule, upvotes, assignee). Commentable + activity-tracked. See
   [`docs/features/tasks.md`](docs/features/tasks.md).
 - **`+card` inline mentions**: cards are linked inline in prose (task descriptions, game-plan bodies,
-  deck notes) as stable `+[[cardId]]` tokens via the shared composer/renderer, mirroring `@member`
-  mentions — no structured card-list tables.
+  deck notes, comments, iteration log) as stable `+[[cardId]]` tokens, rendered as atomic name pills in a
+  `contenteditable` composer and as chips at read time, mirroring `@member` mentions — no card-list tables.
 - **Lightweight events**: an `Event` is now name / date / location / description / optional `metaId`
   + **RSVP** (`going | interested`). Gauntlets, deck-selection, retrospective, status, and importance
-  are gone (the gauntlet moved to Meta). `GameLog` drops `eventId` and gains an optional `metaId`.
+  are gone (the gauntlet moved to Meta).
 - **Navigation**: a left **sidebar** main menu (Decks · Metas · Events · Games · Tasks · Admin\* ·
   Settings) + a top **submenu bar** for sections with sub-pages (Admin → Teams · Accounts · Members),
   collapsing to an accessible drawer on mobile. The authenticated **landing page is Decks**.
@@ -52,9 +65,10 @@ The primary loop is now **decks ↔ the current meta ↔ tasks**:
   matchups tab, the top-level activity tab, the team roster tab (Discord covers it; `@`-autocomplete
   still uses `/members`), and the standalone cards page (the card DB + `CardPicker` remain).
 
-Everything is **local-green** on the meta-pivot branch: **401 API + 259 shared + 123 web**
-unit/integration tests and **9 Playwright e2e journeys** (8 desktop + the phone-viewport game-logging
-flow), plus `pnpm lint`, `pnpm typecheck`, and `pnpm build`.
+Everything is **local-green** on `main`: **415 API + 266 shared + 147 web** unit/integration tests and
+**9 Playwright e2e journeys** (8 desktop + the phone-viewport game-logging flow), plus `pnpm lint`,
+`pnpm typecheck`, and `pnpm build`. (`pnpm test:e2e` reuses a running dev server — stop it first, or
+every journey fails at the setup page.)
 
 
 ## How to work in this repo
