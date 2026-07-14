@@ -182,7 +182,7 @@ export function MetaDeckEntryBuilder({
                               type="button"
                               aria-label={`Edit ${displayLabel}`}
                               onClick={() => startEditing(entry)}
-                              className="rounded bg-background/85 p-1 text-foreground shadow-sm hover:bg-background"
+                              className="rounded bg-black/30 p-1 text-white shadow-sm transition hover:bg-black/60"
                             >
                               <Pencil className="h-3.5 w-3.5" aria-hidden />
                             </button>
@@ -191,7 +191,7 @@ export function MetaDeckEntryBuilder({
                               aria-label={`Remove ${displayLabel}`}
                               disabled={removeEntry.isPending}
                               onClick={() => removeEntry.mutate(entry.id)}
-                              className="rounded bg-background/85 p-1 text-foreground shadow-sm hover:bg-destructive hover:text-destructive-foreground"
+                              className="rounded bg-black/30 p-1 text-white shadow-sm transition hover:bg-destructive"
                             >
                               <X className="h-3.5 w-3.5" aria-hidden />
                             </button>
