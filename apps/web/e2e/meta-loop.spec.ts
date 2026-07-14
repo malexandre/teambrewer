@@ -80,22 +80,33 @@ test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) 
   await page.getByRole("button", { name: "Create task" }).click();
   await expect(page.getByText(new RegExp(`Card idea: ${deckName}`))).toBeVisible();
 
-  // 6. On the Tasks board the task renders with its resolved +card chip. Advance it
+  // 6. On the Tasks board the task appears as a card in its status column. Open its
+  //    detail dialog (which holds the +card chip and the controls) and advance it
   //    proposed -> assigned -> finished; finishing demands a report, then the report
   //    is revealed behind the Report button.
   await page.getByRole("link", { name: "Tasks", exact: true }).click();
-  await expect(page.getByText(E2E_CARD_NAME)).toBeVisible();
+  await page.getByRole("button", { name: new RegExp(`Open task: Card idea: ${deckName}`) }).click();
 
-  await page.getByRole("button", { name: "Upvote" }).click();
-  await page.getByRole("combobox", { name: "Change status" }).selectOption({ label: "Assigned" });
-  await page.getByRole("combobox", { name: "Change status" }).selectOption({ label: "Finished" });
-  await page
+  const taskDialog = page.getByRole("dialog");
+  await expect(taskDialog.getByText(E2E_CARD_NAME)).toBeVisible();
+  await taskDialog.getByRole("button", { name: "Upvote" }).click();
+  await taskDialog
+    .getByRole("combobox", { name: "Change status" })
+    .selectOption({ label: "Assigned" });
+  await taskDialog
+    .getByRole("combobox", { name: "Change status" })
+    .selectOption({ label: "Finished" });
+  await taskDialog
     .getByLabel(/required to finish/i)
     .fill("Command and Conquer over-performed; keeping it.");
-  await page.getByRole("button", { name: "Finish task" }).click();
+  await taskDialog.getByRole("button", { name: "Finish task" }).click();
 
-  await page.getByRole("button", { name: "Report", exact: true }).click();
-  await expect(page.getByText("Command and Conquer over-performed; keeping it.")).toBeVisible();
+  await taskDialog.getByRole("button", { name: "Report", exact: true }).click();
+  await expect(
+    taskDialog.getByText("Command and Conquer over-performed; keeping it."),
+  ).toBeVisible();
+  // Close the detail dialog before navigating (its modal backdrop blocks the sidebar).
+  await taskDialog.getByRole("button", { name: "Close" }).click();
 
   // 7. Create an event linked to the meta and RSVP going.
   await page.getByRole("link", { name: "Events", exact: true }).click();
