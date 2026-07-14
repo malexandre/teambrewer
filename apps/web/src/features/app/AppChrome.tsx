@@ -121,7 +121,10 @@ function MainMenu({
 }) {
   const items = [...MAIN_NAV, ...(canAdminister ? [ADMIN_NAV] : []), SETTINGS_NAV];
   return (
-    <nav aria-label="Main" className="flex flex-1 flex-col gap-1 p-2 text-sm">
+    <nav
+      aria-label="Main"
+      className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2 text-sm"
+    >
       {items.map((item) => {
         const active = item.matches(pathname);
         const Icon = item.icon;
@@ -291,7 +294,9 @@ export function AppChrome({ children }: { children: ReactNode }) {
       {/* Persistent sidebar (desktop and up). */}
       <aside
         className={cn(
-          "hidden shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 md:flex",
+          // Sticky + viewport-tall so the footer (mt-auto) pins to the bottom of the
+          // screen, not the bottom of a long page.
+          "hidden shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 md:sticky md:top-0 md:flex md:h-dvh",
           isCollapsed ? "w-16" : "w-56",
         )}
       >
