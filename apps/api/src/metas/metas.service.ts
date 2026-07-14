@@ -207,7 +207,7 @@ export class MetasService {
     await this.requireMeta(metaId);
     const target = await this.resolveDeckEntryTarget(metaId, {
       heroId: input.heroId ?? null,
-      label: input.label,
+      label: input.label ?? "",
       gameId: team.gameId,
     });
 
@@ -317,22 +317,25 @@ export class MetasService {
   }
 
   /**
-   * Validate and normalize a deck entry's matchup subject (a required label + an
-   * optional hero qualifier) and derive its durable snapshot label. A hero outside
-   * the team's game is a domain-rule 422 (heroes are global, per-game reference data;
-   * a wrong-game id is not a tenancy leak). An entry that would exactly duplicate
-   * another in the meta — same hero (or both hero-less) and the same label,
-   * case-insensitively — is rejected (→ 422).
+   * Validate and normalize a deck entry's matchup subject (an optional hero and an
+   * optional label, of which at least one must be present) and derive its durable
+   * snapshot label — the label when set, else the hero's name. A hero outside the
+   * team's game is a domain-rule 422 (heroes are global, per-game reference data; a
+   * wrong-game id is not a tenancy leak). An entry with neither a hero nor a label
+   * is a 422, as is one that would exactly duplicate another in the meta — same
+   * hero (or both hero-less) and the same label, case-insensitively.
    */
   private async resolveDeckEntryTarget(
     metaId: string,
-    input: { heroId: string | null; label: string; gameId: string; excludeEntryId?: string },
+    input: { heroId: string | null; label?: string; gameId: string; excludeEntryId?: string },
   ): Promise<ResolvedDeckEntryTarget> {
+    const normalizedLabel = (input.label ?? "").trim();
+    let heroName: string | null = null;
     if (input.heroId !== null) {
       const hero = (await this.scoped.db.hero.findFirst({
         where: { id: input.heroId, gameId: input.gameId, archivedAt: null },
-        select: { id: true },
-      })) as { id: string } | null;
+        select: { id: true, name: true },
+      })) as { id: string; name: string } | null;
       if (!hero) {
         throw new UnprocessableEntityException({
           error: {
@@ -341,12 +344,22 @@ export class MetasService {
           },
         });
       }
+      heroName = hero.name;
     }
-    await this.assertNoDuplicateTarget(metaId, input.heroId, input.label, input.excludeEntryId);
+    if (input.heroId === null && normalizedLabel.length === 0) {
+      throw new UnprocessableEntityException({
+        error: {
+          code: errorCode.domainRuleViolation,
+          message: "Enter a hero or an archetype label.",
+        },
+      });
+    }
+    await this.assertNoDuplicateTarget(metaId, input.heroId, normalizedLabel, input.excludeEntryId);
     return {
       heroId: input.heroId,
-      label: input.label,
-      opponentSnapshotLabel: input.label,
+      label: normalizedLabel,
+      // The snapshot is the durable display string: the label when set, else the hero.
+      opponentSnapshotLabel: normalizedLabel.length > 0 ? normalizedLabel : (heroName as string),
     };
   }
 

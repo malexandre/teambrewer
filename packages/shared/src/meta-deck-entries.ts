@@ -1,15 +1,13 @@
 import { z } from "zod";
 
-import { archetypeLabelSchema } from "./events.js";
-
 /**
  * Shared meta-deck-entry contracts (see docs/features/metas.md). A
  * **MetaDeckEntry** is one tiered entry in a meta's opponent-deck list — the
- * reshaped gauntlet — modelled as a **matchup subject**: a required free-text
- * `label` (the human archetype name) with an optional `heroId` qualifier, plus a
- * `tier` (how central the archetype is to the field). The same hero may appear
- * more than once under different labels, so entries are distinguished by
- * (hero, label) rather than by hero alone.
+ * reshaped gauntlet — modelled as a **matchup subject**: an optional `heroId`
+ * and an optional free-text `label` (the human archetype name), of which **at
+ * least one must be present**, plus a `tier` (how central the archetype is to
+ * the field). The same hero may appear more than once under different labels, so
+ * entries are distinguished by (hero, label) rather than by hero alone.
  *
  * Tenancy: `metaId`/`teamId` and the derived `opponentSnapshotLabel` are stamped
  * server-side — they are never accepted from the client, so create/update inputs
@@ -35,30 +33,41 @@ export const META_TIER_LABELS: Record<MetaTier, string> = {
   fringe: "Fringe — know it exists",
 };
 
-/** The human archetype name of a meta deck entry (always required). */
-export const metaDeckEntryLabelSchema = archetypeLabelSchema;
+/**
+ * The human archetype name of a meta deck entry. Optional at the field level
+ * (an entry may be identified by its hero alone); trimmed, capped, and may be
+ * empty. The "hero or label" rule is enforced cross-field on the input schemas.
+ */
+export const metaDeckEntryLabelSchema = z.string().trim().max(100);
 
 /** Free-form notes on a meta deck entry. */
 export const metaDeckEntryNotesSchema = z.string().max(2000);
 
 /**
- * Create-meta-deck-entry input. A matchup subject: a required `label` with an
- * optional `heroId` qualifier, plus its tier. `metaId`/`teamId`, the derived
- * `opponentSnapshotLabel`, and timestamps are server-stamped and omitted.
+ * Create-meta-deck-entry input. A matchup subject: an optional `heroId` and an
+ * optional `label`, of which **at least one is required**, plus its tier.
+ * `metaId`/`teamId`, the derived `opponentSnapshotLabel`, and timestamps are
+ * server-stamped and omitted.
  */
-export const createMetaDeckEntrySchema = z.object({
-  tier: metaTierSchema,
-  heroId: z.string().min(1).optional(),
-  label: metaDeckEntryLabelSchema,
-  notes: metaDeckEntryNotesSchema.default(""),
-});
+export const createMetaDeckEntrySchema = z
+  .object({
+    tier: metaTierSchema,
+    heroId: z.string().min(1).optional(),
+    label: metaDeckEntryLabelSchema.optional(),
+    notes: metaDeckEntryNotesSchema.default(""),
+  })
+  .refine((value) => Boolean(value.heroId) || Boolean(value.label && value.label.length > 0), {
+    message: "Enter a hero or an archetype label.",
+    path: ["label"],
+  });
 export type CreateMetaDeckEntryInput = z.infer<typeof createMetaDeckEntrySchema>;
 
 /**
  * Update-meta-deck-entry input. The whole matchup subject is editable: `tier`,
- * `label`, the optional `heroId` (pass `null` to clear the hero qualifier), and
- * `notes`. The schema is `.strict()` and requires at least one field; the server
- * re-validates the hero and re-derives the snapshot label.
+ * `label` (pass `""` to clear it), the optional `heroId` (pass `null` to clear
+ * the hero qualifier), and `notes`. The schema is `.strict()` and requires at
+ * least one field; the server re-validates the hero, keeps the "hero or label"
+ * invariant on the merged result, and re-derives the snapshot label.
  */
 export const updateMetaDeckEntrySchema = z
   .object({

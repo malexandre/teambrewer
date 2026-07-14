@@ -60,12 +60,15 @@ export const gamePlanMetaDeckEntryIdsSchema = z
  */
 export function deriveMatchupSubjectRef(subject: {
   heroId?: string | null;
-  label: string;
+  label?: string | null;
 }): string {
-  const normalizedLabel = subject.label.trim().toLowerCase();
-  return subject.heroId
-    ? `hero:${subject.heroId}|label:${normalizedLabel}`
-    : `label:${normalizedLabel}`;
+  const normalizedLabel = (subject.label ?? "").trim().toLowerCase();
+  if (subject.heroId) {
+    return normalizedLabel
+      ? `hero:${subject.heroId}|label:${normalizedLabel}`
+      : `hero:${subject.heroId}`;
+  }
+  return `label:${normalizedLabel}`;
 }
 
 // --- Inputs -----------------------------------------------------------------

@@ -70,6 +70,11 @@ export function MetaDeckEntryBuilder({
     return heroNamesById.get(entry.heroId) ?? null;
   }
 
+  /** The entry's primary display name: its label when set, else the derived snapshot (the hero). */
+  function displayLabelFor(entry: MetaDeckEntry): string {
+    return entry.label || entry.opponentSnapshotLabel;
+  }
+
   function startEditing(entry: MetaDeckEntry) {
     setEditingEntryId(entry.id);
     setEditTier(entry.tier);
@@ -79,7 +84,8 @@ export function MetaDeckEntryBuilder({
   }
 
   function saveEdit(entry: MetaDeckEntry) {
-    if (!editLabel.trim()) {
+    // At least one of a hero or a label is required (label "" clears it).
+    if (!editHeroId && !editLabel.trim()) {
       return;
     }
     updateEntry.mutate(
@@ -98,16 +104,16 @@ export function MetaDeckEntryBuilder({
 
   function submit() {
     setValidationError(null);
-    if (!label.trim()) {
-      setValidationError("Enter an archetype label for this deck.");
+    if (!heroId && !label.trim()) {
+      setValidationError("Enter a hero or an archetype label.");
       return;
     }
 
     const input: CreateMetaDeckEntryInput = {
       tier,
-      label: label.trim(),
       notes,
       ...(heroId ? { heroId } : {}),
+      ...(label.trim() ? { label: label.trim() } : {}),
     };
 
     addEntry.mutate(input, {
@@ -141,23 +147,21 @@ export function MetaDeckEntryBuilder({
                       {editingEntryId === entry.id ? (
                         <div className="flex flex-col gap-2">
                           <div className="flex flex-col gap-1">
-                            <Label htmlFor={`edit-label-${entry.id}`}>Archetype</Label>
-                            <Input
-                              id={`edit-label-${entry.id}`}
-                              value={editLabel}
-                              onChange={(event) => setEditLabel(event.target.value)}
-                              placeholder="e.g. Aggro Red"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label htmlFor={`edit-hero-${entry.id}`}>
-                              {identityLabel} (optional)
-                            </Label>
+                            <Label htmlFor={`edit-hero-${entry.id}`}>{identityLabel}</Label>
                             <HeroPicker
                               id={`edit-hero-${entry.id}`}
                               teamId={teamId}
                               value={editHeroId}
                               onChange={setEditHeroId}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <Label htmlFor={`edit-label-${entry.id}`}>Archetype (optional)</Label>
+                            <Input
+                              id={`edit-label-${entry.id}`}
+                              value={editLabel}
+                              onChange={(event) => setEditLabel(event.target.value)}
+                              placeholder="e.g. Aggro Red"
                             />
                           </div>
                           <div className="flex flex-col gap-1">
@@ -179,7 +183,7 @@ export function MetaDeckEntryBuilder({
                             className="min-h-16 w-full rounded-md border border-input bg-background p-2 text-sm"
                             value={editNotes}
                             onChange={(event) => setEditNotes(event.target.value)}
-                            aria-label={`Notes for ${entry.label}`}
+                            aria-label={`Notes for ${displayLabelFor(entry)}`}
                           />
                           <div className="flex items-center gap-1">
                             <Button
@@ -203,8 +207,8 @@ export function MetaDeckEntryBuilder({
                       ) : (
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">{entry.label}</p>
-                            {heroNameFor(entry) ? (
+                            <p className="truncate text-sm font-medium">{displayLabelFor(entry)}</p>
+                            {entry.label && heroNameFor(entry) ? (
                               <p className="truncate text-xs text-muted-foreground">
                                 {heroNameFor(entry)}
                               </p>
@@ -221,7 +225,7 @@ export function MetaDeckEntryBuilder({
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                aria-label={`Edit ${entry.label}`}
+                                aria-label={`Edit ${displayLabelFor(entry)}`}
                                 onClick={() => startEditing(entry)}
                               >
                                 Edit
@@ -230,7 +234,7 @@ export function MetaDeckEntryBuilder({
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                aria-label={`Remove ${entry.label}`}
+                                aria-label={`Remove ${displayLabelFor(entry)}`}
                                 disabled={removeEntry.isPending}
                                 onClick={() => removeEntry.mutate(entry.id)}
                               >
@@ -253,22 +257,22 @@ export function MetaDeckEntryBuilder({
         <div className="flex flex-col gap-2 rounded-md border border-border p-3">
           <div className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
-              <Label htmlFor="meta-entry-archetype">Archetype</Label>
-              <Input
-                id="meta-entry-archetype"
-                value={label}
-                onChange={(event) => setLabel(event.target.value)}
-                placeholder="e.g. Aggro Red"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="meta-entry-hero">{identityLabel} (optional)</Label>
+              <Label htmlFor="meta-entry-hero">{identityLabel}</Label>
               <HeroPicker
                 id="meta-entry-hero"
                 teamId={teamId}
                 value={heroId}
                 onChange={setHeroId}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="meta-entry-archetype">Archetype (optional)</Label>
+              <Input
+                id="meta-entry-archetype"
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder="e.g. Aggro Red"
               />
             </div>
 

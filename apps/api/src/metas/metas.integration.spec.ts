@@ -313,17 +313,25 @@ describe("Metas endpoints (integration)", () => {
       ]);
     });
 
-    it("requires a label with 400", async () => {
+    it("requires at least a hero or a label with 400", async () => {
       const meta = await createMeta(prisma, { teamId: teamA.id });
       const none = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
         tier: "contender",
       });
       expect(none.status).toBe(400);
+    });
+
+    it("adds a hero-only entry (no label), deriving the snapshot from the hero name", async () => {
+      const meta = await createMeta(prisma, { teamId: teamA.id });
       const heroOnly = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
         tier: "contender",
         heroId: fabHeroId,
       });
-      expect(heroOnly.status).toBe(400);
+      expect(heroOnly.status).toBe(201);
+      expect(heroOnly.body.heroId).toBe(fabHeroId);
+      expect(heroOnly.body.label).toBe("");
+      // The durable snapshot label falls back to the hero's name when there is no label.
+      expect(heroOnly.body.opponentSnapshotLabel.length).toBeGreaterThan(0);
     });
 
     it("rejects an unknown tier with 400", async () => {

@@ -28,9 +28,15 @@ describe("meta tier enum", () => {
 });
 
 describe("createMetaDeckEntrySchema", () => {
-  it("always requires a label", () => {
+  it("requires at least one of a hero or a label", () => {
+    // Neither a hero nor a label → rejected.
     expect(createMetaDeckEntrySchema.safeParse({ tier: "contender" }).success).toBe(false);
+    // A label alone → accepted.
     expect(createMetaDeckEntrySchema.safeParse({ tier: "fringe", label: "Aggro" }).success).toBe(
+      true,
+    );
+    // A hero alone (no label) → accepted.
+    expect(createMetaDeckEntrySchema.safeParse({ tier: "fringe", heroId: "hero_1" }).success).toBe(
       true,
     );
   });

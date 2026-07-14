@@ -139,16 +139,34 @@ describe("MetaDeckEntryBuilder", () => {
     expect(screen.getByText("The deck to beat.")).toBeInTheDocument();
   });
 
-  it("requires a label before adding", async () => {
+  it("requires at least a hero or a label before adding", async () => {
     mockApi();
     const user = userEvent.setup();
     renderWithClient(
       <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={entries} canEdit />,
     );
 
-    // The archetype label is left blank → validation blocks the add.
+    // Neither a hero nor a label → validation blocks the add.
     await user.click(screen.getByRole("button", { name: /add deck/i }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(/archetype label/i);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/hero or an archetype label/i);
+  });
+
+  it("adds a hero-only entry (no label) once a hero is chosen", async () => {
+    const created: unknown[] = [];
+    mockApi({ onCreate: (body) => created.push(body) });
+    const user = userEvent.setup();
+    renderWithClient(
+      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={entries} canEdit />,
+    );
+
+    await screen.findByRole("option", { name: "Dorinthea" });
+    // Pick a hero, leave the archetype blank → the add is allowed and sends no label.
+    await user.selectOptions(screen.getByRole("combobox", { name: /hero/i }), "hero-dori");
+    await user.click(screen.getByRole("button", { name: /add deck/i }));
+
+    await vi.waitFor(() => expect(created).toHaveLength(1));
+    expect(created[0]).toMatchObject({ heroId: "hero-dori" });
+    expect(created[0]).not.toHaveProperty("label");
   });
 
   it("adds a label + optional hero entry with the chosen tier", async () => {
@@ -160,7 +178,7 @@ describe("MetaDeckEntryBuilder", () => {
     );
 
     await screen.findByRole("option", { name: "Dorinthea" });
-    await user.type(screen.getByLabelText(/^archetype$/i), "Draconic Dorinthea");
+    await user.type(screen.getByLabelText(/archetype/i), "Draconic Dorinthea");
     await user.selectOptions(screen.getByRole("combobox", { name: /hero/i }), "hero-dori");
     await user.selectOptions(screen.getByRole("combobox", { name: /^tier$/i }), "contender");
     await user.click(screen.getByRole("button", { name: /add deck/i }));
@@ -227,7 +245,7 @@ describe("MetaDeckEntryBuilder", () => {
     );
 
     await screen.findByRole("option", { name: "Dorinthea" });
-    await user.type(screen.getByLabelText(/^archetype$/i), "GIAF");
+    await user.type(screen.getByLabelText(/archetype/i), "GIAF");
     await user.selectOptions(screen.getByRole("combobox", { name: /hero/i }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /add deck/i }));
 
