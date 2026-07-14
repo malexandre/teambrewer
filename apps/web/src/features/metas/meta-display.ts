@@ -16,3 +16,25 @@ export function toDateInputValue(isoDate: string | undefined): string {
   if (!isoDate) return "";
   return isoDate.slice(0, 10);
 }
+
+/**
+ * The display name of a matchup subject (a meta deck entry or a readiness opponent),
+ * always leading with the hero name when one is known, then the free-text archetype
+ * label. Mirrors the "hero, then label" shape used across the meta/matchup surfaces:
+ *
+ * - hero + non-empty label → `${heroName} · ${label}` (the middle dot is U+00B7),
+ * - hero, no label → the hero name alone,
+ * - no hero → the label alone.
+ *
+ * `heroName` is `null`/`undefined` when the entry is label-only or the hero list has
+ * not resolved yet; callers fall back to the stored snapshot label in the latter case.
+ */
+export function matchupSubjectDisplayName(
+  heroName: string | null | undefined,
+  label: string,
+): string {
+  if (!heroName) {
+    return label;
+  }
+  return label.trim().length > 0 ? `${heroName} · ${label}` : heroName;
+}

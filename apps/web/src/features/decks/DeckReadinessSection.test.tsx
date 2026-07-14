@@ -21,41 +21,60 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/** Resolve /api/heroes and /meta-readiness (any other request 404s). */
+function mockApi(readiness: unknown): void {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("/api/heroes")) {
+      return json({ data: [{ id: "hero-dori", name: "Dorinthea", classes: [], talents: [] }] });
+    }
+    if (url.includes("/meta-readiness")) {
+      return json(readiness);
+    }
+    return json({}, 404);
+  });
+}
+
 describe("DeckReadinessSection", () => {
   it("renders a readiness row per meta deck with its rate, sample, and plan status", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      json({
-        deckId: "deck-1",
-        metaId: "meta-1",
-        metaName: "July",
-        rows: [
-          {
-            metaDeckEntryId: "e1",
-            tier: "meta_defining",
-            opponentSnapshotLabel: "Briar",
-            weightedWinRate: 0.6667,
-            rawSampleCount: 4,
-            effectiveSample: 3,
-            trustIndicator: "low",
-            hasGamePlan: false,
-          },
-          {
-            metaDeckEntryId: "e2",
-            tier: "contender",
-            opponentSnapshotLabel: "Aggro Red",
-            weightedWinRate: null,
-            rawSampleCount: 0,
-            effectiveSample: 0,
-            trustIndicator: "low",
-            hasGamePlan: true,
-          },
-        ],
-      }),
-    );
+    mockApi({
+      deckId: "deck-1",
+      metaId: "meta-1",
+      metaName: "July",
+      rows: [
+        {
+          metaDeckEntryId: "e1",
+          tier: "meta_defining",
+          heroId: "hero-dori",
+          label: "Aggro",
+          opponentSnapshotLabel: "Dorinthea · Aggro",
+          weightedWinRate: 0.6667,
+          rawSampleCount: 4,
+          effectiveSample: 3,
+          trustIndicator: "low",
+          hasGamePlan: false,
+        },
+        {
+          metaDeckEntryId: "e2",
+          tier: "contender",
+          heroId: null,
+          label: "Aggro Red",
+          opponentSnapshotLabel: "Aggro Red",
+          weightedWinRate: null,
+          rawSampleCount: 0,
+          effectiveSample: 0,
+          trustIndicator: "low",
+          hasGamePlan: true,
+        },
+      ],
+    });
 
     renderWithClient(<DeckReadinessSection teamId="team-1" deckId="deck-1" />);
 
-    expect(await screen.findByText("Briar")).toBeInTheDocument();
+    // The hero-carrying row leads with the resolved hero name, then the label.
+    expect(await screen.findByText("Dorinthea · Aggro")).toBeInTheDocument();
+    // The label-only row shows its archetype label alone.
+    expect(screen.getByText("Aggro Red")).toBeInTheDocument();
     // 0.6667 → 67%, with the raw sample shown.
     expect(screen.getByText(/67%/)).toBeInTheDocument();
     expect(screen.getByText(/N 4/)).toBeInTheDocument();
@@ -67,9 +86,7 @@ describe("DeckReadinessSection", () => {
   });
 
   it("shows a graceful empty state when no meta is current", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      json({ deckId: "deck-1", metaId: "", metaName: "", rows: [] }),
-    );
+    mockApi({ deckId: "deck-1", metaId: "", metaName: "", rows: [] });
 
     renderWithClient(<DeckReadinessSection teamId="team-1" deckId="deck-1" />);
 

@@ -1,7 +1,10 @@
 import type { MatchupGamePlan, MetaDeckEntry } from "@teambrewer/shared";
 import { META_TIER_LABELS } from "@teambrewer/shared";
+import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useHeroes } from "@/features/cards/use-heroes";
+import { matchupSubjectDisplayName } from "@/features/metas/meta-display";
 import { ApiError } from "@/lib/api-client";
 
 import { useUpdateGamePlan } from "./use-game-plan-mutations";
@@ -28,6 +31,26 @@ export function GamePlanMetaAssignment({
   metaDeckEntries: MetaDeckEntry[];
 }) {
   const update = useUpdateGamePlan(teamId, gamePlan.id);
+  const { data: heroData } = useHeroes(teamId);
+  const heroNamesById = useMemo(
+    () => new Map((heroData?.data ?? []).map((hero) => [hero.id, hero.name])),
+    [heroData],
+  );
+
+  /**
+   * A meta entry's display name: the hero name (once the hero list resolves), then the
+   * label. Falls back to the entry's stored snapshot label while heroes are still loading.
+   */
+  function entryDisplayName(entry: MetaDeckEntry): string {
+    if (entry.heroId) {
+      const heroName = heroNamesById.get(entry.heroId);
+      if (!heroName) {
+        return entry.opponentSnapshotLabel;
+      }
+      return matchupSubjectDisplayName(heroName, entry.label);
+    }
+    return matchupSubjectDisplayName(null, entry.label);
+  }
 
   const attachedIds = gamePlan.metaDeckEntryIds;
   const attachedEntries = attachedIds.map((entryId) => ({
@@ -57,13 +80,13 @@ export function GamePlanMetaAssignment({
           {attachedEntries.map(({ entryId, entry }) => (
             <li key={entryId}>
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
-                <span>{entry ? entry.opponentSnapshotLabel : "Another meta's deck"}</span>
+                <span>{entry ? entryDisplayName(entry) : "Another meta's deck"}</span>
                 {entry ? (
                   <span className="text-muted-foreground">{META_TIER_LABELS[entry.tier]}</span>
                 ) : null}
                 <button
                   type="button"
-                  aria-label={`Unassign ${entry ? entry.opponentSnapshotLabel : "meta deck"}`}
+                  aria-label={`Unassign ${entry ? entryDisplayName(entry) : "meta deck"}`}
                   className="text-muted-foreground hover:text-foreground disabled:opacity-50"
                   disabled={update.isPending}
                   onClick={() => detach(entryId)}
@@ -92,7 +115,7 @@ export function GamePlanMetaAssignment({
               disabled={update.isPending}
               onClick={() => attach(entry.id)}
             >
-              + {entry.opponentSnapshotLabel}
+              + {entryDisplayName(entry)}
             </Button>
           ))}
         </div>

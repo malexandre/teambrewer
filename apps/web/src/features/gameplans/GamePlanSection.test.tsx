@@ -78,6 +78,20 @@ const oscilioEntry = {
   updatedAt: "2026-06-01T00:00:00.000Z",
 };
 
+// A hero-carrying entry: its display name leads with the resolved hero name (Briar),
+// then the archetype label, joined by a middle dot.
+const briarEntry = {
+  id: "entry-briar",
+  metaId: "meta-1",
+  tier: "contender",
+  heroId: "hero-1",
+  label: "Aggressive",
+  opponentSnapshotLabel: "Briar · Aggressive",
+  notes: "",
+  createdAt: "2026-06-01T00:00:00.000Z",
+  updatedAt: "2026-06-01T00:00:00.000Z",
+};
+
 /**
  * Wire the reads the section depends on. `patchedEntryIds` is stateful so a PATCH that
  * replaces the plan's `metaDeckEntryIds` is reflected when the invalidated list refetches
@@ -96,7 +110,9 @@ function mockApi(patchBodies: unknown[] = []): void {
     if (url.includes("/api/cards/card-1")) {
       return json({ id: "card-1", name: "Command and Conquer", pitch: 1, imageUrl: null });
     }
-    if (url.includes("/api/metas/meta-1/deck-entries")) return json({ data: [oscilioEntry] });
+    if (url.includes("/api/metas/meta-1/deck-entries")) {
+      return json({ data: [oscilioEntry, briarEntry] });
+    }
     if (url.includes("/api/metas")) return json({ data: [formatMeta], nextCursor: null });
     if (url.match(/\/api\/game-plans\/gp1$/) && method === "PATCH") {
       const body = init?.body ? JSON.parse(init.body as string) : {};
@@ -136,6 +152,8 @@ describe("GamePlanSection", () => {
     expect(screen.getByText(/Race the clock/)).toBeInTheDocument();
     // The +[[card-1]] token resolves to an inline "+Command and Conquer" chip.
     expect(await screen.findByText(/Command and Conquer/)).toBeInTheDocument();
+    // A hero-carrying meta entry is offered by its "hero · label" display name.
+    expect(await screen.findByRole("button", { name: "+ Briar · Aggressive" })).toBeInTheDocument();
   });
 
   it("reveals the editor with the plan body composer and the opponent subject fields when writing", async () => {

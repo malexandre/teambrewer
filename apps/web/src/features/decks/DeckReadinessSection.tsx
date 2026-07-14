@@ -1,7 +1,10 @@
 import type { DeckMetaReadinessRow } from "@teambrewer/shared";
 import { META_TIER_LABELS } from "@teambrewer/shared";
+import { useMemo } from "react";
 
 import { Section } from "@/components/ui/section";
+import { useHeroes } from "@/features/cards/use-heroes";
+import { matchupSubjectDisplayName } from "@/features/metas/meta-display";
 
 import { useDeckMetaReadiness } from "./use-meta-readiness";
 
@@ -16,7 +19,13 @@ function formatWinRate(rate: number | null): string {
  * (`meta_defining`) matchup with no game-plan is flagged (destructive) — the field's
  * defining decks must have a plan.
  */
-function ReadinessRow({ row }: { row: DeckMetaReadinessRow }) {
+function ReadinessRow({
+  row,
+  opponentLabel,
+}: {
+  row: DeckMetaReadinessRow;
+  opponentLabel: string;
+}) {
   const isThin = row.trustIndicator !== "high";
   const isUnplannedTierOne = row.tier === "meta_defining" && !row.hasGamePlan;
 
@@ -27,7 +36,7 @@ function ReadinessRow({ row }: { row: DeckMetaReadinessRow }) {
       }`}
     >
       <div className="flex flex-col">
-        <span className="font-medium">{row.opponentSnapshotLabel}</span>
+        <span className="font-medium">{opponentLabel}</span>
         <span className="text-xs text-muted-foreground">{META_TIER_LABELS[row.tier]}</span>
       </div>
       <div className="flex items-center gap-2">
@@ -72,6 +81,27 @@ export function DeckReadinessSection({
   deckId: string;
 }) {
   const { data, isPending, isError } = useDeckMetaReadiness(teamId, deckId);
+  const { data: heroData } = useHeroes(teamId);
+  const heroNamesById = useMemo(
+    () => new Map((heroData?.data ?? []).map((hero) => [hero.id, hero.name])),
+    [heroData],
+  );
+
+  /**
+   * Always lead with the hero name (from the resolved hero list), then the label. While
+   * the hero list is still loading for a hero-carrying entry, fall back to the server's
+   * stored snapshot label so the row is never blank.
+   */
+  function opponentLabelForRow(row: DeckMetaReadinessRow): string {
+    if (row.heroId) {
+      const heroName = heroNamesById.get(row.heroId);
+      if (!heroName) {
+        return row.opponentSnapshotLabel;
+      }
+      return matchupSubjectDisplayName(heroName, row.label);
+    }
+    return matchupSubjectDisplayName(null, row.label);
+  }
 
   return (
     <Section
@@ -92,7 +122,11 @@ export function DeckReadinessSection({
       ) : (
         <ul className="flex flex-col gap-1">
           {data.rows.map((row) => (
-            <ReadinessRow key={row.metaDeckEntryId} row={row} />
+            <ReadinessRow
+              key={row.metaDeckEntryId}
+              row={row}
+              opponentLabel={opponentLabelForRow(row)}
+            />
           ))}
         </ul>
       )}
