@@ -2,56 +2,112 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Self-hosted Inter (variable). Bundled under public/fonts — no external CDN
+   (respects our data-source rules and keeps the app fully offline-capable). */
+@font-face {
+  font-family: "InterVariable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+}
+
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+
+  /* Cool light-tinted canvas; pure-white surfaces lift off it via border +
+     shadow. Neutrals carry a slight blue bias so they read as chosen, not
+     defaulted. */
+  --background: oklch(0.984 0.006 255);
+  --foreground: oklch(0.16 0.01 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.16 0.01 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  /* Darkened from 0.556 so small muted text clears WCAG AA (4.5:1) on the muted
-     background (#f5f5f5), not just on white — phase-13 a11y pass. */
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.16 0.01 260);
+
+  /* Brand: royal blue. */
+  --primary: oklch(0.55 0.2 260);
+  --primary-foreground: oklch(0.985 0.01 260);
+  --secondary: oklch(0.968 0.005 255);
+  --secondary-foreground: oklch(0.2 0.02 260);
+  --muted: oklch(0.968 0.005 255);
+  /* Kept dark enough that small muted text clears WCAG AA (4.5:1) on the muted
+     background, not just on white — phase-13 a11y pass, carried into the redesign. */
+  --muted-foreground: oklch(0.5 0.02 260);
+  --accent: oklch(0.96 0.025 260);
+  --accent-foreground: oklch(0.45 0.16 260);
+
+  /* Solid destructive (buttons, error text) — distinct from the pastel `danger`
+     status tone used by badges below. */
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+
+  /* Pastel status tones (bg / readable foreground / soft border). Semantic —
+     separate from the brand accent. */
+  --success: oklch(0.95 0.045 150);
+  --success-foreground: oklch(0.43 0.11 150);
+  --success-border: oklch(0.86 0.07 150);
+  --warning: oklch(0.96 0.06 85);
+  --warning-foreground: oklch(0.47 0.1 75);
+  --warning-border: oklch(0.88 0.09 85);
+  --danger: oklch(0.955 0.035 25);
+  --danger-foreground: oklch(0.52 0.18 27);
+  --danger-border: oklch(0.87 0.07 25);
+  --info: oklch(0.955 0.03 250);
+  --info-foreground: oklch(0.5 0.13 255);
+  --info-border: oklch(0.86 0.06 250);
+
+  --border: oklch(0.922 0.006 255);
+  --input: oklch(0.922 0.006 255);
+  --ring: oklch(0.55 0.2 260);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.17 0.01 260);
+  --foreground: oklch(0.97 0.004 255);
+  --card: oklch(0.212 0.013 260);
+  --card-foreground: oklch(0.97 0.004 255);
+  --popover: oklch(0.212 0.013 260);
+  --popover-foreground: oklch(0.97 0.004 255);
+
+  --primary: oklch(0.64 0.19 260);
+  --primary-foreground: oklch(0.985 0.01 260);
+  --secondary: oklch(0.27 0.013 260);
+  --secondary-foreground: oklch(0.97 0.004 255);
+  --muted: oklch(0.27 0.013 260);
+  --muted-foreground: oklch(0.72 0.02 260);
+  --accent: oklch(0.3 0.06 260);
+  --accent-foreground: oklch(0.86 0.09 260);
+
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+
+  --success: oklch(0.3 0.055 150);
+  --success-foreground: oklch(0.85 0.13 150);
+  --success-border: oklch(0.45 0.07 150);
+  --warning: oklch(0.32 0.055 80);
+  --warning-foreground: oklch(0.88 0.12 90);
+  --warning-border: oklch(0.5 0.08 80);
+  --danger: oklch(0.31 0.08 25);
+  --danger-foreground: oklch(0.84 0.12 25);
+  --danger-border: oklch(0.5 0.11 25);
+  --info: oklch(0.31 0.06 255);
+  --info-foreground: oklch(0.85 0.1 255);
+  --info-border: oklch(0.5 0.09 255);
+
+  --border: oklch(1 0 0 / 11%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.64 0.19 260);
 }
 
 @theme inline {
+  --font-sans:
+    "InterVariable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -67,6 +123,20 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-border: var(--warning-border);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-border: var(--danger-border);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-border: var(--info-border);
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -77,6 +147,6 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
 }
