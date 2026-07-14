@@ -1,5 +1,7 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import {
+  type LinkCandidatesResponse,
+  linkCandidatesResponseSchema,
   type MetaDeckEntry,
   type MetaDeckEntryList,
   metaDeckEntryListSchema,
@@ -92,6 +94,34 @@ export function useMetaDeckEntriesByMeta(
     }
   }
   return entriesById;
+}
+
+/**
+ * The recorded games eligible to retro-link to a meta deck entry (unlinked + matching
+ * its hero/label), via GET .../deck-entries/:entryId/link-candidates. Gated by
+ * `enabled` so the modal only fetches when open.
+ */
+export function useEntryLinkCandidates(
+  teamId: string | undefined,
+  metaId: string,
+  entryId: string,
+  options: { enabled?: boolean } = {},
+) {
+  return useQuery<LinkCandidatesResponse>({
+    queryKey: teamId
+      ? [teamId, "meta-link-candidates", metaId, entryId]
+      : ["meta-link-candidates", "none"],
+    queryFn: () => {
+      if (!teamId) {
+        throw new Error("No active team.");
+      }
+      return apiClient.get(`/metas/${metaId}/deck-entries/${entryId}/link-candidates`, {
+        teamId,
+        schema: linkCandidatesResponseSchema,
+      });
+    },
+    enabled: (options.enabled ?? true) && Boolean(teamId),
+  });
 }
 
 /** A meta's tiered opponent-deck list, via GET /api/metas/:metaId/deck-entries. */

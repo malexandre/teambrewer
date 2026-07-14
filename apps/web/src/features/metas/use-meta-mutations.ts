@@ -2,6 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   type CreateMetaDeckEntryInput,
   type CreateMetaInput,
+  type LinkGamesResult,
+  type LinkGamesToEntryInput,
+  linkGamesResultSchema,
   type MetaDeckEntry,
   metaDeckEntrySchema,
   type MetaDetail,
@@ -101,6 +104,34 @@ export function useRemoveMetaDeckEntry(teamId: string | undefined, metaId: strin
         teamId: requireTeam(teamId),
       }),
     onSuccess: () => invalidateDeckEntries(queryClient, teamId, metaId),
+  });
+}
+
+/**
+ * Retro-link recorded games to a deck entry (POST .../link-games). Invalidates the
+ * meta's deck entries, this entry's link candidates, the team's game logs, and the
+ * team's deck reads (so readiness reflects the newly linked games).
+ */
+export function useLinkGamesToEntry(teamId: string | undefined, metaId: string, entryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: LinkGamesToEntryInput) =>
+      apiClient.post<LinkGamesResult>(`/metas/${metaId}/deck-entries/${entryId}/link-games`, {
+        teamId: requireTeam(teamId),
+        body: input,
+        schema: linkGamesResultSchema,
+      }),
+    onSuccess: () => {
+      invalidateDeckEntries(queryClient, teamId, metaId);
+      if (teamId) {
+        void queryClient.invalidateQueries({
+          queryKey: [teamId, "meta-link-candidates", metaId, entryId],
+        });
+        void queryClient.invalidateQueries({ queryKey: [teamId, "games"] });
+        // Readiness lives under the deck key ([teamId, "deck", …]); refresh all.
+        void queryClient.invalidateQueries({ queryKey: [teamId, "deck"] });
+      }
+    },
   });
 }
 

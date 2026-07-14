@@ -5,7 +5,7 @@ import {
   type MetaDeckEntry,
   type MetaTier,
 } from "@teambrewer/shared";
-import { Pencil, X } from "lucide-react";
+import { Link2, Pencil, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { HeroPicker } from "@/features/decks/HeroPicker";
 import { ApiError } from "@/lib/api-client";
 
+import { LinkRecordedGamesModal } from "./LinkRecordedGamesModal";
 import { SELECT_CLASS } from "./meta-display";
 import {
   useAddMetaDeckEntry,
@@ -61,6 +62,7 @@ export function MetaDeckEntryBuilder({
   const [editNotes, setEditNotes] = useState("");
 
   const [detailEntryId, setDetailEntryId] = useState<string | null>(null);
+  const [linkEntry, setLinkEntry] = useState<MetaDeckEntry | null>(null);
 
   const addEntry = useAddMetaDeckEntry(teamId, metaId);
   const removeEntry = useRemoveMetaDeckEntry(teamId, metaId);
@@ -123,12 +125,28 @@ export function MetaDeckEntryBuilder({
     };
 
     addEntry.mutate(input, {
-      onSuccess: () => {
+      onSuccess: (created) => {
         setHeroId("");
         setLabel("");
         setNotes("");
+        // Offer to retro-link the team's recorded games vs this hero (the common
+        // migration case). The modal shows "no unlinked games" if there are none.
+        if (created.heroId) {
+          setLinkEntry(created);
+        }
       },
     });
+  }
+
+  function confirmRemove(entry: MetaDeckEntry): void {
+    if (
+      !window.confirm(
+        "Remove this deck from the meta? Games linked to it keep their hero/label and stay recorded.",
+      )
+    ) {
+      return;
+    }
+    removeEntry.mutate(entry.id);
   }
 
   const editingEntry = entries.find((entry) => entry.id === editingEntryId) ?? null;
@@ -183,6 +201,14 @@ export function MetaDeckEntryBuilder({
                           <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
                             <button
                               type="button"
+                              aria-label={`Link recorded games to ${displayLabel}`}
+                              onClick={() => setLinkEntry(entry)}
+                              className="rounded bg-black/30 p-1 text-white shadow-sm transition hover:bg-black/60"
+                            >
+                              <Link2 className="h-3.5 w-3.5" aria-hidden />
+                            </button>
+                            <button
+                              type="button"
                               aria-label={`Edit ${displayLabel}`}
                               onClick={() => startEditing(entry)}
                               className="rounded bg-black/30 p-1 text-white shadow-sm transition hover:bg-black/60"
@@ -193,7 +219,7 @@ export function MetaDeckEntryBuilder({
                               type="button"
                               aria-label={`Remove ${displayLabel}`}
                               disabled={removeEntry.isPending}
-                              onClick={() => removeEntry.mutate(entry.id)}
+                              onClick={() => confirmRemove(entry)}
                               className="rounded bg-black/30 p-1 text-white shadow-sm transition hover:bg-destructive"
                             >
                               <X className="h-3.5 w-3.5" aria-hidden />
@@ -397,6 +423,14 @@ export function MetaDeckEntryBuilder({
           </div>
         ) : null}
       </Dialog>
+
+      {/* Retro-link recorded games to an entry (migration). */}
+      <LinkRecordedGamesModal
+        teamId={teamId}
+        metaId={metaId}
+        entry={linkEntry}
+        onClose={() => setLinkEntry(null)}
+      />
     </Section>
   );
 }
