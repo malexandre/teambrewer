@@ -1,67 +1,39 @@
-import { formatCardToken } from "@teambrewer/shared";
-import { type FormEvent, useRef, useState } from "react";
+import { parseCardTokens, tokenizeCardBody } from "@teambrewer/shared";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { pitchDisplay } from "@/features/cards/pitch";
 import { useCardSearch } from "@/features/cards/use-card-search";
+import { useCardsById } from "@/features/cards/use-cards-by-id";
 import { useDebouncedValue } from "@/features/cards/use-debounced-value";
 import { useMembers } from "@/features/teams/use-members";
 
-/** The caret position of a token: `token` is the text typed after the trigger char. */
-interface TriggerMatch {
-  token: string;
-  /** Index of the token's first character (i.e. just after the trigger char). */
-  start: number;
-}
+import {
+  activeCardToken,
+  activeMentionToken,
+  CARD_PILL_ATTRIBUTE,
+  createCardPill,
+  serializeEditorRoot,
+  setCardPillName,
+  type TriggerMatch,
+} from "./mention-editor";
 
-/**
- * The in-progress mention/card token immediately before the caret. `@member`
- * tokens use the identifier charset; `+card` tokens allow spaces (card names
- * contain them) but stop at another `+` or a token delimiter so the query stays
- * bounded to the run typed after the most recent `+`.
- */
+/** The active trigger immediately before the caret (drives the suggestion list). */
 type ActiveTrigger = ({ kind: "member" } | { kind: "card" }) & TriggerMatch;
 
-/** The in-progress `@token` immediately before the caret, or null if none. */
-function activeMentionToken(value: string, caret: number): TriggerMatch | null {
-  const upToCaret = value.slice(0, caret);
-  const match = /(?:^|[^A-Za-z0-9._-])@([A-Za-z0-9._-]*)$/.exec(upToCaret);
-  if (!match) {
-    return null;
-  }
-  const token = match[1] ?? "";
-  return { token, start: caret - token.length };
-}
-
-/**
- * The in-progress `+token` immediately before the caret, or null if none. The
- * query allows spaces (card names have them) but excludes `+`, `[`, and `]`, so
- * it never spills across a completed `+[[cardId]]` token or into a second `+`.
- */
-function activeCardToken(value: string, caret: number): TriggerMatch | null {
-  const upToCaret = value.slice(0, caret);
-  const match = /(?:^|\s)\+([^+\n[\]]*)$/.exec(upToCaret);
-  if (!match) {
-    return null;
-  }
-  const token = match[1] ?? "";
-  return { token, start: caret - token.length };
-}
-
 function detectActiveTrigger(
-  value: string,
-  caret: number,
+  textBeforeCaret: string,
   enableMemberMentions: boolean,
   enableCardMentions: boolean,
 ): ActiveTrigger | null {
   if (enableCardMentions) {
-    const card = activeCardToken(value, caret);
+    const card = activeCardToken(textBeforeCaret);
     if (card) {
       return { kind: "card", ...card };
     }
   }
   if (enableMemberMentions) {
-    const member = activeMentionToken(value, caret);
+    const member = activeMentionToken(textBeforeCaret);
     if (member) {
       return { kind: "member", ...member };
     }
@@ -69,17 +41,48 @@ function detectActiveTrigger(
   return null;
 }
 
+/** The collapsed caret's text node and offset, if it sits inside `root`. */
+function caretInEditor(root: HTMLElement): { node: Text; offset: number } | null {
+  const selection = root.ownerDocument.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) {
+    return null;
+  }
+  const { anchorNode, anchorOffset } = selection;
+  if (!anchorNode || !root.contains(anchorNode) || anchorNode.nodeType !== anchorNode.TEXT_NODE) {
+    return null;
+  }
+  return { node: anchorNode as Text, offset: anchorOffset };
+}
+
+function placeCaret(node: Node, offset: number): void {
+  const selection = node.ownerDocument?.getSelection();
+  if (!selection) {
+    return;
+  }
+  const range = node.ownerDocument!.createRange();
+  range.setStart(node, offset);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 /**
  * A prose composer with inline autocomplete. `@`-mentions autocomplete over the
- * active team's members only (fetched via {@link useMembers}, X-Team-Id scoped,
- * so another team's users can never appear) and insert a bare `@username`.
- * `+`-mentions autocomplete cards via {@link useCardSearch} (also team-scoped)
- * and insert the stable token `+[[cardId]]` (card names have spaces, so the token
- * carries the id, not the name — see `card-tokens` in `@teambrewer/shared`).
+ * active team's members (fetched via {@link useMembers}, X-Team-Id scoped) and
+ * insert a bare `@username`. `+`-mentions autocomplete cards via {@link
+ * useCardSearch} and insert them as atomic **pills** showing `+CardName`, backed
+ * by the stable `+[[cardId]]` token (card names have spaces and aren't unique, so
+ * the token carries the id — see `card-tokens` in `@teambrewer/shared`).
  *
- * Consumers pick the triggers: comments enable members only (the default),
- * while `+card`-enabled prose fields (task descriptions, game-plan bodies, deck
- * notes) opt into cards, and either can run alone or together.
+ * The editor is a `contenteditable="plaintext-only"` region whose DOM is the
+ * source of truth: React sets its content up once (from `initialValue`) and
+ * never re-renders it, so keystrokes and the caret are the browser's to manage.
+ * On submit the DOM is serialized back to the body string (pills → tokens), so
+ * everything downstream (validation, storage, rendering) is unchanged.
+ *
+ * Consumers pick the triggers: comments enable members only (the default), while
+ * `+card`-enabled prose fields (task descriptions, game-plan bodies, deck notes)
+ * opt into cards; either can run alone or together.
  */
 export function MentionComposer({
   teamId,
@@ -103,13 +106,53 @@ export function MentionComposer({
   onCancel?: () => void;
   /** Enable `@member` autocomplete (bare `@username` on select). Defaults to true. */
   enableMemberMentions?: boolean;
-  /** Enable `+card` autocomplete (a `+[[cardId]]` token on select). Defaults to false. */
+  /** Enable `+card` autocomplete (an atomic `+[[cardId]]` pill on select). Defaults to false. */
   enableCardMentions?: boolean;
 }) {
   const { data: memberData } = useMembers(teamId);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [value, setValue] = useState(initialValue);
+  const editorRef = useRef<HTMLDivElement>(null);
   const [activeTrigger, setActiveTrigger] = useState<ActiveTrigger | null>(null);
+  const [isEmpty, setIsEmpty] = useState(initialValue.trim().length === 0);
+
+  // Resolve the names of any cards referenced by the initial body so their pills
+  // can be built (and relabelled once their summaries arrive) when editing.
+  const initialCardIds = useMemo(() => parseCardTokens(initialValue), [initialValue]);
+  const cardsById = useCardsById(teamId, enableCardMentions ? initialCardIds : []);
+
+  // Build the editor's DOM once, from the initial body. Pills start with a
+  // placeholder label and are relabelled by the effect below as names resolve.
+  const hasInitializedEditor = useRef(false);
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || hasInitializedEditor.current) {
+      return;
+    }
+    hasInitializedEditor.current = true;
+    for (const segment of tokenizeCardBody(initialValue)) {
+      if (segment.type === "text") {
+        editor.appendChild(document.createTextNode(segment.text));
+      } else {
+        const name = cardsById.get(segment.cardId)?.name ?? "…";
+        editor.appendChild(createCardPill(document, segment.cardId, name));
+      }
+    }
+    setIsEmpty(serializeEditorRoot(editor).trim().length === 0);
+  }, [initialValue, cardsById]);
+
+  // Relabel initial pills as their card summaries resolve (in place, so the
+  // user's caret and any edits are untouched).
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    editor.querySelectorAll(`[${CARD_PILL_ATTRIBUTE}]`).forEach((pill) => {
+      const card = cardsById.get(pill.getAttribute(CARD_PILL_ATTRIBUTE) ?? "");
+      if (card) {
+        setCardPillName(pill, card.name);
+      }
+    });
+  }, [cardsById]);
 
   const members = memberData?.data ?? [];
   const memberSuggestions =
@@ -138,65 +181,126 @@ export function MentionComposer({
   const showNoCardMatchesHint =
     hasActiveCardQuery && !isCardSearchFetching && cardSuggestions.length === 0;
 
-  function refreshTrigger(target: HTMLTextAreaElement): void {
+  function refreshFromSelection(): void {
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    setIsEmpty(serializeEditorRoot(editor).trim().length === 0);
+    const caret = caretInEditor(editor);
+    if (!caret) {
+      setActiveTrigger(null);
+      return;
+    }
+    const textBeforeCaret = (caret.node.textContent ?? "").slice(0, caret.offset);
     setActiveTrigger(
-      detectActiveTrigger(
-        target.value,
-        target.selectionStart ?? target.value.length,
-        enableMemberMentions,
-        enableCardMentions,
-      ),
+      detectActiveTrigger(textBeforeCaret, enableMemberMentions, enableCardMentions),
     );
   }
 
   function insertMemberMention(username: string): void {
-    if (activeTrigger?.kind !== "member") return;
-    const before = value.slice(0, activeTrigger.start);
-    const after = value.slice(activeTrigger.start + activeTrigger.token.length);
-    const next = `${before}${username} ${after}`;
-    setValue(next);
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    const caret = caretInEditor(editor);
+    if (!caret) {
+      return;
+    }
+    const nodeText = caret.node.textContent ?? "";
+    const match = activeMentionToken(nodeText.slice(0, caret.offset));
+    if (!match) {
+      return;
+    }
+    // Keep everything up to and including the `@`, replace the typed run with the
+    // resolved `username ` (bare, as `@mention` parsing expects), keep the rest.
+    const before = nodeText.slice(0, match.start);
+    const after = nodeText.slice(caret.offset);
+    caret.node.textContent = `${before}${username} ${after}`;
+    placeCaret(caret.node, before.length + username.length + 1);
     setActiveTrigger(null);
-    textareaRef.current?.focus();
+    refreshFromSelection();
   }
 
-  function insertCardMention(cardId: string): void {
-    if (activeTrigger?.kind !== "card") return;
-    // Drop the typed `+query` (the `+` sits one char before `start`) and write
-    // the stable token in its place, followed by a space.
-    const before = value.slice(0, activeTrigger.start - 1);
-    const after = value.slice(activeTrigger.start + activeTrigger.token.length);
-    const next = `${before}${formatCardToken(cardId)} ${after}`;
-    setValue(next);
+  function insertCardMention(cardId: string, cardName: string): void {
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    const caret = caretInEditor(editor);
+    const parent = caret?.node.parentNode;
+    if (!caret || !parent) {
+      return;
+    }
+    const nodeText = caret.node.textContent ?? "";
+    const match = activeCardToken(nodeText.slice(0, caret.offset));
+    if (!match) {
+      return;
+    }
+    // Drop the typed `+query` (the `+` sits one char before the token start) and
+    // splice a pill + trailing space in its place, keeping any text after the caret.
+    const before = nodeText.slice(0, match.start - 1);
+    const after = nodeText.slice(caret.offset);
+    const anchor = caret.node.nextSibling;
+    const pill = createCardPill(document, cardId, cardName);
+    const space = document.createTextNode(" ");
+    parent.insertBefore(pill, anchor);
+    parent.insertBefore(space, anchor);
+    if (after) {
+      parent.insertBefore(document.createTextNode(after), anchor);
+    }
+    if (before) {
+      caret.node.textContent = before;
+    } else {
+      parent.removeChild(caret.node);
+    }
+    placeCaret(space, 1);
     setActiveTrigger(null);
-    textareaRef.current?.focus();
+    refreshFromSelection();
+    editor.focus();
   }
 
   function submit(event: FormEvent): void {
     event.preventDefault();
-    const trimmed = value.trim();
-    if (!trimmed) return;
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    const trimmed = serializeEditorRoot(editor).trim();
+    if (!trimmed) {
+      return;
+    }
     onSubmit(trimmed);
-    setValue("");
+    editor.textContent = "";
+    setIsEmpty(true);
     setActiveTrigger(null);
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-2">
       <div className="relative">
-        <textarea
-          ref={textareaRef}
-          className="min-h-16 w-full rounded-md border border-input bg-background p-2 text-sm"
-          placeholder={placeholder}
+        <div
+          ref={editorRef}
+          // plaintext-only keeps Enter/paste plain (Baseline since 2025) so the
+          // only rich node is our own atomic `+card` pill; whitespace-pre-wrap
+          // preserves the exact spaces/newlines the serializer reads back.
+          contentEditable="plaintext-only"
+          suppressContentEditableWarning
+          role="textbox"
+          aria-multiline="true"
           aria-label={ariaLabel}
-          value={value}
-          onChange={(event) => {
-            setValue(event.target.value);
-            refreshTrigger(event.target);
-          }}
-          onKeyUp={(event) => refreshTrigger(event.currentTarget)}
-          onClick={(event) => refreshTrigger(event.currentTarget)}
+          tabIndex={0}
+          className="min-h-16 w-full whitespace-pre-wrap break-words rounded-md border border-input bg-background p-2 text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          onInput={refreshFromSelection}
+          onKeyUp={refreshFromSelection}
+          onClick={refreshFromSelection}
           onBlur={() => setActiveTrigger(null)}
         />
+        {isEmpty ? (
+          <span className="pointer-events-none absolute left-2 top-2 text-sm text-muted-foreground">
+            {placeholder}
+          </span>
+        ) : null}
         {activeTrigger?.kind === "member" && memberSuggestions.length > 0 ? (
           <ul
             className="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-md border border-border bg-popover text-sm shadow"
@@ -207,7 +311,7 @@ export function MentionComposer({
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 px-2 py-1 text-left hover:bg-muted"
-                  // Use onMouseDown so the textarea's onBlur does not clear the
+                  // Use onMouseDown so the editor's onBlur does not clear the
                   // suggestion before the click registers.
                   onMouseDown={(event) => {
                     event.preventDefault();
@@ -244,7 +348,7 @@ export function MentionComposer({
                     // onMouseDown so onBlur does not clear the suggestion first.
                     onMouseDown={(event) => {
                       event.preventDefault();
-                      insertCardMention(card.id);
+                      insertCardMention(card.id, card.name);
                     }}
                   >
                     <span className="font-medium">{card.name}</span>
@@ -257,7 +361,7 @@ export function MentionComposer({
         ) : null}
       </div>
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={isPending || !value.trim()}>
+        <Button type="submit" size="sm" disabled={isPending || isEmpty}>
           {submitLabel}
         </Button>
         {onCancel ? (

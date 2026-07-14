@@ -11,6 +11,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { typeInEditor } from "@/test/type-in-editor";
+
 import { ActiveTeamProvider } from "@/features/teams/active-team";
 
 import { DeckDetail } from "./DeckDetail";
@@ -177,10 +179,12 @@ describe("DeckDetail", () => {
     renderDetail();
 
     await user.click(await screen.findByRole("button", { name: /edit notes/i }));
-    const notesEditor = screen.getByLabelText("Deck notes");
-    expect(notesEditor).toHaveValue("Race fast, keep +[[card-1]] for reach.");
+    const notesEditor = screen.getByRole("textbox", { name: "Deck notes" });
+    // The +[[card-1]] token renders as a name pill while editing, not the raw id.
+    expect(await within(notesEditor).findByText("+Command and Conquer")).toBeInTheDocument();
+    expect(notesEditor.textContent).toBe("Race fast, keep +Command and Conquer for reach.");
 
-    await user.type(notesEditor, " Mull aggressively.");
+    typeInEditor(notesEditor, " Mull aggressively.", { append: true });
     await user.click(screen.getByRole("button", { name: /save notes/i }));
 
     expect(patchBodies).toHaveLength(1);

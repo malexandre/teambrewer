@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ActiveTeamProvider } from "@/features/teams/active-team";
+import { typeInEditor } from "@/test/type-in-editor";
 
 import { CommentThread } from "./CommentThread";
 
@@ -134,17 +134,15 @@ describe("CommentThread", () => {
 
   it("lists only in-team members in the mention autocomplete", async () => {
     renderThread();
-    const composer = await screen.findByLabelText("New comment");
-    const user = userEvent.setup();
-    await user.click(composer);
-    await user.type(composer, "hey @");
+    const composer = await screen.findByRole("textbox", { name: "New comment" });
+    typeInEditor(composer, "hey @");
 
     const suggestions = await screen.findByRole("list", { name: /mention suggestions/i });
     expect(within(suggestions).getByText("Alice")).toBeInTheDocument();
     expect(within(suggestions).getByText("Bob")).toBeInTheDocument();
 
     // Narrowing the token filters to the matching member only.
-    await user.type(composer, "bo");
+    typeInEditor(composer, "bo", { append: true });
     expect(within(suggestions).getByText("Bob")).toBeInTheDocument();
     expect(within(suggestions).queryByText("Alice")).not.toBeInTheDocument();
   });
