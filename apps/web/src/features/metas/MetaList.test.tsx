@@ -77,14 +77,13 @@ describe("MetaList", () => {
     vi.restoreAllMocks();
   });
 
-  it("lists every meta newest-first under 'All metas', showing each format", async () => {
+  it("lists every meta as a calendar card, newest-first, showing each format", async () => {
     mockMetas();
     renderInApp(<MetaList teamId="team-1" />);
 
-    expect(await screen.findByRole("heading", { name: /all metas/i })).toBeInTheDocument();
     expect(await screen.findByText("Summer Season")).toBeInTheDocument();
     expect(await screen.findByText("Spring Season")).toBeInTheDocument();
-    // Each row shows the meta's format name.
+    // Each card shows the meta's format name.
     expect(screen.getAllByText(/Classic Constructed/).length).toBeGreaterThan(0);
   });
 });
