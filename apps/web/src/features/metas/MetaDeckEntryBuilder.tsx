@@ -20,6 +20,7 @@ import { ApiError } from "@/lib/api-client";
 
 import { LinkRecordedGamesModal } from "./LinkRecordedGamesModal";
 import { SELECT_CLASS } from "./meta-display";
+import { fetchEntryLinkCandidates } from "./use-metas";
 import {
   useAddMetaDeckEntry,
   useRemoveMetaDeckEntry,
@@ -125,14 +126,23 @@ export function MetaDeckEntryBuilder({
     };
 
     addEntry.mutate(input, {
-      onSuccess: (created) => {
+      onSuccess: async (created) => {
         setHeroId("");
         setLabel("");
         setNotes("");
-        // Offer to retro-link the team's recorded games vs this hero (the common
-        // migration case). The modal shows "no unlinked games" if there are none.
-        if (created.heroId) {
-          setLinkEntry(created);
+        // Offer to retro-link the team's recorded games — but only when there are
+        // actually candidates, so adding an entry with no prior games doesn't pop an
+        // empty modal. The on-demand link action stays available regardless.
+        if (!teamId) {
+          return;
+        }
+        try {
+          const candidates = await fetchEntryLinkCandidates(teamId, metaId, created.id);
+          if (candidates.data.length > 0) {
+            setLinkEntry(created);
+          }
+        } catch {
+          // A failed candidates probe simply skips the auto-offer.
         }
       },
     });

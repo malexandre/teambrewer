@@ -111,16 +111,23 @@ export function useEntryLinkCandidates(
     queryKey: teamId
       ? [teamId, "meta-link-candidates", metaId, entryId]
       : ["meta-link-candidates", "none"],
-    queryFn: () => {
-      if (!teamId) {
-        throw new Error("No active team.");
-      }
-      return apiClient.get(`/metas/${metaId}/deck-entries/${entryId}/link-candidates`, {
-        teamId,
-        schema: linkCandidatesResponseSchema,
-      });
-    },
+    queryFn: () => fetchEntryLinkCandidates(teamId, metaId, entryId),
     enabled: (options.enabled ?? true) && Boolean(teamId),
+  });
+}
+
+/** One-shot fetch of an entry's link candidates (shared by the hook + the create auto-offer). */
+export function fetchEntryLinkCandidates(
+  teamId: string | undefined,
+  metaId: string,
+  entryId: string,
+): Promise<LinkCandidatesResponse> {
+  if (!teamId) {
+    throw new Error("No active team.");
+  }
+  return apiClient.get(`/metas/${metaId}/deck-entries/${entryId}/link-candidates`, {
+    teamId,
+    schema: linkCandidatesResponseSchema,
   });
 }
 
