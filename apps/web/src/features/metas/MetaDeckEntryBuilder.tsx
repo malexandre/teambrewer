@@ -8,6 +8,7 @@ import {
 import { Link2, Pencil, X } from "lucide-react";
 import { useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,7 @@ import { HeroPicker } from "@/features/decks/HeroPicker";
 import { ApiError } from "@/lib/api-client";
 
 import { LinkRecordedGamesModal } from "./LinkRecordedGamesModal";
-import { SELECT_CLASS } from "./meta-display";
+import { META_TIER_TONE, SELECT_CLASS } from "./meta-display";
 import { fetchEntryLinkCandidates } from "./use-metas";
 import {
   useAddMetaDeckEntry,
@@ -175,8 +176,10 @@ export function MetaDeckEntryBuilder({
             }
             return (
               <div key={tierValue} className="flex flex-col gap-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {META_TIER_LABELS[tierValue]}
+                <h4 className="flex">
+                  <Badge tone={META_TIER_TONE[tierValue]} dot>
+                    {META_TIER_LABELS[tierValue]}
+                  </Badge>
                 </h4>
                 <ul className="flex flex-wrap gap-2">
                   {tierEntries.map((entry) => {
@@ -337,7 +340,11 @@ export function MetaDeckEntryBuilder({
                   </>
                 ) : null}
                 <dt className="text-muted-foreground">Tier</dt>
-                <dd>{META_TIER_LABELS[detailEntry.tier]}</dd>
+                <dd>
+                  <Badge tone={META_TIER_TONE[detailEntry.tier]} size="sm" dot>
+                    {META_TIER_LABELS[detailEntry.tier]}
+                  </Badge>
+                </dd>
               </dl>
             </div>
             {detailEntry.notes ? (

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { useHeroes } from "@/features/cards/use-heroes";
 import { useDecks } from "@/features/decks/use-decks";
 import { matchupSubjectDisplayName } from "@/features/metas/meta-display";
@@ -13,6 +14,7 @@ import {
   formatPlayedAt,
   formatResult,
   type GameLogLabelMaps,
+  gameResultTone,
   SELECT_CLASS,
 } from "./game-display";
 import { type GameFilters, useGames } from "./use-games";
@@ -134,9 +136,9 @@ export function GameList({ teamId }: { teamId: string | undefined }) {
                   <span className="font-medium">
                     {describeSelf(game.sideA, maps)} vs {describeOpponent(game.sideB, maps)}
                   </span>
-                  <span className="text-sm font-semibold">
+                  <Badge tone={gameResultTone(game.result)}>
                     {formatResult(game.bestOf, game.result)}
-                  </span>
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span>{formatPlayedAt(game.playedAt)}</span>

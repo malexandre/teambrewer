@@ -5,6 +5,7 @@ import {
 } from "@teambrewer/shared";
 import { useMemo } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
@@ -25,6 +26,7 @@ import {
   formatResult,
   GAME_LOG_CARD_SIDE_LABELS,
   type GameLogLabelMaps,
+  gameResultTone,
   PILOT_FAMILIARITY_FIELD,
   SERIOUSNESS_FIELD,
   SKILL_PARITY_FIELD,
@@ -118,7 +120,11 @@ export function GameDetail({
         <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">Result</dt>
-            <dd>{formatResult(game.bestOf, game.result)}</dd>
+            <dd>
+              <Badge tone={gameResultTone(game.result)}>
+                {formatResult(game.bestOf, game.result)}
+              </Badge>
+            </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Confidence weight</dt>

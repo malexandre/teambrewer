@@ -1,11 +1,22 @@
 import type { TaskStatus } from "@teambrewer/shared";
 
+import type { BadgeTone } from "@/components/ui/badge";
+
 /** Human labels for the task lifecycle (single place, consistent UI). */
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   proposed: "Proposed",
   assigned: "Assigned",
   finished: "Finished",
   abandoned: "Abandoned",
+};
+
+/** Badge tone per lifecycle state: newly-proposed reads as info, in-progress as
+ *  warning, done as success, and dropped as a quiet neutral. */
+export const TASK_STATUS_TONE: Record<TaskStatus, BadgeTone> = {
+  proposed: "info",
+  assigned: "warning",
+  finished: "success",
+  abandoned: "neutral",
 };
 
 /** The board columns, in lifecycle order. */

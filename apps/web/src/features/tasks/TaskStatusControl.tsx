@@ -5,9 +5,10 @@ import {
 } from "@teambrewer/shared";
 import { useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-import { SELECT_CLASS, TASK_STATUS_LABELS } from "./task-display";
+import { SELECT_CLASS, TASK_STATUS_LABELS, TASK_STATUS_TONE } from "./task-display";
 
 /**
  * Shows a task's status and offers only the transitions the lifecycle permits
@@ -41,9 +42,9 @@ export function TaskStatusControl({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
+        <Badge tone={TASK_STATUS_TONE[status]} dot>
           {TASK_STATUS_LABELS[status]}
-        </span>
+        </Badge>
         <select
           className={SELECT_CLASS}
           value=""

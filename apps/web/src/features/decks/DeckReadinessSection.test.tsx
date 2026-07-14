@@ -78,9 +78,12 @@ describe("DeckReadinessSection", () => {
     // 0.6667 → 67%, with the raw sample shown.
     expect(screen.getByText(/67%/)).toBeInTheDocument();
     expect(screen.getByText(/N 4/)).toBeInTheDocument();
-    // A Tier-1 matchup with no plan is flagged (plan ✗); the planned one shows plan ✓.
-    expect(screen.getByText("plan ✗")).toBeInTheDocument();
+    // A Tier-1 (meta-defining) matchup with no plan surfaces a "Needs a plan" pill;
+    // the planned one shows plan ✓.
+    expect(screen.getByText("Needs a plan")).toBeInTheDocument();
     expect(screen.getByText("plan ✓")).toBeInTheDocument();
+    // Low-trust rows carry a "thin data" badge (the pastel confidence indicator).
+    expect(screen.getAllByText("thin data")).toHaveLength(2);
     // A null rate (no decisive games) renders as an em dash.
     expect(screen.getByText("—")).toBeInTheDocument();
   });

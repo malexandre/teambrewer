@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { DeckDetail as DeckDetailType } from "@teambrewer/shared";
 import { useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
@@ -22,7 +23,7 @@ import { GamePlanSection } from "@/features/gameplans/GamePlanSection";
 import { DeckCardIdeasSection } from "./DeckCardIdeasSection";
 import { DeckNotesSection } from "./DeckNotesSection";
 import { DeckReadinessSection } from "./DeckReadinessSection";
-import { DECK_STATUS_LABELS, DECK_VISIBILITY_LABELS } from "./deck-display";
+import { DECK_STATUS_LABELS, DECK_STATUS_TONE, DECK_VISIBILITY_LABELS } from "./deck-display";
 import { DeckForm } from "./DeckForm";
 import { DeckStatusControl } from "./DeckStatusControl";
 import { IterationLog } from "./IterationLog";
@@ -86,9 +87,9 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
               <dt className="text-muted-foreground">Tags</dt>
               <dd className="flex flex-wrap gap-1">
                 {deck.tags.map((tag) => (
-                  <span key={tag} className="rounded-md bg-muted px-2 py-0.5 text-xs">
+                  <Badge key={tag} tone="neutral" size="sm">
                     {tag}
-                  </span>
+                  </Badge>
                 ))}
               </dd>
             </div>
@@ -100,11 +101,13 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
           {deck.linkedMetas.length > 0 ? (
             <ul className="flex flex-wrap gap-1">
               {deck.linkedMetas.map((meta) => (
-                <li key={meta.id} className="rounded-md bg-muted px-2 py-0.5 text-xs">
-                  {meta.name}
-                  {meta.metaDeckEntryLabel ? (
-                    <span className="text-muted-foreground"> · ≈ {meta.metaDeckEntryLabel}</span>
-                  ) : null}
+                <li key={meta.id}>
+                  <Badge tone="neutral" size="sm">
+                    {meta.name}
+                    {meta.metaDeckEntryLabel ? (
+                      <span className="font-normal opacity-80"> · ≈ {meta.metaDeckEntryLabel}</span>
+                    ) : null}
+                  </Badge>
                 </li>
               ))}
             </ul>
@@ -190,9 +193,9 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
               </>
             ) : null}
             <span aria-hidden>·</span>
-            <span className="rounded-md bg-muted px-2 py-0.5">
+            <Badge tone={DECK_STATUS_TONE[deck.status]} dot>
               {DECK_STATUS_LABELS[deck.status]}
-            </span>
+            </Badge>
           </div>
         }
         actions={

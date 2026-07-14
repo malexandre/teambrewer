@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { MetaDetail as MetaDetailType } from "@teambrewer/shared";
 import { useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
@@ -38,9 +39,7 @@ export function MetaDetail({ teamId, meta }: { teamId: string | undefined; meta:
         title={meta.name}
         description={
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-              {meta.formatName}
-            </span>
+            <Badge tone="primary">{meta.formatName}</Badge>
             <span>
               {formatMetaDate(meta.startDate)} → {formatMetaDate(meta.endDate)}
             </span>

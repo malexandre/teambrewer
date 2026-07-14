@@ -2,9 +2,10 @@ import type { MatchupGamePlan, MetaDeckEntry } from "@teambrewer/shared";
 import { META_TIER_LABELS } from "@teambrewer/shared";
 import { useMemo } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useHeroes } from "@/features/cards/use-heroes";
-import { matchupSubjectDisplayName } from "@/features/metas/meta-display";
+import { matchupSubjectDisplayName, META_TIER_TONE } from "@/features/metas/meta-display";
 import { ApiError } from "@/lib/api-client";
 
 import { useUpdateGamePlan } from "./use-game-plan-mutations";
@@ -82,7 +83,9 @@ export function GamePlanMetaAssignment({
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
                 <span>{entry ? entryDisplayName(entry) : "Another meta's deck"}</span>
                 {entry ? (
-                  <span className="text-muted-foreground">{META_TIER_LABELS[entry.tier]}</span>
+                  <Badge tone={META_TIER_TONE[entry.tier]} size="sm">
+                    {META_TIER_LABELS[entry.tier]}
+                  </Badge>
                 ) : null}
                 <button
                   type="button"

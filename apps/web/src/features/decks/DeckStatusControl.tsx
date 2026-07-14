@@ -1,6 +1,8 @@
 import { allowedNextDeckStatuses, type DeckStatus } from "@teambrewer/shared";
 
-import { DECK_STATUS_LABELS, SELECT_CLASS } from "./deck-display";
+import { Badge } from "@/components/ui/badge";
+
+import { DECK_STATUS_LABELS, DECK_STATUS_TONE, SELECT_CLASS } from "./deck-display";
 
 /**
  * Shows a deck's current status and offers only the transitions the lifecycle
@@ -19,9 +21,9 @@ export function DeckStatusControl({
   const nextStatuses = allowedNextDeckStatuses(status);
   return (
     <div className="flex items-center gap-2">
-      <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
+      <Badge tone={DECK_STATUS_TONE[status]} dot>
         {DECK_STATUS_LABELS[status]}
-      </span>
+      </Badge>
       <select
         className={SELECT_CLASS}
         value=""

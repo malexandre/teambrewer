@@ -1,6 +1,19 @@
+import type { MetaTier } from "@teambrewer/shared";
+
+import type { BadgeTone } from "@/components/ui/badge";
+
 // The subject display helper is a shared single source of truth (hero · label);
 // re-exported here so existing meta-feature imports keep their path.
 export { matchupSubjectDisplayName } from "@teambrewer/shared";
+
+/** Badge tone per meta tier — a graded threat ramp: meta-defining is the loudest
+ *  (danger), then contender (warning), counter-meta (info), and fringe (neutral). */
+export const META_TIER_TONE: Record<MetaTier, BadgeTone> = {
+  meta_defining: "danger",
+  contender: "warning",
+  counter_meta: "info",
+  fringe: "neutral",
+};
 
 /** Native-select styling shared by the meta pickers/controls (matches the decks feature). */
 export const SELECT_CLASS = "h-9 rounded-md border border-input bg-background px-2 text-sm";

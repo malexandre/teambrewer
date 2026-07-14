@@ -1,11 +1,12 @@
 import { type AttendanceStatus, attendanceStatusSchema } from "@teambrewer/shared";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/ui/section";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { ApiError } from "@/lib/api-client";
 
-import { ATTENDANCE_STATUS_LABELS } from "./event-display";
+import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUS_TONE } from "./event-display";
 import { useSetMyAttendance } from "./use-event-mutations";
 import { useAttendance } from "./use-events";
 
@@ -64,9 +65,9 @@ export function AttendanceControl({
           {roster.map((entry) => (
             <li key={entry.id} className="flex items-center justify-between gap-2">
               <span>{entry.user.displayName}</span>
-              <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              <Badge tone={ATTENDANCE_STATUS_TONE[entry.status]} size="sm" dot>
                 {ATTENDANCE_STATUS_LABELS[entry.status]}
-              </span>
+              </Badge>
             </li>
           ))}
         </ul>

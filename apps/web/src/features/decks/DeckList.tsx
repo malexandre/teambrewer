@@ -2,10 +2,17 @@ import { Link } from "@tanstack/react-router";
 import { type DeckStatus, deckStatusSchema } from "@teambrewer/shared";
 import { useMemo, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { useFormats } from "@/features/cards/use-formats";
 import { useHeroes } from "@/features/cards/use-heroes";
 
-import { DECK_STATUS_LABELS, DECK_VISIBILITY_LABELS, SELECT_CLASS } from "./deck-display";
+import {
+  DECK_STATUS_LABELS,
+  DECK_STATUS_TONE,
+  DECK_VISIBILITY_LABELS,
+  DECK_VISIBILITY_TONE,
+  SELECT_CLASS,
+} from "./deck-display";
 import { FormatPicker } from "./FormatPicker";
 import { HeroPicker } from "./HeroPicker";
 import { type DeckFilters, useDecks } from "./use-decks";
@@ -81,13 +88,13 @@ export function DeckList({ teamId }: { teamId: string | undefined }) {
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{deck.name}</span>
-                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs">
+                  <Badge tone={DECK_STATUS_TONE[deck.status]} size="sm" dot>
                     {DECK_STATUS_LABELS[deck.status]}
-                  </span>
+                  </Badge>
                   {deck.visibility === "private" ? (
-                    <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    <Badge tone={DECK_VISIBILITY_TONE.private} size="sm">
                       {DECK_VISIBILITY_LABELS.private}
-                    </span>
+                    </Badge>
                   ) : null}
                 </div>
                 <span className="text-xs text-muted-foreground">

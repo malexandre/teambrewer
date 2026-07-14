@@ -10,6 +10,8 @@ import type {
   WinType,
 } from "@teambrewer/shared";
 
+import type { BadgeTone } from "@/components/ui/badge";
+
 /** Name lookups (id → display name) used to render a log's references legibly. */
 export interface GameLogLabelMaps {
   decks: Record<string, string>;
@@ -137,6 +139,14 @@ export function formatResult(bestOf: number, result: GameResult): string {
     return "Draw";
   }
   return `${result.gamesWonA}–${result.gamesWonB}`;
+}
+
+/** Badge tone for a result from our side's perspective: a win is success, a loss
+ *  is danger, an even split is neutral. Works for both best-of-1 and match scores. */
+export function gameResultTone(result: GameResult): BadgeTone {
+  if (result.gamesWonA > result.gamesWonB) return "success";
+  if (result.gamesWonA < result.gamesWonB) return "danger";
+  return "neutral";
 }
 
 /** Format a played-at instant as a local date. */

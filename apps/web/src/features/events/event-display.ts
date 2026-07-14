@@ -1,9 +1,17 @@
 import type { AttendanceStatus } from "@teambrewer/shared";
 
+import type { BadgeTone } from "@/components/ui/badge";
+
 /** Human labels for a member's RSVP status. */
 export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
   going: "Going",
   interested: "Interested",
+};
+
+/** Badge tone per RSVP: a committed "going" reads as success, "interested" as info. */
+export const ATTENDANCE_STATUS_TONE: Record<AttendanceStatus, BadgeTone> = {
+  going: "success",
+  interested: "info",
 };
 
 /** Native-select styling shared by the event pickers/controls (matches the decks feature). */
