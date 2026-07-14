@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useHeroes } from "@/features/cards/use-heroes";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { HeroPicker } from "@/features/decks/HeroPicker";
 import { ApiError } from "@/lib/api-client";
@@ -57,6 +58,16 @@ export function MetaDeckEntryBuilder({
   const updateEntry = useUpdateMetaDeckEntry(teamId, metaId);
 
   const identityLabel = useIdentityLabel(teamId);
+  const { data: heroData } = useHeroes(teamId);
+  const heroNamesById = new Map((heroData?.data ?? []).map((hero) => [hero.id, hero.name]));
+
+  /** The hero's display name for an entry, when it carries a hero qualifier. */
+  function heroNameFor(entry: MetaDeckEntry): string | null {
+    if (!entry.heroId) {
+      return null;
+    }
+    return heroNamesById.get(entry.heroId) ?? null;
+  }
 
   function startEditing(entry: MetaDeckEntry) {
     setEditingEntryId(entry.id);
@@ -169,7 +180,7 @@ export function MetaDeckEntryBuilder({
                             className="min-h-16 w-full rounded-md border border-input bg-background p-2 text-sm"
                             value={editNotes}
                             onChange={(event) => setEditNotes(event.target.value)}
-                            aria-label={`Notes for ${entry.opponentSnapshotLabel}`}
+                            aria-label={`Notes for ${entry.label}`}
                           />
                           <div className="flex items-center gap-1">
                             <Button
@@ -193,9 +204,12 @@ export function MetaDeckEntryBuilder({
                       ) : (
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">
-                              {entry.opponentSnapshotLabel}
-                            </p>
+                            <p className="truncate text-sm font-medium">{entry.label}</p>
+                            {heroNameFor(entry) ? (
+                              <p className="truncate text-xs text-muted-foreground">
+                                {heroNameFor(entry)}
+                              </p>
+                            ) : null}
                             {entry.notes ? (
                               <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
                                 {entry.notes}
@@ -208,7 +222,7 @@ export function MetaDeckEntryBuilder({
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                aria-label={`Edit ${entry.opponentSnapshotLabel}`}
+                                aria-label={`Edit ${entry.label}`}
                                 onClick={() => startEditing(entry)}
                               >
                                 Edit
@@ -217,7 +231,7 @@ export function MetaDeckEntryBuilder({
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                aria-label={`Remove ${entry.opponentSnapshotLabel}`}
+                                aria-label={`Remove ${entry.label}`}
                                 disabled={removeEntry.isPending}
                                 onClick={() => removeEntry.mutate(entry.id)}
                               >

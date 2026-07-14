@@ -3,6 +3,7 @@ import type { MetaDetail as MetaDetailType } from "@teambrewer/shared";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { ApiError } from "@/lib/api-client";
 
 import { MetaDeckEntryBuilder } from "./MetaDeckEntryBuilder";
@@ -14,7 +15,7 @@ import { useMetaDeckEntries } from "./use-metas";
 /**
  * A meta's detail: the organizing hub. Header (name, window), description, and the
  * tiered opponent-deck list. Permissions are a shared team board — any member may
- * edit the meta, its deck list, and archive it. Editing swaps in the form in place.
+ * edit the meta, its deck list, and archive it. Editing opens the form in a modal.
  */
 export function MetaDetail({
   teamId,
@@ -31,17 +32,6 @@ export function MetaDetail({
   const archiveMeta = useArchiveMeta(teamId, meta.id);
   const { data: entryData } = useMetaDeckEntries(teamId, meta.id);
   const entries = entryData?.data ?? [];
-
-  if (editing) {
-    return (
-      <MetaForm
-        teamId={teamId}
-        meta={meta}
-        onSaved={() => setEditing(false)}
-        onCancel={() => setEditing(false)}
-      />
-    );
-  }
 
   function archive() {
     if (!window.confirm("Archive this meta? It will be hidden but its history is kept.")) return;
@@ -89,6 +79,15 @@ export function MetaDetail({
       ) : null}
 
       <MetaDeckEntryBuilder teamId={teamId} metaId={meta.id} entries={entries} canEdit />
+
+      <Dialog open={editing} onClose={() => setEditing(false)} title="Edit meta">
+        <MetaForm
+          teamId={teamId}
+          meta={meta}
+          onSaved={() => setEditing(false)}
+          onCancel={() => setEditing(false)}
+        />
+      </Dialog>
     </div>
   );
 }

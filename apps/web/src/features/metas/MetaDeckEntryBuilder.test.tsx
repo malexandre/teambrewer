@@ -14,7 +14,13 @@ function renderWithClient(ui: ReactNode) {
 
 /** Mock the reference-data reads (and optionally the deck-entry create/update) the builder needs. */
 function mockApi(
-  options: { onCreate?: (body: unknown) => void; onUpdate?: (body: unknown) => void } = {},
+  options: {
+    onCreate?: (body: unknown) => void;
+    onUpdate?: (body: unknown) => void;
+    /** When set, the create endpoint answers this status with a duplicate-style error envelope. */
+    createStatus?: number;
+    createErrorMessage?: string;
+  } = {},
 ) {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = typeof input === "string" ? input : input.toString();
@@ -58,6 +64,17 @@ function mockApi(
     if (url.includes("/api/metas/meta-1/deck-entries") && method === "POST") {
       const body: unknown = init?.body ? JSON.parse(init.body as string) : {};
       options.onCreate?.(body);
+      if (options.createStatus) {
+        return json(
+          {
+            error: {
+              code: "conflict",
+              message: options.createErrorMessage ?? "That deck is already in this meta.",
+            },
+          },
+          options.createStatus,
+        );
+      }
       return json({
         id: "entry-new",
         metaId: "meta-1",
@@ -154,6 +171,71 @@ describe("MetaDeckEntryBuilder", () => {
       label: "Draconic Dorinthea",
       tier: "contender",
     });
+  });
+
+  it("shows the label as the heading with the hero name as a secondary detail", async () => {
+    const heroQualified: MetaDeckEntry[] = [
+      {
+        id: "entry-oscilio",
+        metaId: "meta-1",
+        tier: "meta_defining",
+        heroId: "hero-dori",
+        label: "GIAF",
+        opponentSnapshotLabel: "Dorinthea (GIAF)",
+        notes: "",
+        createdAt: "2026-07-12T00:00:00.000Z",
+        updatedAt: "2026-07-12T00:00:00.000Z",
+      },
+    ];
+    mockApi();
+    renderWithClient(
+      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={heroQualified} canEdit />,
+    );
+
+    // The label leads; the resolved hero name is the secondary line (a <p>, as
+    // opposed to the "Dorinthea" <option> in the add form's hero picker).
+    expect(screen.getByText("GIAF")).toBeInTheDocument();
+    expect(await screen.findByText("Dorinthea", { selector: "p" })).toBeInTheDocument();
+  });
+
+  it("does not block a second entry sharing a hero, and surfaces the server duplicate error", async () => {
+    // A "GIAF" Dorinthea entry already exists; the user adds a second "Spell" one
+    // for the same hero. The UI must not block it client-side; only an exact
+    // hero+label duplicate is rejected by the server, and that error is surfaced.
+    const existing: MetaDeckEntry[] = [
+      {
+        id: "entry-giaf",
+        metaId: "meta-1",
+        tier: "meta_defining",
+        heroId: "hero-dori",
+        label: "GIAF",
+        opponentSnapshotLabel: "Dorinthea (GIAF)",
+        notes: "",
+        createdAt: "2026-07-12T00:00:00.000Z",
+        updatedAt: "2026-07-12T00:00:00.000Z",
+      },
+    ];
+    const created: unknown[] = [];
+    mockApi({
+      onCreate: (body) => created.push(body),
+      createStatus: 409,
+      createErrorMessage: "That deck is already in this meta.",
+    });
+    const user = userEvent.setup();
+    renderWithClient(
+      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={existing} canEdit />,
+    );
+
+    await screen.findByRole("option", { name: "Dorinthea" });
+    await user.type(screen.getByLabelText(/^archetype$/i), "GIAF");
+    await user.selectOptions(screen.getByRole("combobox", { name: /hero/i }), "hero-dori");
+    await user.click(screen.getByRole("button", { name: /add deck/i }));
+
+    // The request went out (no client-side block on the shared hero) …
+    await vi.waitFor(() => expect(created).toHaveLength(1));
+    expect(created[0]).toMatchObject({ heroId: "hero-dori", label: "GIAF" });
+    // … and the server's exact-duplicate error is shown to the user.
+    expect(await screen.findByText(/already in this meta/i)).toBeInTheDocument();
   });
 
   it("edits an existing entry's tier and notes", async () => {
