@@ -15,7 +15,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -71,7 +71,9 @@ function parseEnvFile(contents) {
 /**
  * Resolve config with precedence: real shell environment > ./.env file > defaults.
  * Creates ./.env from a template (with a freshly generated, persisted
- * BETTER_AUTH_SECRET) when it does not yet exist.
+ * BETTER_AUTH_SECRET) when it does not yet exist — and, when ./.env exists but is
+ * missing BETTER_AUTH_SECRET, persists a generated one to it rather than using an
+ * ephemeral per-run value (a rotating secret logs everyone out and breaks TOTP 2FA).
  */
 function resolveConfig() {
   const fileValues = existsSync(envPath) ? parseEnvFile(readFileSync(envPath, "utf8")) : {};
@@ -108,9 +110,19 @@ function resolveConfig() {
     writeFileSync(envPath, renderEnvTemplate(config), "utf8");
     console.log(`Created ${dim(".env")} with local-dev defaults (generated BETTER_AUTH_SECRET).`);
   } else if (generatedSecret) {
-    console.warn(
-      `${dim(".env")} has no BETTER_AUTH_SECRET; using a temporary one for this run. ` +
-        "Add a stable value (`openssl rand -base64 32`) to keep sessions across restarts.",
+    // .env exists but has no secret. Persist the generated one instead of using
+    // an ephemeral per-run value — otherwise the secret rotates on every restart,
+    // which invalidates every session (surprise logouts) and, worse, renders the
+    // encrypted-at-rest TOTP secrets undecryptable so 2FA accounts can never sign
+    // back in. Append so any other keys the user set in .env are preserved.
+    appendFileSync(
+      envPath,
+      `\n# Added automatically so sessions + TOTP 2FA survive restarts. Keep it stable.\nBETTER_AUTH_SECRET=${betterAuthSecret}\n`,
+      "utf8",
+    );
+    console.log(
+      `Added a generated ${dim("BETTER_AUTH_SECRET")} to ${dim(".env")} ` +
+        "(kept stable so sessions and 2FA survive restarts).",
     );
   }
 
