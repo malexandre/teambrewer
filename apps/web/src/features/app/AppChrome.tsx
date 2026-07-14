@@ -81,10 +81,10 @@ function MainMenu({
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "rounded-md px-3 py-2 transition-colors",
+              "rounded-md px-3 py-2 font-medium transition-colors",
               active
-                ? "bg-accent font-medium text-accent-foreground"
-                : "text-foreground hover:bg-accent/60",
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
             {item.label}
@@ -100,7 +100,7 @@ function SubMenu({ items, pathname }: { items: SubNavItem[]; pathname: string })
   return (
     <nav
       aria-label="Section"
-      className="flex gap-1 overflow-x-auto border-b border-border px-4 py-2 text-sm"
+      className="flex gap-1 overflow-x-auto border-b border-border bg-card px-4 py-2 text-sm"
     >
       {items.map((item) => {
         const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
@@ -110,10 +110,10 @@ function SubMenu({ items, pathname }: { items: SubNavItem[]; pathname: string })
             to={item.to}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "rounded-md px-3 py-1.5 transition-colors",
+              "rounded-md px-3 py-1.5 font-medium transition-colors",
               active
-                ? "bg-accent font-medium text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
             {item.label}
@@ -167,10 +167,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-dvh md:flex">
+    <div className="min-h-dvh bg-muted/40 md:flex dark:bg-background">
       {/* Persistent sidebar (desktop and up). */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border md:flex">
-        <div className="p-4">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex">
+        <div className="border-b border-border p-4">
           <Link to="/" className="text-lg font-semibold tracking-tight">
             TeamBrewer
           </Link>
@@ -217,7 +217,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       ) : null}
 
       <div className="flex min-h-dvh flex-1 flex-col">
-        <header className="border-b border-border">
+        <header className="border-b border-border bg-card">
           <div className="flex items-center gap-3 p-4">
             <Button
               type="button"
