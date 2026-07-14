@@ -21,6 +21,7 @@ const SECTION_TONE_CLASSES: Record<SectionTone, string> = {
 export function Section({
   title,
   description,
+  icon,
   actions,
   tone = "default",
   bodyClassName,
@@ -30,6 +31,8 @@ export function Section({
 }: {
   title?: ReactNode;
   description?: ReactNode;
+  /** Optional leading glyph shown in a tinted chip beside the title. */
+  icon?: ReactNode;
   actions?: ReactNode;
   tone?: SectionTone;
   bodyClassName?: string;
@@ -47,9 +50,19 @@ export function Section({
     >
       {hasHeader ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            {title ? <h3 className="text-sm font-semibold tracking-tight">{title}</h3> : null}
-            {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+          <div className="flex min-w-0 items-center gap-2.5">
+            {icon ? (
+              <span
+                aria-hidden="true"
+                className="grid size-7 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground [&_svg]:size-4"
+              >
+                {icon}
+              </span>
+            ) : null}
+            <div className="flex min-w-0 flex-col gap-0.5">
+              {title ? <h3 className="text-sm font-semibold tracking-tight">{title}</h3> : null}
+              {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+            </div>
           </div>
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </div>

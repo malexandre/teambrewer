@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import type { DeckDetail as DeckDetailType } from "@teambrewer/shared";
+import { Info } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +65,7 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
 
   const generalTab = (
     <div className="flex flex-col gap-4">
-      <Section title="Overview" aria-label="Overview">
+      <Section title="Overview" icon={<Info />} aria-label="Overview">
         <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">Format</dt>

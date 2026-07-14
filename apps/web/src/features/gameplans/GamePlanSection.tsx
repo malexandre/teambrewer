@@ -1,3 +1,4 @@
+import { ClipboardList } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ export function GamePlanSection({
   return (
     <Section
       title="Matchup game-plans"
+      icon={<ClipboardList />}
       aria-label="Matchup game-plans"
       actions={
         !deckArchived && !writing ? (

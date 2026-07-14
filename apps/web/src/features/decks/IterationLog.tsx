@@ -1,3 +1,5 @@
+import { History } from "lucide-react";
+
 import { Section } from "@/components/ui/section";
 import { CardRichText } from "@/features/cards/CardRichText";
 import { MentionComposer } from "@/features/collaboration/MentionComposer";
@@ -30,7 +32,7 @@ export function IterationLog({
   const entries = data?.data ?? [];
 
   return (
-    <Section title="Iteration log" aria-label="Iteration log">
+    <Section title="Iteration log" icon={<History />} aria-label="Iteration log">
       {canAddEntry ? (
         <>
           <MentionComposer

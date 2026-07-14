@@ -1,3 +1,4 @@
+import { Lightbulb } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export function DeckCardIdeasSection({
   return (
     <Section
       title="Card ideas & tasks"
+      icon={<Lightbulb />}
       aria-label="Card ideas"
       bodyClassName="gap-2"
       actions={

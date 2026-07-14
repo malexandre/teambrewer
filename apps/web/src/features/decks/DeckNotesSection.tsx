@@ -1,4 +1,5 @@
 import type { DeckDetail } from "@teambrewer/shared";
+import { NotebookPen } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export function DeckNotesSection({
   return (
     <Section
       title="Notes"
+      icon={<NotebookPen />}
       aria-label="Notes"
       bodyClassName="gap-2"
       actions={

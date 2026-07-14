@@ -1,6 +1,7 @@
 import type { BadgeTone } from "@/components/ui/badge";
 import type { DeckMetaReadinessRow } from "@teambrewer/shared";
 import { META_TIER_LABELS } from "@teambrewer/shared";
+import { Gauge } from "lucide-react";
 import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -114,6 +115,7 @@ export function DeckReadinessSection({
   return (
     <Section
       title={`Readiness${data && data.metaName ? ` · ${data.metaName}` : ""}`}
+      icon={<Gauge />}
       aria-label="Meta readiness"
       bodyClassName="gap-2"
     >
