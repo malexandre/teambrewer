@@ -131,15 +131,14 @@ function mockApi(options: { onCreate?: (body: unknown) => void } = {}) {
           metaId: null,
           playedAt: "2026-07-12T00:00:00.000Z",
           sideA: {
-            pilotUserId: "user-me",
+            playerCategory: "teammate",
             deckId: "deck-ours",
             metaDeckEntryId: null,
             heroId: null,
             archetypeLabel: null,
           },
           sideB: {
-            pilotUserId: null,
-            externalOpponentName: null,
+            playerCategory: "other",
             deckId: null,
             metaDeckEntryId: null,
             heroId: null,
@@ -183,8 +182,8 @@ describe("GameLogWizard", () => {
     // Step 1 → Next → Step 2 shows the result control; Single game is active.
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
-    await screen.findByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText(/your deck/i), "deck-ours");
+    await screen.findAllByRole("option", { name: "Our Deck" });
+    await user.selectOptions(screen.getByLabelText(/your deck/i), "deck:deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -203,8 +202,8 @@ describe("GameLogWizard", () => {
     // step 1
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
-    await screen.findByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText(/your deck/i), "deck-ours");
+    await screen.findAllByRole("option", { name: "Our Deck" });
+    await user.selectOptions(screen.getByLabelText(/your deck/i), "deck:deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -232,8 +231,8 @@ describe("GameLogWizard", () => {
     // Our side is a valid team deck, but the opponent archetype label is empty.
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
-    await screen.findByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText("Your deck"), "deck-ours");
+    await screen.findAllByRole("option", { name: "Our Deck" });
+    await user.selectOptions(screen.getByLabelText("Your deck"), "deck:deck-ours");
     await user.click(screen.getByRole("button", { name: /next/i }));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     // Still on step 1: the result control has not appeared.
@@ -247,15 +246,15 @@ describe("GameLogWizard", () => {
     // Fill step 1 and advance to step 2.
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
-    await screen.findByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText("Your deck"), "deck-ours");
+    await screen.findAllByRole("option", { name: "Our Deck" });
+    await user.selectOptions(screen.getByLabelText("Your deck"), "deck:deck-ours");
     await user.type(screen.getByLabelText(/opponent archetype label/i), "Aggro Red");
     await user.click(screen.getByRole("button", { name: /next/i }));
     // Step 2 shows the result control and a Back control.
     await screen.findByRole("button", { name: /single game/i });
     await user.click(screen.getByRole("button", { name: /^back$/i }));
     // Back on step 1, with the previously entered values intact.
-    expect(await screen.findByLabelText("Your deck")).toHaveValue("deck-ours");
+    expect(await screen.findByLabelText("Your deck")).toHaveValue("deck:deck-ours");
     expect(screen.getByLabelText(/opponent archetype label/i)).toHaveValue("Aggro Red");
   });
 
@@ -268,8 +267,8 @@ describe("GameLogWizard", () => {
     // Step 1 — the matchup.
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
-    await screen.findByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText(/your deck/i), "deck-ours");
+    await screen.findAllByRole("option", { name: "Our Deck" });
+    await user.selectOptions(screen.getByLabelText(/your deck/i), "deck:deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -308,15 +307,14 @@ describe("GameLogWizard", () => {
       metaId: null,
       playedAt: "2026-07-10T00:00:00.000Z",
       sideA: {
-        pilotUserId: "user-me",
+        playerCategory: "teammate",
         deckId: "deck-ours",
         metaDeckEntryId: null,
         heroId: null,
         archetypeLabel: null,
       },
       sideB: {
-        pilotUserId: null,
-        externalOpponentName: null,
+        playerCategory: "other",
         deckId: null,
         metaDeckEntryId: null,
         heroId: "hero-dori",

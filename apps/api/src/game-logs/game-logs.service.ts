@@ -19,6 +19,7 @@ import {
   errorCode,
   isGameResultConsistent,
   type LossReason,
+  type PlayerCategory,
   type UpdateGameLogInput,
   type WinType,
 } from "@teambrewer/shared";
@@ -39,13 +40,12 @@ interface GameLogRow {
   formatId: string;
   metaId: string | null;
   playedAt: Date;
-  pilotUserId: string | null;
+  selfPlayerCategory: PlayerCategory;
   deckId: string | null;
   selfMetaDeckEntryId: string | null;
   selfHeroId: string | null;
   selfArchetypeLabel: string | null;
-  opponentPilotUserId: string | null;
-  externalOpponentName: string | null;
+  opponentPlayerCategory: PlayerCategory;
   opponentDeckId: string | null;
   opponentMetaDeckEntryId: string | null;
   opponentHeroId: string | null;
@@ -74,7 +74,7 @@ interface GameLogRow {
 
 /** Resolved, validated side-A (self) columns ready to persist. */
 interface ResolvedSideA {
-  pilotUserId: string | null;
+  selfPlayerCategory: PlayerCategory;
   deckId: string | null;
   selfMetaDeckEntryId: string | null;
   selfHeroId: string | null;
@@ -83,8 +83,7 @@ interface ResolvedSideA {
 
 /** Resolved, validated side-B (opponent) columns ready to persist. */
 interface ResolvedSideB {
-  opponentPilotUserId: string | null;
-  externalOpponentName: string | null;
+  opponentPlayerCategory: PlayerCategory;
   opponentDeckId: string | null;
   opponentMetaDeckEntryId: string | null;
   opponentHeroId: string | null;
@@ -108,9 +107,9 @@ export class GameLogsService {
 
   /**
    * List the team's game logs with filters + keyset pagination (most recently
-   * played first). `deckId`/`pilotUserId` match either side; `heroId` matches the
-   * opponent identity (our side's hero lives on its deck, not the log). Archived
-   * logs are excluded.
+   * played first). `deckId` matches either side; `heroId` matches the opponent
+   * identity (our side's hero lives on its deck, not the log). Archived logs are
+   * excluded.
    */
   async list(query: GameLogListQuery): Promise<GameLogListResponse> {
     const cursor = query.cursor ? decodeKeysetCursor(query.cursor) : null;
@@ -123,11 +122,6 @@ export class GameLogsService {
     }
     if (query.heroId) {
       andClauses.push({ OR: [{ selfHeroId: query.heroId }, { opponentHeroId: query.heroId }] });
-    }
-    if (query.pilotUserId) {
-      andClauses.push({
-        OR: [{ pilotUserId: query.pilotUserId }, { opponentPilotUserId: query.pilotUserId }],
-      });
     }
     if (cursor) {
       andClauses.push({
@@ -191,13 +185,12 @@ export class GameLogsService {
         formatId: input.formatId,
         metaId,
         playedAt,
-        pilotUserId: sideA.pilotUserId,
+        selfPlayerCategory: sideA.selfPlayerCategory,
         deckId: sideA.deckId,
         selfMetaDeckEntryId: sideA.selfMetaDeckEntryId,
         selfHeroId: sideA.selfHeroId,
         selfArchetypeLabel: sideA.selfArchetypeLabel,
-        opponentPilotUserId: sideB.opponentPilotUserId,
-        externalOpponentName: sideB.externalOpponentName,
+        opponentPlayerCategory: sideB.opponentPlayerCategory,
         opponentDeckId: sideB.opponentDeckId,
         opponentMetaDeckEntryId: sideB.opponentMetaDeckEntryId,
         opponentHeroId: sideB.opponentHeroId,
@@ -401,19 +394,6 @@ export class GameLogsService {
     }
   }
 
-  /** Reject a `userId` that is not a member of the team (→ 422). */
-  private async assertTeamMember(userId: string, message: string): Promise<void> {
-    const membership = await this.scoped.db.teamMembership.findFirst({
-      where: { userId },
-      select: { id: true },
-    });
-    if (!membership) {
-      throw new UnprocessableEntityException({
-        error: { code: errorCode.domainRuleViolation, message },
-      });
-    }
-  }
-
   /**
    * Validate + normalize a matchup subject (a team deck, a meta deck entry, or an
    * archetype label with an optional hero) into its three neutral columns. The
@@ -463,21 +443,16 @@ export class GameLogsService {
 
   /**
    * Validate + normalize our side into its persisted columns. Our side is a matchup
-   * subject (team deck / meta deck entry / hero + label) plus an optional pilot who is
-   * validated as a team member (a same-team deck/entry is required; cross-team → 422).
+   * subject (team deck / meta deck entry / hero + label) plus a `playerCategory`
+   * classifying who piloted it (a same-team deck/entry is required; cross-team → 422).
    */
   private async resolveSideA(
     gameId: string,
     sideA: CreateGameLogInput["sideA"],
   ): Promise<ResolvedSideA> {
     const subject = await this.resolveMatchupSubject(gameId, sideA, "our side's");
-    let pilotUserId: string | null = null;
-    if (sideA.pilotUserId !== undefined) {
-      await this.assertTeamMember(sideA.pilotUserId, "Our pilot is not a member of this team.");
-      pilotUserId = sideA.pilotUserId;
-    }
     return {
-      pilotUserId,
+      selfPlayerCategory: sideA.playerCategory,
       deckId: subject.deckId,
       selfMetaDeckEntryId: subject.metaDeckEntryId,
       selfHeroId: subject.heroId,
@@ -487,27 +462,17 @@ export class GameLogsService {
 
   /**
    * Validate + normalize the opponent side into its persisted columns. The opponent is
-   * a matchup subject (any team deck / meta deck entry / hero + label) plus an optional
-   * teammate pilot (a team member) and an optional free-text external opponent name,
-   * both independent of the subject. The exactly-one subject shape is enforced by the
-   * schema; this adds the cross-team/game FK checks (→ 422).
+   * a matchup subject (any team deck / meta deck entry / hero + label) plus a
+   * `playerCategory` classifying who piloted it. The exactly-one subject shape is
+   * enforced by the schema; this adds the cross-team/game FK checks (→ 422).
    */
   private async resolveSideB(
     gameId: string,
     sideB: CreateGameLogInput["sideB"],
   ): Promise<ResolvedSideB> {
     const subject = await this.resolveMatchupSubject(gameId, sideB, "opponent");
-    let opponentPilotUserId: string | null = null;
-    if (sideB.pilotUserId !== undefined) {
-      await this.assertTeamMember(
-        sideB.pilotUserId,
-        "The opponent teammate is not a member of this team.",
-      );
-      opponentPilotUserId = sideB.pilotUserId;
-    }
     return {
-      opponentPilotUserId,
-      externalOpponentName: sideB.externalOpponentName ?? null,
+      opponentPlayerCategory: sideB.playerCategory,
       opponentDeckId: subject.deckId,
       opponentMetaDeckEntryId: subject.metaDeckEntryId,
       opponentHeroId: subject.heroId,
@@ -653,15 +618,14 @@ function toGameLogSummary(row: GameLogRow): GameLogSummary {
     metaId: row.metaId,
     playedAt: row.playedAt.toISOString(),
     sideA: {
-      pilotUserId: row.pilotUserId,
+      playerCategory: row.selfPlayerCategory,
       deckId: row.deckId,
       metaDeckEntryId: row.selfMetaDeckEntryId,
       heroId: row.selfHeroId,
       archetypeLabel: row.selfArchetypeLabel,
     },
     sideB: {
-      pilotUserId: row.opponentPilotUserId,
-      externalOpponentName: row.externalOpponentName,
+      playerCategory: row.opponentPlayerCategory,
       deckId: row.opponentDeckId,
       metaDeckEntryId: row.opponentMetaDeckEntryId,
       heroId: row.opponentHeroId,

@@ -136,7 +136,7 @@ describe("Game-log endpoints (integration)", () => {
 
   const validGame = () => ({
     formatId: fabFormatId,
-    sideA: { pilotUserId: memberA.id, deckId: deckA.id },
+    sideA: { deckId: deckA.id },
     sideB: { heroId: fabHeroId, archetypeLabel: "Draconic Dorinthea" },
     firstPlayerSide: "A" as const,
     bestOf: 3 as const,
@@ -173,23 +173,31 @@ describe("Game-log endpoints (integration)", () => {
       expect(response.body.confidenceWeight).toBeCloseTo(0.835, 4);
     });
 
-    it("logs a game against a teammate (both pilots + team decks)", async () => {
+    it("logs a game against a teammate's team deck (player category + team deck)", async () => {
       const response = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        sideB: { pilotUserId: memberA2.id, deckId: deckA2.id },
+        sideB: { playerCategory: "teammate", deckId: deckA2.id },
       });
       expect(response.status).toBe(201);
-      expect(response.body.sideB.pilotUserId).toBe(memberA2.id);
+      expect(response.body.sideB.playerCategory).toBe("teammate");
       expect(response.body.sideB.deckId).toBe(deckA2.id);
     });
 
-    it("logs a game against any team deck as the external opponent", async () => {
+    it("logs a game against a circuit player on any team deck", async () => {
       const response = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        sideB: { externalOpponentName: "Some Pro", deckId: opponentTeamDeckA.id },
+        sideB: { playerCategory: "circuit_player", deckId: opponentTeamDeckA.id },
       });
       expect(response.status).toBe(201);
+      expect(response.body.sideB.playerCategory).toBe("circuit_player");
       expect(response.body.sideB.deckId).toBe(opponentTeamDeckA.id);
+    });
+
+    it("defaults the player category per side (self → teammate, opponent → other)", async () => {
+      const response = await asMemberA(http().post("/api/game-logs")).send(validGame());
+      expect(response.status).toBe(201);
+      expect(response.body.sideA.playerCategory).toBe("teammate");
+      expect(response.body.sideB.playerCategory).toBe("other");
     });
 
     it("rejects a result inconsistent with best-of (400 at the schema boundary)", async () => {
@@ -228,7 +236,7 @@ describe("Game-log endpoints (integration)", () => {
     it("rejects an opponent deck belonging to another team (cross-team FK, 422)", async () => {
       const response = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        sideB: { externalOpponentName: "Rando", deckId: deckB.id },
+        sideB: { deckId: deckB.id },
       });
       expect(response.status).toBe(422);
     });
@@ -236,7 +244,7 @@ describe("Game-log endpoints (integration)", () => {
     it("rejects our deck belonging to another team (cross-team FK, 422)", async () => {
       const response = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        sideA: { pilotUserId: memberA.id, deckId: deckB.id },
+        sideA: { deckId: deckB.id },
       });
       expect(response.status).toBe(422);
     });
@@ -366,13 +374,12 @@ describe("Game-log endpoints (integration)", () => {
   });
 
   describe("GET /api/game-logs", () => {
-    it("lists only the team's logs and filters by deck, hero, pilot, and meta", async () => {
+    it("lists only the team's logs and filters by deck, hero, and meta", async () => {
       const meta = await createMeta(prisma, { teamId: teamA.id });
       await createGameLog(prisma, {
         teamId: teamA.id,
         loggedById: memberA.id,
         formatId: fabFormatId,
-        pilotUserId: memberA.id,
         deckId: deckA.id,
         opponentHeroId: fabHeroId,
         opponentArchetypeLabel: "Draconic Dorinthea",
@@ -382,7 +389,6 @@ describe("Game-log endpoints (integration)", () => {
         teamId: teamA.id,
         loggedById: memberA2.id,
         formatId: fabFormatId,
-        pilotUserId: memberA2.id,
         deckId: deckA2.id,
         opponentArchetypeLabel: "Control",
       });
@@ -391,7 +397,6 @@ describe("Game-log endpoints (integration)", () => {
         teamId: teamB.id,
         loggedById: memberB.id,
         formatId: fabFormatId,
-        pilotUserId: memberB.id,
         deckId: deckB.id,
       });
 
@@ -405,9 +410,6 @@ describe("Game-log endpoints (integration)", () => {
       const byHero = await asMemberA(http().get(`/api/game-logs?heroId=${fabHeroId}`));
       expect(byHero.body.data).toHaveLength(1);
 
-      const byPilot = await asMemberA(http().get(`/api/game-logs?pilotUserId=${memberA2.id}`));
-      expect(byPilot.body.data).toHaveLength(1);
-
       const byMeta = await asMemberA(http().get(`/api/game-logs?metaId=${meta.id}`));
       expect(byMeta.body.data).toHaveLength(1);
     });
@@ -419,7 +421,6 @@ describe("Game-log endpoints (integration)", () => {
         teamId: teamB.id,
         loggedById: memberB.id,
         formatId: fabFormatId,
-        pilotUserId: memberB.id,
         deckId: deckB.id,
       });
       const response = await asMemberA(http().get(`/api/game-logs/${logB.id}`));
@@ -608,7 +609,6 @@ describe("Game-log endpoints (integration)", () => {
         teamId: teamA.id,
         loggedById: memberA.id,
         formatId: fabFormatId,
-        pilotUserId: memberA.id,
         deckId: deckA.id,
         opponentHeroId: fabHeroId,
         opponentArchetypeLabel: "Draconic Dorinthea",
@@ -618,7 +618,6 @@ describe("Game-log endpoints (integration)", () => {
         teamId: teamA.id,
         loggedById: memberA.id,
         formatId: fabFormatId,
-        pilotUserId: memberA.id,
         deckId: deckA.id,
         opponentHeroId: fabHeroId,
         opponentArchetypeLabel: "Draconic Dorinthea",
@@ -628,7 +627,6 @@ describe("Game-log endpoints (integration)", () => {
         teamId: teamA.id,
         loggedById: memberA.id,
         formatId: fabFormatId,
-        pilotUserId: memberA.id,
         deckId: deckA.id,
         opponentHeroId: fabHeroId,
         opponentArchetypeLabel: "Draconic Dorinthea",
@@ -638,7 +636,6 @@ describe("Game-log endpoints (integration)", () => {
         teamId: teamA.id,
         loggedById: memberA.id,
         formatId: fabFormatId,
-        pilotUserId: memberA.id,
         deckId: deckA.id,
         opponentHeroId: fabHeroId,
         opponentArchetypeLabel: "Draconic Dorinthea",

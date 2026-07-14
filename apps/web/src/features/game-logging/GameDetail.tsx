@@ -1,5 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
-import type { GameLogDetail as GameLogDetailType } from "@teambrewer/shared";
+import {
+  type GameLogDetail as GameLogDetailType,
+  PLAYER_CATEGORY_LABELS,
+} from "@teambrewer/shared";
 import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -9,7 +12,6 @@ import { useHeroes } from "@/features/cards/use-heroes";
 import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
 import { CommentThread } from "@/features/collaboration/CommentThread";
 import { useDecks } from "@/features/decks/use-decks";
-import { useMembers } from "@/features/teams/use-members";
 import { ApiError } from "@/lib/api-client";
 
 import {
@@ -51,15 +53,13 @@ export function GameDetail({
 
   const { data: decks } = useDecks(teamId, {});
   const { data: heroes } = useHeroes(teamId);
-  const { data: members } = useMembers(teamId);
 
   const maps: GameLogLabelMaps = useMemo(
     () => ({
       decks: Object.fromEntries((decks?.data ?? []).map((d) => [d.id, d.name])),
       heroes: Object.fromEntries((heroes?.data ?? []).map((h) => [h.id, h.name])),
-      members: Object.fromEntries((members?.data ?? []).map((m) => [m.userId, m.displayName])),
     }),
-    [decks, heroes, members],
+    [decks, heroes],
   );
 
   function archive() {
@@ -68,14 +68,12 @@ export function GameDetail({
   }
 
   const ourDeck = describeSelf(game.sideA, maps);
-  const ourPilot = game.sideA.pilotUserId
-    ? (maps.members[game.sideA.pilotUserId] ?? "A teammate")
-    : "A teammate";
+  const opponent = describeOpponent(game.sideB, maps);
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title={`${ourDeck} vs ${describeOpponent(game.sideB, maps)}`}
+        title={`${ourDeck} vs ${opponent}`}
         actions={
           <>
             <Button
@@ -112,11 +110,19 @@ export function GameDetail({
           </div>
           <div>
             <dt className="text-muted-foreground">First player</dt>
-            <dd>{game.firstPlayerSide === "A" ? ourPilot : describeOpponent(game.sideB, maps)}</dd>
+            <dd>{game.firstPlayerSide === "A" ? ourDeck : opponent}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Played</dt>
             <dd>{formatPlayedAt(game.playedAt)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">You (piloted by)</dt>
+            <dd>{PLAYER_CATEGORY_LABELS[game.sideA.playerCategory]}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Opponent</dt>
+            <dd>{PLAYER_CATEGORY_LABELS[game.sideB.playerCategory]}</dd>
           </div>
         </dl>
       </Section>

@@ -192,6 +192,27 @@ export const playedAtSchema = z
     message: "A valid played-at date is required.",
   });
 
+// --- Player category --------------------------------------------------------
+
+/**
+ * Who was at the controls of a side, categorically. We deliberately do **not**
+ * record which specific person played — only whether it was someone from the
+ * team, a known competitive ("circuit") player, or anyone else. Both sides carry
+ * one (the self side defaults to `teammate`, the opponent to `other`).
+ */
+export const playerCategorySchema = z.enum(["teammate", "circuit_player", "other"]);
+export type PlayerCategory = z.infer<typeof playerCategorySchema>;
+
+/** The player categories in display order (for the radio). */
+export const PLAYER_CATEGORIES = playerCategorySchema.options;
+
+/** Human labels for the player categories (single place so the UI reads consistently). */
+export const PLAYER_CATEGORY_LABELS: Record<PlayerCategory, string> = {
+  teammate: "Teammate",
+  circuit_player: "Circuit player",
+  other: "Other",
+};
+
 // --- Sides (matchup subjects) -----------------------------------------------
 
 /**
@@ -238,11 +259,11 @@ function refineMatchupSubject(
 
 /**
  * Our side: a matchup subject (team deck / meta deck entry / archetype label + optional
- * hero) plus an optional `pilotUserId` (who piloted our side).
+ * hero) plus a `playerCategory` classifying who piloted it (defaults to `teammate`).
  */
 export const gameSideASchema = z
   .object({
-    pilotUserId: z.string().min(1).optional(),
+    playerCategory: playerCategorySchema.default("teammate"),
     deckId: z.string().min(1).optional(),
     metaDeckEntryId: z.string().min(1).optional(),
     heroId: z.string().min(1).optional(),
@@ -253,13 +274,11 @@ export type GameSideA = z.infer<typeof gameSideASchema>;
 
 /**
  * The opponent side: a matchup subject (team deck / meta deck entry / archetype label
- * + optional hero) plus an optional `opponentPilotUserId` (a teammate opponent) and an
- * optional `externalOpponentName`, both independent of the subject.
+ * + optional hero) plus a `playerCategory` classifying the opponent (defaults to `other`).
  */
 export const gameSideBSchema = z
   .object({
-    pilotUserId: z.string().min(1).optional(),
-    externalOpponentName: z.string().trim().min(1).max(120).optional(),
+    playerCategory: playerCategorySchema.default("other"),
     deckId: z.string().min(1).optional(),
     metaDeckEntryId: z.string().min(1).optional(),
     heroId: z.string().min(1).optional(),
@@ -339,15 +358,14 @@ export type UpdateGameLogInput = z.infer<typeof updateGameLogSchema>;
 
 /**
  * Query parameters for `GET /api/game-logs`. Values arrive as strings, so `limit`
- * is coerced. `deckId`/`heroId`/`pilotUserId` match either side. Archived logs are
- * excluded server-side.
+ * is coerced. `deckId`/`heroId` match either side. Archived logs are excluded
+ * server-side.
  */
 export const gameLogListQuerySchema = z.object({
   formatId: z.string().optional(),
   metaId: z.string().optional(),
   deckId: z.string().optional(),
   heroId: z.string().optional(),
-  pilotUserId: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
   cursor: z.string().optional(),
 });
@@ -357,7 +375,7 @@ export type GameLogListQuery = z.infer<typeof gameLogListQuerySchema>;
 
 /** The resolved self side as returned by the API (unused subject forms are null). */
 export const gameSideAResponseSchema = z.object({
-  pilotUserId: z.string().nullable(),
+  playerCategory: playerCategorySchema,
   deckId: z.string().nullable(),
   metaDeckEntryId: z.string().nullable(),
   heroId: z.string().nullable(),
@@ -366,8 +384,7 @@ export const gameSideAResponseSchema = z.object({
 
 /** The resolved opponent side as returned by the API (unused subject forms are null). */
 export const gameSideBResponseSchema = z.object({
-  pilotUserId: z.string().nullable(),
-  externalOpponentName: z.string().nullable(),
+  playerCategory: playerCategorySchema,
   deckId: z.string().nullable(),
   metaDeckEntryId: z.string().nullable(),
   heroId: z.string().nullable(),

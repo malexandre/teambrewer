@@ -386,6 +386,7 @@ export async function createAttendance(
  */
 
 type GameSide = "A" | "B";
+type PlayerCategory = "teammate" | "circuit_player" | "other";
 type SkillParity = "evenly_matched" | "minor_gap" | "major_gap";
 type Seriousness = "tournament_serious" | "focused_practice" | "casual";
 type DeckMaturity = "both_tuned" | "partially_tuned" | "experimental";
@@ -395,15 +396,14 @@ export interface CreateGameLogOptions {
   teamId: string;
   loggedById: string;
   formatId: string;
-  pilotUserId?: string | null;
+  selfPlayerCategory?: PlayerCategory;
   deckId?: string | null;
   selfMetaDeckEntryId?: string | null;
   selfHeroId?: string | null;
   selfArchetypeLabel?: string | null;
   metaId?: string | null;
   playedAt?: Date;
-  opponentPilotUserId?: string | null;
-  externalOpponentName?: string | null;
+  opponentPlayerCategory?: PlayerCategory;
   opponentDeckId?: string | null;
   opponentMetaDeckEntryId?: string | null;
   opponentHeroId?: string | null;
@@ -444,13 +444,12 @@ export async function createGameLog(
       formatId: options.formatId,
       metaId: options.metaId ?? null,
       playedAt: options.playedAt ?? new Date("2026-07-01T00:00:00.000Z"),
-      pilotUserId: options.pilotUserId ?? null,
+      selfPlayerCategory: options.selfPlayerCategory ?? "teammate",
       deckId: options.deckId ?? null,
       selfMetaDeckEntryId: options.selfMetaDeckEntryId ?? null,
       selfHeroId: options.selfHeroId ?? null,
       selfArchetypeLabel: options.selfArchetypeLabel ?? null,
-      opponentPilotUserId: options.opponentPilotUserId ?? null,
-      externalOpponentName: options.externalOpponentName ?? null,
+      opponentPlayerCategory: options.opponentPlayerCategory ?? "other",
       opponentDeckId: options.opponentDeckId ?? null,
       opponentMetaDeckEntryId: options.opponentMetaDeckEntryId ?? null,
       opponentHeroId: options.opponentHeroId ?? null,

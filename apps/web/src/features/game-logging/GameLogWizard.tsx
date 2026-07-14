@@ -14,10 +14,8 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useCurrentUser } from "@/features/auth/use-current-user";
 import { useDecks } from "@/features/decks/use-decks";
 import { mostRecentMetaForFormat, useMetas } from "@/features/metas/use-metas";
-import { useMembers } from "@/features/teams/use-members";
 import { ApiError } from "@/lib/api-client";
 
 import { type ConfidenceFactorField } from "./game-display";
@@ -55,6 +53,7 @@ const FALLBACK_BEST_OF: BestOf = 3;
  * capture. Both sides of the matchup are chosen with the same unified 3-mode subject
  * picker (team deck / meta deck / hero + label). The container owns every piece of
  * state and threads it into the steps, so stepping back and forth never loses input.
+ * Each side also carries a player-category (teammate / circuit player / other).
  */
 export function GameLogWizard({
   teamId,
@@ -68,10 +67,8 @@ export function GameLogWizard({
   onCancel?: () => void;
 }) {
   const isEditing = Boolean(gameLog);
-  const { data: currentUser } = useCurrentUser();
   const { data: gameConfig } = useGameConfig(teamId);
   const { data: teamDecks } = useDecks(teamId, {});
-  const { data: members } = useMembers(teamId);
   const { data: metas } = useMetas(teamId);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -134,18 +131,6 @@ export function GameLogWizard({
   const mutation = isEditing ? updateGame : createGame;
 
   const previewWeight = deriveConfidenceWeight(factors);
-
-  // In create mode, default our pilot to the current user once they resolve — the
-  // friendly "defaults to you" — while leaving it optional and clearable. Applied at
-  // most once, so re-clearing to "No pilot" is never overwritten. Never runs on edit.
-  const selfPilotDefaultAppliedRef = useRef(false);
-  useEffect(() => {
-    if (isEditing || selfPilotDefaultAppliedRef.current || !currentUser?.id) return;
-    selfPilotDefaultAppliedRef.current = true;
-    setSelfSubject((current) =>
-      current.pilotUserId ? current : { ...current, pilotUserId: currentUser.id },
-    );
-  }, [isEditing, currentUser]);
 
   // In create mode, adopt the game's default best-of once the config resolves —
   // resetting the result so it stays consistent — but only until the member has taken
@@ -307,7 +292,6 @@ export function GameLogWizard({
   }
 
   const deckOptions = teamDecks?.data ?? [];
-  const memberOptions = members?.data ?? [];
   const metaOptions = metas?.data ?? [];
 
   return (
@@ -328,7 +312,6 @@ export function GameLogWizard({
           opponentSubject={opponentSubject}
           setOpponentSubject={setOpponentSubject}
           deckOptions={deckOptions}
-          memberOptions={memberOptions}
           metaId={mostRecentMeta?.id}
         />
       ) : null}

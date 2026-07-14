@@ -15,7 +15,6 @@ export interface GameFilters {
   metaId?: string;
   deckId?: string;
   heroId?: string;
-  pilotUserId?: string;
 }
 
 /** Reduce filters to a flat, serializable object for the query key. */
@@ -25,7 +24,6 @@ function toKeyFilters(filters: GameFilters): Record<string, string> {
   if (filters.metaId) keyFilters["metaId"] = filters.metaId;
   if (filters.deckId) keyFilters["deckId"] = filters.deckId;
   if (filters.heroId) keyFilters["heroId"] = filters.heroId;
-  if (filters.pilotUserId) keyFilters["pilotUserId"] = filters.pilotUserId;
   return keyFilters;
 }
 
@@ -35,7 +33,6 @@ function toQueryString(filters: GameFilters): string {
   if (filters.metaId) params.set("metaId", filters.metaId);
   if (filters.deckId) params.set("deckId", filters.deckId);
   if (filters.heroId) params.set("heroId", filters.heroId);
-  if (filters.pilotUserId) params.set("pilotUserId", filters.pilotUserId);
   const query = params.toString();
   return query ? `?${query}` : "";
 }

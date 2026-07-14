@@ -1,4 +1,4 @@
-import type { GameLogDetail, GameSideA, GameSideB } from "@teambrewer/shared";
+import type { GameLogDetail, GameSideA, GameSideB, PlayerCategory } from "@teambrewer/shared";
 
 /**
  * How one game-log side's matchup subject is being identified. Both sides are
@@ -24,10 +24,8 @@ export const MATCHUP_SUBJECT_MODE_LABELS: Record<MatchupSubjectMode, string> = {
 
 /**
  * The full editable state for one side of the matchup: the chosen subject mode,
- * the per-mode fields, and the optional pilot fields. The pilot (`pilotUserId`)
- * and, for the opponent, the `externalOpponentName` are independent of the chosen
- * subject — a named teammate never forces a team deck (R-1). `externalOpponentName`
- * is ignored on the self side.
+ * the per-mode fields, and the `playerCategory` classifying who piloted the side
+ * (teammate / circuit player / other), which is independent of the subject.
  */
 export interface MatchupSubjectState {
   mode: MatchupSubjectMode;
@@ -39,22 +37,22 @@ export interface MatchupSubjectState {
   heroId: string;
   /** hero_label mode: the required free-text archetype label. */
   archetypeLabel: string;
-  /** Optional pilot (who piloted this side); independent of the subject. */
-  pilotUserId: string;
-  /** Opponent side only: an optional external opponent name; independent of the subject. */
-  externalOpponentName: string;
+  /** Who piloted this side, categorically; independent of the subject. */
+  playerCategory: PlayerCategory;
 }
 
-/** An empty subject state in the given mode (every field blank). */
-export function emptyMatchupSubjectState(mode: MatchupSubjectMode): MatchupSubjectState {
+/** An empty subject state in the given mode (every subject field blank). */
+export function emptyMatchupSubjectState(
+  mode: MatchupSubjectMode,
+  playerCategory: PlayerCategory = "other",
+): MatchupSubjectState {
   return {
     mode,
     deckId: "",
     metaDeckEntryId: "",
     heroId: "",
     archetypeLabel: "",
-    pilotUserId: "",
-    externalOpponentName: "",
+    playerCategory,
   };
 }
 
@@ -70,15 +68,14 @@ function modeFromSide(side: {
 
 /**
  * Seed the self-side picker state from an existing log's `sideA` (edit mode). When
- * there is no stored side (create mode) it defaults to team deck with the given
- * fallback pilot (the current user), which the member can clear or change.
+ * there is no stored side (create mode) it defaults to a team deck piloted by a
+ * teammate — the common case for our own side.
  */
 export function subjectStateFromSideA(
   sideA: GameLogDetail["sideA"] | undefined,
-  fallbackPilotUserId = "",
 ): MatchupSubjectState {
   if (!sideA) {
-    return { ...emptyMatchupSubjectState("team_deck"), pilotUserId: fallbackPilotUserId };
+    return emptyMatchupSubjectState("team_deck", "teammate");
   }
   return {
     mode: modeFromSide(sideA),
@@ -86,8 +83,7 @@ export function subjectStateFromSideA(
     metaDeckEntryId: sideA.metaDeckEntryId ?? "",
     heroId: sideA.heroId ?? "",
     archetypeLabel: sideA.archetypeLabel ?? "",
-    pilotUserId: sideA.pilotUserId ?? "",
-    externalOpponentName: "",
+    playerCategory: sideA.playerCategory,
   };
 }
 
@@ -100,7 +96,7 @@ export function subjectStateFromSideB(
   sideB: GameLogDetail["sideB"] | undefined,
 ): MatchupSubjectState {
   if (!sideB) {
-    return emptyMatchupSubjectState("hero_label");
+    return emptyMatchupSubjectState("hero_label", "other");
   }
   return {
     mode: modeFromSide(sideB),
@@ -108,8 +104,7 @@ export function subjectStateFromSideB(
     metaDeckEntryId: sideB.metaDeckEntryId ?? "",
     heroId: sideB.heroId ?? "",
     archetypeLabel: sideB.archetypeLabel ?? "",
-    pilotUserId: sideB.pilotUserId ?? "",
-    externalOpponentName: sideB.externalOpponentName ?? "",
+    playerCategory: sideB.playerCategory,
   };
 }
 
@@ -145,26 +140,20 @@ export function isSubjectComplete(state: MatchupSubjectState): boolean {
 
 /**
  * Build the self side (`sideA`) payload from the picker state, or `null` when the
- * subject is incomplete. The optional pilot is attached independently of the subject.
+ * subject is incomplete. The player category is attached independently of the subject.
  */
 export function buildSideAInput(state: MatchupSubjectState): GameSideA | null {
   const fields = buildSubjectFields(state);
   if (!fields) return null;
-  return { ...fields, ...(state.pilotUserId ? { pilotUserId: state.pilotUserId } : {}) };
+  return { ...fields, playerCategory: state.playerCategory };
 }
 
 /**
  * Build the opponent side (`sideB`) payload from the picker state, or `null` when
- * the subject is incomplete. The optional teammate pilot and external opponent name
- * are attached independently of the subject.
+ * the subject is incomplete. The player category is attached independently of the subject.
  */
 export function buildSideBInput(state: MatchupSubjectState): GameSideB | null {
   const fields = buildSubjectFields(state);
   if (!fields) return null;
-  const externalName = state.externalOpponentName.trim();
-  return {
-    ...fields,
-    ...(state.pilotUserId ? { pilotUserId: state.pilotUserId } : {}),
-    ...(externalName ? { externalOpponentName: externalName } : {}),
-  };
+  return { ...fields, playerCategory: state.playerCategory };
 }

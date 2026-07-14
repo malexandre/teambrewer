@@ -14,7 +14,6 @@ import type {
 export interface GameLogLabelMaps {
   decks: Record<string, string>;
   heroes: Record<string, string>;
-  members: Record<string, string>;
 }
 
 /** A human description of our side, from whichever matchup subject it carries. */
@@ -31,21 +30,15 @@ export function describeSelf(sideA: GameLogSummary["sideA"], maps: GameLogLabelM
 
 /** A human description of the opponent side, from whichever matchup subject it carries. */
 export function describeOpponent(sideB: GameLogSummary["sideB"], maps: GameLogLabelMaps): string {
-  if (sideB.pilotUserId) {
-    const pilot = maps.members[sideB.pilotUserId] ?? "A teammate";
-    const deck = sideB.deckId ? maps.decks[sideB.deckId] : undefined;
-    return deck ? `${pilot} (${deck})` : pilot;
-  }
-  const name = sideB.externalOpponentName ? `${sideB.externalOpponentName} — ` : "";
-  if (sideB.deckId) return `${name}${maps.decks[sideB.deckId] ?? "Team deck"}`;
-  if (sideB.metaDeckEntryId) return `${name}Meta deck`;
+  if (sideB.deckId) return maps.decks[sideB.deckId] ?? "Team deck";
+  if (sideB.metaDeckEntryId) return "Meta deck";
   if (sideB.archetypeLabel) {
     return sideB.heroId
-      ? `${name}${maps.heroes[sideB.heroId] ?? "Hero"} — ${sideB.archetypeLabel}`
-      : `${name}${sideB.archetypeLabel}`;
+      ? `${maps.heroes[sideB.heroId] ?? "Hero"} — ${sideB.archetypeLabel}`
+      : sideB.archetypeLabel;
   }
-  if (sideB.heroId) return `${name}${maps.heroes[sideB.heroId] ?? "Unknown hero"}`;
-  return sideB.externalOpponentName ?? "Unknown opponent";
+  if (sideB.heroId) return maps.heroes[sideB.heroId] ?? "Unknown hero";
+  return "Unknown opponent";
 }
 
 /** Native-select styling shared by the game-logging pickers (matches decks/events). */

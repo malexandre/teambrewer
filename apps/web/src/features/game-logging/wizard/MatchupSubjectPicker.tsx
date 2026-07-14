@@ -1,28 +1,53 @@
-import { type DeckSummary, META_TIER_LABELS, type TeamMember } from "@teambrewer/shared";
+import { type PlayerCategory, PLAYER_CATEGORIES, PLAYER_CATEGORY_LABELS } from "@teambrewer/shared";
+import type { DeckSummary } from "@teambrewer/shared";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useHeroes } from "@/features/cards/use-heroes";
 import { HeroPicker } from "@/features/decks/HeroPicker";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
+import { matchupSubjectDisplayName } from "@/features/metas/meta-display";
 import { useMetaDeckEntries } from "@/features/metas/use-metas";
 
 import { SELECT_CLASS } from "../game-display";
-import {
-  MATCHUP_SUBJECT_MODE_LABELS,
-  MATCHUP_SUBJECT_MODES,
-  type MatchupSubjectMode,
-  type MatchupSubjectState,
-} from "./matchup-subject";
+import { type MatchupSubjectState } from "./matchup-subject";
 import { SegmentedControl } from "./SegmentedControl";
 
+/** The sentinel select value that reveals the free-text hero + label sub-form. */
+const OTHER_OPTION_VALUE = "other";
+
+/** The select's current value, derived from the subject state (round-trips `onSelect`). */
+function selectValueFor(state: MatchupSubjectState): string {
+  if (state.mode === "hero_label") {
+    return OTHER_OPTION_VALUE;
+  }
+  if (state.mode === "team_deck") {
+    return state.deckId ? `deck:${state.deckId}` : "";
+  }
+  return state.metaDeckEntryId ? `meta:${state.metaDeckEntryId}` : "";
+}
+
+/** Map a chosen select value back to the subject mode + id fields it represents. */
+function subjectPatchFromSelectValue(value: string): Partial<MatchupSubjectState> {
+  if (value === OTHER_OPTION_VALUE) {
+    return { mode: "hero_label" };
+  }
+  if (value.startsWith("deck:")) {
+    return { mode: "team_deck", deckId: value.slice("deck:".length), metaDeckEntryId: "" };
+  }
+  if (value.startsWith("meta:")) {
+    return { mode: "meta_deck", metaDeckEntryId: value.slice("meta:".length), deckId: "" };
+  }
+  // The placeholder: back to an empty (incomplete) team-deck subject.
+  return { mode: "team_deck", deckId: "", metaDeckEntryId: "" };
+}
+
 /**
- * The unified 3-mode matchup-subject picker used for BOTH the self side and the
- * opponent side. A mode toggle selects between a **team deck**, a **meta deck**
- * (entries of the current meta, shown with their tier), or a free-text **hero +
- * label**; the matching sub-control edits the chosen subject. An optional pilot
- * (and, for the opponent, an optional external name) sits alongside, independent of
- * the subject — naming a teammate never forces a team deck (R-1).
+ * The unified matchup-subject picker used for BOTH the self side and the opponent
+ * side. A single grouped select offers the team's decks and the meta's decks-to-beat
+ * (each shown as its hero · label) under two headings, plus a final **Other** option
+ * that reveals a free-text hero + archetype label. A `playerCategory` radio records
+ * who piloted the side (teammate / circuit player / other), independent of the subject.
  *
  * The component is fully controlled: it owns no state, emitting every change through
  * `onChange` so the wizard container keeps the single source of truth and nothing is
@@ -34,17 +59,15 @@ export function MatchupSubjectPicker({
   state,
   onChange,
   deckOptions,
-  memberOptions,
   metaId,
 }: {
   teamId: string | undefined;
-  /** Which side this picker edits — drives the labels and the opponent-only extras. */
+  /** Which side this picker edits — drives the labels. */
   side: "self" | "opponent";
   state: MatchupSubjectState;
   onChange: (next: MatchupSubjectState) => void;
   deckOptions: DeckSummary[];
-  memberOptions: TeamMember[];
-  /** The meta (if any) whose entries populate the meta-deck mode — the most recent of the format. */
+  /** The meta (if any) whose entries populate the meta-deck options — the most recent of the format. */
   metaId: string | undefined;
 }) {
   const identityLabel = useIdentityLabel(teamId);
@@ -55,15 +78,11 @@ export function MatchupSubjectPicker({
 
   const isSelf = side === "self";
   const heading = isSelf ? "Your side" : "Opponent";
-  // The self team-deck select keeps the stable `game-deck` id the e2e drives.
-  const teamDeckSelectId = isSelf ? "game-deck" : "opponent-team-deck";
+  // The self subject select keeps the stable `game-deck` id the e2e drives.
+  const subjectSelectId = isSelf ? "game-deck" : "opponent-deck";
 
   function patch(changes: Partial<MatchupSubjectState>): void {
     onChange({ ...state, ...changes });
-  }
-
-  function changeMode(mode: MatchupSubjectMode): void {
-    patch({ mode });
   }
 
   /**
@@ -78,69 +97,48 @@ export function MatchupSubjectPicker({
     patch({ heroId, archetypeLabel });
   }
 
+  /** The display name of a meta entry: its hero (when resolved) then its label. */
+  function metaEntryDisplayName(entry: (typeof metaEntries)[number]): string {
+    const heroName = entry.heroId
+      ? heroes.find((hero) => hero.id === entry.heroId)?.name
+      : undefined;
+    return matchupSubjectDisplayName(heroName, entry.label) || entry.opponentSnapshotLabel;
+  }
+
   return (
     <fieldset className="flex flex-col gap-3">
       <legend className="text-sm font-medium">{heading}</legend>
 
-      <SegmentedControl<MatchupSubjectMode>
-        label={isSelf ? "How to identify your side" : "How to identify the opponent"}
-        value={state.mode}
-        options={MATCHUP_SUBJECT_MODES.map((mode) => ({
-          value: mode,
-          label: MATCHUP_SUBJECT_MODE_LABELS[mode],
-        }))}
-        onChange={changeMode}
-      />
-
-      {state.mode === "team_deck" ? (
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={teamDeckSelectId}>{isSelf ? "Your deck" : "Opponent team deck"}</Label>
-          <select
-            id={teamDeckSelectId}
-            className={SELECT_CLASS}
-            value={state.deckId}
-            onChange={(event) => patch({ deckId: event.target.value })}
-          >
-            <option value="">Select a team deck…</option>
-            {deckOptions.map((deck) => (
-              <option key={deck.id} value={deck.id}>
-                {deck.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : null}
-
-      {state.mode === "meta_deck" ? (
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`${side}-meta-entry`}>
-            {isSelf ? "Your meta deck" : "Opponent meta deck"}
-          </Label>
-          <select
-            id={`${side}-meta-entry`}
-            className={SELECT_CLASS}
-            value={state.metaDeckEntryId}
-            onChange={(event) => patch({ metaDeckEntryId: event.target.value })}
-          >
-            <option value="">Select a meta deck…</option>
-            {metaEntries.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {entry.label} · {META_TIER_LABELS[entry.tier]}
-              </option>
-            ))}
-          </select>
-          {metaId && metaEntries.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              This format&apos;s meta has no decks to beat yet.
-            </p>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={subjectSelectId}>{isSelf ? "Your deck" : "Opponent deck"}</Label>
+        <select
+          id={subjectSelectId}
+          className={SELECT_CLASS}
+          value={selectValueFor(state)}
+          onChange={(event) => patch(subjectPatchFromSelectValue(event.target.value))}
+        >
+          <option value="">Select a deck…</option>
+          {deckOptions.length > 0 ? (
+            <optgroup label="Team decks">
+              {deckOptions.map((deck) => (
+                <option key={deck.id} value={`deck:${deck.id}`}>
+                  {deck.name}
+                </option>
+              ))}
+            </optgroup>
           ) : null}
-          {!metaId ? (
-            <p className="text-xs text-muted-foreground">
-              There is no meta for this format to pick from.
-            </p>
+          {metaEntries.length > 0 ? (
+            <optgroup label="Meta decks">
+              {metaEntries.map((entry) => (
+                <option key={entry.id} value={`meta:${entry.id}`}>
+                  {metaEntryDisplayName(entry)}
+                </option>
+              ))}
+            </optgroup>
           ) : null}
-        </div>
-      ) : null}
+          <option value={OTHER_OPTION_VALUE}>Other…</option>
+        </select>
+      </div>
 
       {state.mode === "hero_label" ? (
         <div className="flex flex-col gap-2">
@@ -169,36 +167,15 @@ export function MatchupSubjectPicker({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={`${side}-pilot`}>
-          {isSelf ? "Pilot (optional, defaults to you)" : "Teammate who piloted it (optional)"}
-        </Label>
-        <select
-          id={`${side}-pilot`}
-          className={SELECT_CLASS}
-          value={state.pilotUserId}
-          onChange={(event) => patch({ pilotUserId: event.target.value })}
-        >
-          <option value="">{isSelf ? "— No pilot —" : "— No teammate —"}</option>
-          {memberOptions.map((member) => (
-            <option key={member.userId} value={member.userId}>
-              {member.displayName}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {!isSelf ? (
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="opponent-external-name">Opponent name (optional)</Label>
-          <Input
-            id="opponent-external-name"
-            placeholder="Who did you play against?"
-            value={state.externalOpponentName}
-            onChange={(event) => patch({ externalOpponentName: event.target.value })}
-          />
-        </div>
-      ) : null}
+      <SegmentedControl<PlayerCategory>
+        label={isSelf ? "Who piloted your side?" : "Who was the opponent?"}
+        value={state.playerCategory}
+        options={PLAYER_CATEGORIES.map((category) => ({
+          value: category,
+          label: PLAYER_CATEGORY_LABELS[category],
+        }))}
+        onChange={(playerCategory) => patch({ playerCategory })}
+      />
     </fieldset>
   );
 }

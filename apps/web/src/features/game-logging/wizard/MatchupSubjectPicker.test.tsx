@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { DeckSummary, TeamMember } from "@teambrewer/shared";
+import type { DeckSummary } from "@teambrewer/shared";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -44,9 +44,9 @@ function mockApi() {
             id: "entry-1",
             metaId: "meta-1",
             tier: "meta_defining",
-            heroId: null,
+            heroId: "hero-dori",
             label: "Aggro Red",
-            opponentSnapshotLabel: "Aggro Red",
+            opponentSnapshotLabel: "Dorinthea · Aggro Red",
             notes: "",
             createdAt: "2026-07-01T00:00:00.000Z",
             updatedAt: "2026-07-01T00:00:00.000Z",
@@ -77,20 +77,12 @@ const DECKS: DeckSummary[] = [
   },
 ];
 
-const MEMBERS: TeamMember[] = [
-  {
-    userId: "mate-1",
-    username: "mate",
-    displayName: "Teammate",
-    role: "member",
-    joinedAt: "2026-07-01T00:00:00.000Z",
-  },
-];
-
 /** A controlled harness so the test drives the same state the wizard would own. */
 function Harness({ side }: { side: "self" | "opponent" }) {
   const [state, setState] = useState(() =>
-    emptyMatchupSubjectState(side === "self" ? "team_deck" : "hero_label"),
+    side === "self"
+      ? emptyMatchupSubjectState("team_deck", "teammate")
+      : emptyMatchupSubjectState("hero_label", "other"),
   );
   return (
     <>
@@ -100,7 +92,6 @@ function Harness({ side }: { side: "self" | "opponent" }) {
         state={state}
         onChange={setState}
         deckOptions={DECKS}
-        memberOptions={MEMBERS}
         metaId="meta-1"
       />
       <output data-testid="emitted">
@@ -129,39 +120,44 @@ describe("MatchupSubjectPicker", () => {
     vi.restoreAllMocks();
   });
 
-  it("team-deck mode emits a deckId", async () => {
+  it("picking a team deck from the grouped select emits a deckId", async () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("self");
-    await user.selectOptions(screen.getByLabelText("Your deck"), "deck-ours");
-    expect(emitted()).toEqual({ deckId: "deck-ours" });
+    await user.selectOptions(screen.getByLabelText("Your deck"), "deck:deck-ours");
+    expect(emitted()).toEqual({ deckId: "deck-ours", playerCategory: "teammate" });
   });
 
-  it("meta-deck mode emits a metaDeckEntryId", async () => {
+  it("picking a meta deck (shown as hero · label) emits a metaDeckEntryId", async () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("self");
-    await user.click(screen.getByRole("button", { name: "Meta deck" }));
-    await screen.findByRole("option", { name: /Aggro Red · Meta-defining/ });
-    await user.selectOptions(screen.getByLabelText("Your meta deck"), "entry-1");
-    expect(emitted()).toEqual({ metaDeckEntryId: "entry-1" });
+    await screen.findByRole("option", { name: "Dorinthea · Aggro Red" });
+    await user.selectOptions(screen.getByLabelText("Your deck"), "meta:entry-1");
+    expect(emitted()).toEqual({ metaDeckEntryId: "entry-1", playerCategory: "teammate" });
   });
 
-  it("hero+label mode auto-fills the label from the selected hero", async () => {
+  it("choosing Other reveals hero + label and auto-fills the label from the hero", async () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("opponent");
+    await user.selectOptions(screen.getByLabelText("Opponent deck"), "other");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
-    expect(emitted()).toEqual({ archetypeLabel: "Dorinthea", heroId: "hero-dori" });
+    expect(emitted()).toEqual({
+      archetypeLabel: "Dorinthea",
+      heroId: "hero-dori",
+      playerCategory: "other",
+    });
   });
 
-  it("attaches an opponent teammate pilot without forcing a team deck", async () => {
+  it("records the opponent player category from the radio", async () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("opponent");
+    await user.selectOptions(screen.getByLabelText("Opponent deck"), "other");
     await user.type(screen.getByLabelText("Opponent archetype label"), "Aggro Red");
-    await user.selectOptions(screen.getByLabelText(/teammate who piloted it/i), "mate-1");
-    expect(emitted()).toEqual({ archetypeLabel: "Aggro Red", pilotUserId: "mate-1" });
+    await user.click(screen.getByRole("button", { name: "Circuit player" }));
+    expect(emitted()).toEqual({ archetypeLabel: "Aggro Red", playerCategory: "circuit_player" });
   });
 });

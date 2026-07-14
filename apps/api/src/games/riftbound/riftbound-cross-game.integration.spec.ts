@@ -204,8 +204,8 @@ describe("Riftbound cross-game acceptance (integration)", () => {
         .send({
           formatId: riftboundFormatId,
           metaId,
-          sideA: { pilotUserId: riftboundMember.id, deckId: ourDeckId },
-          sideB: { pilotUserId: riftboundTeammate.id, deckId: teammateDeckId },
+          sideA: { deckId: ourDeckId },
+          sideB: { playerCategory: "teammate", deckId: teammateDeckId },
           firstPlayerSide: "A",
           bestOf: 3,
           result: { gamesWonA: 2, gamesWonB: 0 },

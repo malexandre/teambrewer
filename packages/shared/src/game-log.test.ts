@@ -13,7 +13,7 @@ import {
 function validCreateInput(overrides: Record<string, unknown> = {}) {
   return {
     formatId: "format_cc",
-    sideA: { pilotUserId: "user_a", deckId: "deck_ours" },
+    sideA: { deckId: "deck_ours" },
     sideB: { heroId: "hero_dorinthea", archetypeLabel: "Draconic Dorinthea" },
     firstPlayerSide: "A" as const,
     bestOf: 3 as const,
@@ -159,31 +159,36 @@ describe("createGameLogSchema", () => {
     ).toThrow();
   });
 
-  it("accepts a teammate opponent (pilot) alongside a deck subject", () => {
+  it("accepts an explicit opponent player category alongside a deck subject", () => {
     const parsed = createGameLogSchema.parse(
-      validCreateInput({ sideB: { pilotUserId: "user_b", deckId: "deck_theirs" } }),
+      validCreateInput({ sideB: { playerCategory: "circuit_player", deckId: "deck_theirs" } }),
     );
-    expect(parsed.sideB.pilotUserId).toBe("user_b");
+    expect(parsed.sideB.playerCategory).toBe("circuit_player");
     expect(parsed.sideB.deckId).toBe("deck_theirs");
   });
 
-  it("rejects an opponent with a pilot but no subject", () => {
+  it("defaults the player category per side when omitted (self → teammate, opponent → other)", () => {
+    const parsed = createGameLogSchema.parse(validCreateInput());
+    expect(parsed.sideA.playerCategory).toBe("teammate");
+    expect(parsed.sideB.playerCategory).toBe("other");
+  });
+
+  it("rejects an opponent with a player category but no subject", () => {
     expect(() =>
-      createGameLogSchema.parse(validCreateInput({ sideB: { pilotUserId: "user_b" } })),
+      createGameLogSchema.parse(validCreateInput({ sideB: { playerCategory: "other" } })),
     ).toThrow();
   });
 
-  it("accepts a sideA meta-deck-entry subject with no pilot (pilot is optional)", () => {
+  it("accepts a sideA meta-deck-entry subject", () => {
     const parsed = createGameLogSchema.parse(
       validCreateInput({ sideA: { metaDeckEntryId: "entry_1" } }),
     );
     expect(parsed.sideA.metaDeckEntryId).toBe("entry_1");
-    expect(parsed.sideA.pilotUserId).toBeUndefined();
   });
 
   it("rejects a sideA with no subject", () => {
     expect(() =>
-      createGameLogSchema.parse(validCreateInput({ sideA: { pilotUserId: "user_a" } })),
+      createGameLogSchema.parse(validCreateInput({ sideA: { playerCategory: "teammate" } })),
     ).toThrow();
   });
 });

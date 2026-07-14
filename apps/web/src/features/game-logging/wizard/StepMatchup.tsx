@@ -1,4 +1,4 @@
-import type { DeckSummary, TeamMember } from "@teambrewer/shared";
+import type { DeckSummary } from "@teambrewer/shared";
 
 import { Label } from "@/components/ui/label";
 import { FormatPicker } from "@/features/decks/FormatPicker";
@@ -8,8 +8,9 @@ import type { MatchupSubjectState } from "./matchup-subject";
 
 /**
  * Step 1 — the matchup: the format plus a matchup subject for each side, chosen
- * with the same unified 3-mode picker (team deck / meta deck / hero + label). Your
- * side defaults to a team deck; the opponent (required) defaults to hero + label.
+ * with the same unified picker (one grouped select over team + meta decks, or
+ * Other). Your side defaults to a team deck; the opponent (required) defaults to
+ * the Other (hero + label) mode.
  */
 export function StepMatchup({
   teamId,
@@ -20,7 +21,6 @@ export function StepMatchup({
   opponentSubject,
   setOpponentSubject,
   deckOptions,
-  memberOptions,
   metaId,
 }: {
   teamId: string | undefined;
@@ -31,7 +31,6 @@ export function StepMatchup({
   opponentSubject: MatchupSubjectState;
   setOpponentSubject: (next: MatchupSubjectState) => void;
   deckOptions: DeckSummary[];
-  memberOptions: TeamMember[];
   metaId: string | undefined;
 }) {
   return (
@@ -47,7 +46,6 @@ export function StepMatchup({
         state={selfSubject}
         onChange={setSelfSubject}
         deckOptions={deckOptions}
-        memberOptions={memberOptions}
         metaId={metaId}
       />
 
@@ -57,7 +55,6 @@ export function StepMatchup({
         state={opponentSubject}
         onChange={setOpponentSubject}
         deckOptions={deckOptions}
-        memberOptions={memberOptions}
         metaId={metaId}
       />
     </div>

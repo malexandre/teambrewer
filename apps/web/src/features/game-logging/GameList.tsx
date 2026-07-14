@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useHeroes } from "@/features/cards/use-heroes";
 import { useDecks } from "@/features/decks/use-decks";
 import { useMetas } from "@/features/metas/use-metas";
-import { useMembers } from "@/features/teams/use-members";
 
 import {
   describeOpponent,
@@ -40,16 +39,14 @@ export function GameList({ teamId }: { teamId: string | undefined }) {
   const { data, isPending, error } = useGames(teamId, filters);
   const { data: decks } = useDecks(teamId, {});
   const { data: heroes } = useHeroes(teamId);
-  const { data: members } = useMembers(teamId);
   const { data: metas } = useMetas(teamId);
 
   const maps: GameLogLabelMaps = useMemo(
     () => ({
       decks: toNameMap(decks?.data ?? []),
       heroes: toNameMap(heroes?.data ?? []),
-      members: Object.fromEntries((members?.data ?? []).map((m) => [m.userId, m.displayName])),
     }),
-    [decks, heroes, members],
+    [decks, heroes],
   );
 
   const deckOptions = decks?.data ?? [];
