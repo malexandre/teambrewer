@@ -32,6 +32,19 @@ export function createAuth(prisma: PrismaClient) {
   const discordClientSecret = process.env["DISCORD_CLIENT_SECRET"];
   const discordRedirectUri = process.env["DISCORD_REDIRECT_URI"];
 
+  // The browser talks to the app at WEB_ORIGIN (e.g. the Vite dev server on
+  // :5173, or the deployed web origin) and calls the auth endpoints from there.
+  // Better Auth runs its OWN origin check (separate from Express CORS in main.ts)
+  // and by default only trusts BETTER_AUTH_URL's origin — so if BETTER_AUTH_URL is
+  // the API's own URL (e.g. :3000) rather than the web origin, sign-in from the
+  // web app is rejected with "Invalid origin". Trust WEB_ORIGIN explicitly (the
+  // same origin CORS already allows) so auth works regardless of BETTER_AUTH_URL.
+  // Comma-separated values are supported for multi-origin deployments.
+  const trustedOrigins = (process.env["WEB_ORIGIN"] ?? "http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   // Rate limiting for the auth surface (security.md, phase-13). Better Auth's
   // handlers are mounted outside the Nest pipeline, so the Nest throttler never
   // sees them — Better Auth applies its own limiter, enabled here (it is off by
@@ -52,6 +65,7 @@ export function createAuth(prisma: PrismaClient) {
   return betterAuth({
     secret,
     baseURL: process.env["BETTER_AUTH_URL"] ?? "http://localhost:3000",
+    trustedOrigins,
     database: prismaAdapter(prisma, { provider: "postgresql" }),
     rateLimit: {
       enabled: rateLimitEnabled,
