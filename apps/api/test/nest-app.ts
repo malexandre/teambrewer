@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { Test, type TestingModuleBuilder } from "@nestjs/testing";
+import type { NextFunction, Request, Response } from "express";
 import { inject } from "vitest";
 
 import { configureApp } from "../src/app.setup.js";
@@ -73,6 +74,15 @@ export async function createApiTestApp(
   const moduleRef = await (configure ? configure(builder) : builder).compile();
 
   const app = moduleRef.createNestApplication();
+  // Force `Connection: close` on every test response so supertest never reuses a
+  // keep-alive socket. The harness hands one persistent server to every request(),
+  // and superagent's default agent reuses sockets across sequential requests — under
+  // parallel load the server may have closed a reused one, which surfaces client-side
+  // as "Parse Error: Expected HTTP/, RTSP/ or ICE/". Test-only; production is unaffected.
+  app.use((_request: Request, response: Response, next: NextFunction) => {
+    response.setHeader("Connection", "close");
+    next();
+  });
   configureApp(app);
   await app.init();
   return app;
