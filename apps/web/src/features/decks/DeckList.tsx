@@ -58,7 +58,12 @@ export function DeckList({ teamId }: { teamId: string | undefined }) {
           ))}
         </select>
         <FormatPicker teamId={teamId} value={formatId} onChange={setFormatId} />
-        <HeroPicker teamId={teamId} value={heroId} onChange={setHeroId} />
+        <HeroPicker
+          teamId={teamId}
+          formatId={formatId || undefined}
+          value={heroId}
+          onChange={setHeroId}
+        />
       </div>
 
       {isPending ? (

@@ -94,7 +94,13 @@ export function GamePlanEditor({
             placeholder="e.g. Aggro Fai"
           />
           <span className="text-xs text-muted-foreground">{identityLabel} (optional)</span>
-          <HeroPicker teamId={teamId} value={heroId} onChange={setHeroId} id="game-plan-hero" />
+          <HeroPicker
+            teamId={teamId}
+            formatId={formatId}
+            value={heroId}
+            onChange={setHeroId}
+            id="game-plan-hero"
+          />
         </div>
       ) : null}
 

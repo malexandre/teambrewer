@@ -60,6 +60,7 @@ export function MatchupSubjectPicker({
   onChange,
   deckOptions,
   metaId,
+  formatId,
 }: {
   teamId: string | undefined;
   /** Which side this picker edits — drives the labels. */
@@ -69,6 +70,8 @@ export function MatchupSubjectPicker({
   deckOptions: DeckSummary[];
   /** The meta (if any) whose entries populate the meta-deck options — the most recent of the format. */
   metaId: string | undefined;
+  /** The chosen format; narrows the "Other" hero picker to that format's legal heroes. */
+  formatId: string | undefined;
 }) {
   const identityLabel = useIdentityLabel(teamId);
   const { data: heroesData } = useHeroes(teamId);
@@ -137,6 +140,7 @@ export function MatchupSubjectPicker({
             <HeroPicker
               id={`${side}-hero`}
               teamId={teamId}
+              formatId={formatId}
               value={state.heroId}
               onChange={(heroId) => patch({ heroId })}
             />

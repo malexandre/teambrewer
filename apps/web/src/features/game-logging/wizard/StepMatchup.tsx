@@ -47,6 +47,7 @@ export function StepMatchup({
         onChange={setSelfSubject}
         deckOptions={deckOptions}
         metaId={metaId}
+        formatId={formatId || undefined}
       />
 
       <MatchupSubjectPicker
@@ -56,6 +57,7 @@ export function StepMatchup({
         onChange={setOpponentSubject}
         deckOptions={deckOptions}
         metaId={metaId}
+        formatId={formatId || undefined}
       />
     </div>
   );

@@ -21,7 +21,7 @@ export function HeroPicker({
   value: string;
   onChange: (heroId: string) => void;
   id?: string;
-  formatId?: string;
+  formatId?: string | undefined;
 }) {
   const { data } = useHeroes(teamId, formatId);
   const identityLabel = useIdentityLabel(teamId);

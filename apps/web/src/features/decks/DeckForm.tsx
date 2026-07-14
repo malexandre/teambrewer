@@ -171,7 +171,13 @@ export function DeckForm({
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor="deck-hero">{identityLabel}</Label>
-          <HeroPicker id="deck-hero" teamId={teamId} value={heroId} onChange={setHeroId} />
+          <HeroPicker
+            id="deck-hero"
+            teamId={teamId}
+            formatId={formatId || undefined}
+            value={heroId}
+            onChange={setHeroId}
+          />
         </div>
       </div>
 
