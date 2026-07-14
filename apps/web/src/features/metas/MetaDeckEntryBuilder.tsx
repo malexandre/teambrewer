@@ -163,7 +163,7 @@ export function MetaDeckEntryBuilder({
                             <img
                               src={hero.imageUrl}
                               alt={hero.name}
-                              className="h-full w-full object-cover"
+                              className="h-full w-full object-cover object-top"
                             />
                           ) : (
                             <span className="line-clamp-3 px-1 text-xs font-medium">
@@ -280,7 +280,7 @@ export function MetaDeckEntryBuilder({
                 <img
                   src={heroFor(detailEntry)?.imageUrl ?? undefined}
                   alt={heroFor(detailEntry)?.name ?? ""}
-                  className="h-24 w-24 shrink-0 rounded-md border border-border object-cover"
+                  className="h-24 w-24 shrink-0 rounded-md border border-border object-cover object-top"
                 />
               ) : null}
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
