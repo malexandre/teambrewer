@@ -69,7 +69,7 @@ re-centring the app on the **metagame** instead of individual events. The primar
   matchups tab, the top-level activity tab, the team roster tab (Discord covers it; `@`-autocomplete
   still uses `/members`), and the standalone cards page (the card DB + `CardPicker` remain).
 
-Everything is **local-green** on `main`: **415 API + 266 shared + 153 web** unit/integration tests and
+Everything is **local-green** on `main`: **415 API + 266 shared + 156 web** unit/integration tests and
 **9 Playwright e2e journeys** (8 desktop + the phone-viewport game-logging flow), plus `pnpm lint`,
 `pnpm typecheck`, and `pnpm build`. (`pnpm test:e2e` reuses a running dev server — stop it first, or
 every journey fails at the setup page.)
