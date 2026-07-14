@@ -4,15 +4,16 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useFormats } from "@/features/cards/use-formats";
 import { ApiError } from "@/lib/api-client";
 
-import { toDateInputValue } from "./meta-display";
+import { SELECT_CLASS, toDateInputValue } from "./meta-display";
 import { useCreateMeta, useUpdateMeta } from "./use-meta-mutations";
 
 /**
- * Create or edit a meta: a name, a start/end date window, and an optional prose
- * description. The window ordering is validated client-side before submit; the API
- * re-checks it authoritatively.
+ * Create or edit a meta: a name, the format it covers, a start/end date window, and an
+ * optional prose description. The format is required; the window ordering is validated
+ * client-side before submit; the API re-checks both authoritatively.
  */
 export function MetaForm({
   teamId,
@@ -27,10 +28,14 @@ export function MetaForm({
 }) {
   const isEditing = Boolean(meta);
   const [name, setName] = useState(meta?.name ?? "");
+  const [formatId, setFormatId] = useState(meta?.formatId ?? "");
   const [startDate, setStartDate] = useState(toDateInputValue(meta?.startDate));
   const [endDate, setEndDate] = useState(toDateInputValue(meta?.endDate));
   const [description, setDescription] = useState(meta?.description ?? "");
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  const { data: formatData } = useFormats(teamId);
+  const formats = formatData?.data ?? [];
 
   const createMeta = useCreateMeta(teamId);
   const updateMeta = useUpdateMeta(teamId, meta?.id ?? "");
@@ -42,6 +47,10 @@ export function MetaForm({
 
     if (!name.trim()) {
       setValidationError("A meta name is required.");
+      return;
+    }
+    if (!formatId) {
+      setValidationError("A format is required.");
       return;
     }
     if (!startDate) {
@@ -60,6 +69,7 @@ export function MetaForm({
     if (isEditing && meta) {
       const input: UpdateMetaInput = {
         name: name.trim(),
+        formatId,
         startDate,
         endDate,
         description,
@@ -70,6 +80,7 @@ export function MetaForm({
 
     const input: CreateMetaInput = {
       name: name.trim(),
+      formatId,
       startDate,
       endDate,
       description,
@@ -87,6 +98,24 @@ export function MetaForm({
           onChange={(changeEvent) => setName(changeEvent.target.value)}
           placeholder="e.g. Summer Season"
         />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="meta-format">Format</Label>
+        <select
+          id="meta-format"
+          className={SELECT_CLASS}
+          value={formatId}
+          onChange={(changeEvent) => setFormatId(changeEvent.target.value)}
+          aria-label="Format"
+        >
+          <option value="">Select a format…</option>
+          {formats.map((format) => (
+            <option key={format.id} value={format.id}>
+              {format.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

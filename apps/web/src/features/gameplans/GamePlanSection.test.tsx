@@ -56,6 +56,8 @@ function planWith(metaDeckEntryIds: string[]) {
 const currentMeta = {
   id: "meta-1",
   name: "Summer Season",
+  formatId: "format-1",
+  formatName: "Classic Constructed",
   description: "",
   startDate: "2026-06-01T00:00:00.000Z",
   endDate: "2026-08-31T00:00:00.000Z",

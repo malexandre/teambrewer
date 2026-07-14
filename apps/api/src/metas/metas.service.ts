@@ -21,10 +21,14 @@ import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 import { resolveCurrentMeta } from "./current-meta.js";
 
-/** The persisted meta shape this service maps to the shared contracts. */
+/**
+ * The persisted meta shape this service maps to the shared contracts, joined with its
+ * format's display name (resolved server-side for the `formatName` response field).
+ */
 interface MetaRow {
   id: string;
   teamId: string;
+  formatId: string;
   name: string;
   startDate: Date;
   endDate: Date;
@@ -32,7 +36,11 @@ interface MetaRow {
   archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  format: { name: string };
 }
+
+/** Prisma args that join the format name every meta read needs for its response. */
+const META_INCLUDE = { format: { select: { name: true } } } as const;
 
 interface MetaDeckEntryRow {
   id: string;
@@ -94,6 +102,7 @@ export class MetasService {
         archivedAt: null,
         ...(andClauses.length > 0 ? { AND: andClauses } : {}),
       },
+      include: META_INCLUDE,
       orderBy: [{ startDate: "desc" }, { id: "desc" }],
       take: query.limit + 1,
     })) as MetaRow[];
@@ -115,6 +124,7 @@ export class MetasService {
   async getCurrentMeta(now: Date = new Date()): Promise<MetaDetail> {
     const rows = (await this.scoped.db.meta.findMany({
       where: { archivedAt: null },
+      include: META_INCLUDE,
     })) as MetaRow[];
     const current = resolveCurrentMeta(rows, now);
     if (!current) {
@@ -134,13 +144,15 @@ export class MetasService {
     return toMetaDetail(row);
   }
 
-  /** Create a meta; stamps teamId from context. */
+  /** Create a meta; stamps teamId from context and validates the format is in the team's game. */
   async create(team: TeamContext, input: CreateMetaInput): Promise<MetaDetail> {
+    await this.assertFormatInTeamGame(team.gameId, input.formatId);
     const created = (await this.scoped.db.meta.create({
       data: {
         // Stamped from the verified context (TeamScopedPrisma re-stamps the same
         // teamId); never from the client body. See multi-tenancy.md.
         teamId: team.teamId,
+        formatId: input.formatId,
         name: input.name,
         startDate: new Date(input.startDate),
         endDate: new Date(input.endDate),
@@ -149,10 +161,13 @@ export class MetasService {
     })) as MetaRow;
 
     await this.recordMetaActivity(team, created.id, "meta_created");
-    return toMetaDetail(created);
+    return this.getMeta(created.id);
   }
 
-  /** Update a meta's fields; re-checks the window ordering against the merged row. */
+  /**
+   * Update a meta's fields; re-checks the window ordering against the merged row and,
+   * when the format changes, validates the new format belongs to the team's game (422).
+   */
   async update(team: TeamContext, metaId: string, input: UpdateMetaInput): Promise<MetaDetail> {
     const current = await this.requireMeta(metaId);
 
@@ -167,9 +182,13 @@ export class MetasService {
         },
       });
     }
+    if (input.formatId !== undefined) {
+      await this.assertFormatInTeamGame(team.gameId, input.formatId);
+    }
 
     const data: Record<string, unknown> = {};
     if (input.name !== undefined) data["name"] = input.name;
+    if (input.formatId !== undefined) data["formatId"] = input.formatId;
     if (input.startDate !== undefined) data["startDate"] = mergedStart;
     if (input.endDate !== undefined) data["endDate"] = mergedEnd;
     if (input.description !== undefined) data["description"] = input.description;
@@ -300,7 +319,30 @@ export class MetasService {
   private async findMeta(metaId: string): Promise<MetaRow | null> {
     return (await this.scoped.db.meta.findFirst({
       where: { id: metaId, archivedAt: null },
+      include: META_INCLUDE,
     })) as MetaRow | null;
+  }
+
+  /**
+   * Reject a format that does not belong to the team's game (→ 422). Formats are
+   * global, per-game reference data; a wrong-game format is a domain-rule violation,
+   * not a tenancy leak, so it is a 422 (mirroring the meta-deck-entry hero check).
+   */
+  private async assertFormatInTeamGame(gameId: string, formatId: string): Promise<void> {
+    // `format` is a global model; the scoping proxy passes this query through
+    // untouched, filtered explicitly by the team's game.
+    const format = await this.scoped.db.format.findFirst({
+      where: { id: formatId, gameId },
+      select: { id: true },
+    });
+    if (!format) {
+      throw new UnprocessableEntityException({
+        error: {
+          code: errorCode.domainRuleViolation,
+          message: "The format does not belong to this team's game.",
+        },
+      });
+    }
   }
 
   /** Load a deck entry that belongs to the meta, or throw 404. */
@@ -415,6 +457,8 @@ function toMetaSummary(meta: MetaRow): MetaSummary {
   return {
     id: meta.id,
     name: meta.name,
+    formatId: meta.formatId,
+    formatName: meta.format.name,
     startDate: meta.startDate.toISOString(),
     endDate: meta.endDate.toISOString(),
     archivedAt: meta.archivedAt ? meta.archivedAt.toISOString() : null,

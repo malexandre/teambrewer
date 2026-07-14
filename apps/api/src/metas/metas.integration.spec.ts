@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createDatabaseClient, resetDatabase } from "../../test/database.js";
 import {
   addMembership,
+  createFormat,
   createGame,
   createHero,
   createMeta,
@@ -40,6 +41,9 @@ describe("Metas endpoints (integration)", () => {
 
   let fabHeroId: string;
   let riftHeroId: string;
+  let fabFormatId: string;
+  let fabFormatName: string;
+  let riftFormatId: string;
 
   beforeAll(async () => {
     app = await createApiTestApp([AppModule]);
@@ -77,6 +81,17 @@ describe("Metas endpoints (integration)", () => {
 
     fabHeroId = (await createHero(prisma, { gameId: "flesh-and-blood", name: "Dorinthea" })).id;
     riftHeroId = (await createHero(prisma, { gameId: "riftbound", name: "Rift Legend" })).id;
+
+    const fabFormat = await createFormat(prisma, {
+      gameId: "flesh-and-blood",
+      name: "Classic Constructed",
+      key: "cc",
+    });
+    fabFormatId = fabFormat.id;
+    fabFormatName = fabFormat.name;
+    riftFormatId = (
+      await createFormat(prisma, { gameId: "riftbound", name: "Standard", key: "standard" })
+    ).id;
   });
 
   const http = () => request(app.getHttpServer());
@@ -89,6 +104,7 @@ describe("Metas endpoints (integration)", () => {
 
   const validMeta = () => ({
     name: "Summer Season",
+    formatId: fabFormatId,
     startDate: "2026-07-01",
     endDate: "2026-08-31",
     description: "The post-rotation field.",
@@ -104,9 +120,29 @@ describe("Metas endpoints (integration)", () => {
       expect(response.body.name).toBe("Summer Season");
       expect(response.body.description).toBe("The post-rotation field.");
       expect(response.body.archivedAt).toBeNull();
+      expect(response.body.formatId).toBe(fabFormatId);
+      expect(response.body.formatName).toBe(fabFormatName);
 
       const persisted = await prisma.meta.findUnique({ where: { id: response.body.id } });
       expect(persisted?.teamId).toBe(teamA.id);
+      expect(persisted?.formatId).toBe(fabFormatId);
+    });
+
+    it("rejects a missing format with 400", async () => {
+      const response = await asMemberA(http().post("/api/metas")).send({
+        name: "No format",
+        startDate: "2026-07-01",
+        endDate: "2026-08-31",
+      });
+      expect(response.status).toBe(400);
+    });
+
+    it("rejects a format from another game with 422 (cross-game FK)", async () => {
+      const response = await asMemberA(http().post("/api/metas")).send({
+        ...validMeta(),
+        formatId: riftFormatId,
+      });
+      expect(response.status).toBe(422);
     });
 
     it("rejects an out-of-order window with 400", async () => {
@@ -268,6 +304,30 @@ describe("Metas endpoints (integration)", () => {
       const meta = await createMeta(prisma, { teamId: teamA.id });
       const response = await asMemberA(http().patch(`/api/metas/${meta.id}`)).send({});
       expect(response.status).toBe(400);
+    });
+
+    it("edits the format to another format of the same game", async () => {
+      const meta = await createMeta(prisma, { teamId: teamA.id, formatId: fabFormatId });
+      const blitz = await createFormat(prisma, {
+        gameId: "flesh-and-blood",
+        name: "Blitz",
+        key: "blitz",
+        isConstructed: false,
+      });
+      const response = await asMemberA(http().patch(`/api/metas/${meta.id}`)).send({
+        formatId: blitz.id,
+      });
+      expect(response.status).toBe(200);
+      expect(response.body.formatId).toBe(blitz.id);
+      expect(response.body.formatName).toBe("Blitz");
+    });
+
+    it("rejects updating to a format from another game with 422", async () => {
+      const meta = await createMeta(prisma, { teamId: teamA.id, formatId: fabFormatId });
+      const response = await asMemberA(http().patch(`/api/metas/${meta.id}`)).send({
+        formatId: riftFormatId,
+      });
+      expect(response.status).toBe(422);
     });
   });
 

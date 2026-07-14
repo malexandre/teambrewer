@@ -3,15 +3,17 @@ import { z } from "zod";
 /**
  * Shared meta contracts (see docs/features/metas.md,
  * docs/decisions/0010-meta-as-organizing-hub.md). A **Meta** is the team's
- * lightweight organizing hub for a metagame window: a named, dated span
- * (`[startDate, endDate]`) with a description and a tiered opponent-deck list
- * (the reshaped gauntlet — see meta-deck-entries.ts). "Current meta" = the meta
- * whose window contains today (latest `startDate` wins on overlap); the
- * resolution is done server-side.
+ * lightweight organizing hub for a metagame window of a specific **format**: a
+ * named, dated span (`[startDate, endDate]`) for one `formatId`, with a
+ * description and a tiered opponent-deck list (the reshaped gauntlet — see
+ * meta-deck-entries.ts). There is no "current meta": the list is ordered
+ * newest-first (by `startDate` descending) and every former default resolves to
+ * the most recent meta of the relevant format, server-side.
  *
  * Tenancy: `teamId` is stamped server-side from the verified request context —
  * it is never accepted from the client, so create/update inputs omit it and
- * unknown keys are stripped. Metas are a shared team board (like events): any
+ * unknown keys are stripped. `formatId` must name a format in the team's game
+ * (validated server-side). Metas are a shared team board (like events): any
  * member creates/edits/deletes, so there is no owner field.
  */
 
@@ -24,6 +26,9 @@ export const metaNameSchema = z
 
 /** Optional free-form prose describing the meta. */
 export const metaDescriptionSchema = z.string().max(5000);
+
+/** The id of the format (in the team's game) this meta covers. Required on create. */
+export const metaFormatIdSchema = z.string().min(1, "A format is required.");
 
 /**
  * A meta window boundary. Accepts any string a `Date` can parse — a calendar
@@ -55,6 +60,7 @@ function isWindowOrdered(value: {
 export const createMetaSchema = z
   .object({
     name: metaNameSchema,
+    formatId: metaFormatIdSchema,
     startDate: metaDateSchema,
     endDate: metaDateSchema,
     description: metaDescriptionSchema.default(""),
@@ -73,6 +79,7 @@ export type CreateMetaInput = z.infer<typeof createMetaSchema>;
 export const updateMetaSchema = z
   .object({
     name: metaNameSchema.optional(),
+    formatId: metaFormatIdSchema.optional(),
     startDate: metaDateSchema.optional(),
     endDate: metaDateSchema.optional(),
     description: metaDescriptionSchema.optional(),
@@ -97,10 +104,15 @@ export const metaListQuerySchema = z.object({
 });
 export type MetaListQuery = z.infer<typeof metaListQuerySchema>;
 
-/** A meta as returned in list responses (description omitted; see detail). */
+/**
+ * A meta as returned in list responses (description omitted; see detail).
+ * `formatName` is the server-resolved display name of the meta's format.
+ */
 export const metaSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
+  formatId: z.string(),
+  formatName: z.string(),
   startDate: z.string(),
   endDate: z.string(),
   archivedAt: z.string().nullable(),

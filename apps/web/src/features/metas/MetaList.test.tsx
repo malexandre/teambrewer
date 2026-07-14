@@ -42,6 +42,8 @@ function renderInApp(ui: ReactNode) {
 const summer = {
   id: "meta-summer",
   name: "Summer Season",
+  formatId: "fmt-cc",
+  formatName: "Classic Constructed",
   startDate: "2026-06-01T00:00:00.000Z",
   endDate: "2026-08-31T00:00:00.000Z",
   archivedAt: null,
@@ -51,6 +53,8 @@ const summer = {
 const spring = {
   id: "meta-spring",
   name: "Spring Season",
+  formatId: "fmt-cc",
+  formatName: "Classic Constructed",
   startDate: "2026-03-01T00:00:00.000Z",
   endDate: "2026-05-31T00:00:00.000Z",
   archivedAt: null,

@@ -52,7 +52,7 @@ export function MetaDetail({
               </span>
             ) : null}
             <span>
-              {formatMetaDate(meta.startDate)} → {formatMetaDate(meta.endDate)}
+              {meta.formatName} · {formatMetaDate(meta.startDate)} → {formatMetaDate(meta.endDate)}
             </span>
           </div>
         }

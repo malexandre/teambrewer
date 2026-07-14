@@ -642,6 +642,7 @@ type MetaTierValue = "meta_defining" | "contender" | "counter_meta" | "fringe";
 
 export interface CreateMetaOptions {
   teamId: string;
+  formatId?: string;
   name?: string;
   startDate?: Date;
   endDate?: Date;
@@ -652,17 +653,26 @@ export interface CreateMetaOptions {
 export interface TestMeta {
   id: string;
   teamId: string;
+  formatId: string;
   name: string;
 }
 
+/**
+ * A meta needs a `formatId` (its format, in the team's game). When the caller does not
+ * pass one, resolve the team's game's default format (constructed-first, then lowest
+ * sort order), creating one if the game has none, so existing isolation tests build a
+ * meta in a single call without wiring a format themselves.
+ */
 export async function createMeta(
   prisma: PrismaClient,
   options: CreateMetaOptions,
 ): Promise<TestMeta> {
   const suffix = randomUUID().slice(0, 8);
+  const formatId = options.formatId ?? (await ensureTeamGameFormat(prisma, options.teamId)).id;
   const created = await prisma.meta.create({
     data: {
       teamId: options.teamId,
+      formatId,
       name: options.name ?? `Meta ${suffix}`,
       startDate: options.startDate ?? new Date("2026-07-01T00:00:00.000Z"),
       endDate: options.endDate ?? new Date("2026-08-01T00:00:00.000Z"),
@@ -670,7 +680,27 @@ export async function createMeta(
       archivedAt: options.archivedAt ?? null,
     },
   });
-  return { id: created.id, teamId: created.teamId, name: created.name };
+  return { id: created.id, teamId: created.teamId, formatId: created.formatId, name: created.name };
+}
+
+/** Find (or create) a default format for the game the given team is bound to. */
+async function ensureTeamGameFormat(
+  prisma: PrismaClient,
+  teamId: string,
+): Promise<{ id: string; gameId: string }> {
+  const team = await prisma.team.findUniqueOrThrow({
+    where: { id: teamId },
+    select: { gameId: true },
+  });
+  const existing = await prisma.format.findFirst({
+    where: { gameId: team.gameId },
+    orderBy: [{ isConstructed: "desc" }, { sortOrder: "asc" }],
+    select: { id: true, gameId: true },
+  });
+  if (existing) {
+    return existing;
+  }
+  return createFormat(prisma, { gameId: team.gameId });
 }
 
 export interface CreateMetaDeckEntryOptions {

@@ -18,6 +18,25 @@ function json(payload: unknown, status = 200): Response {
   });
 }
 
+const formatsPayload = {
+  data: [
+    {
+      id: "fmt-cc",
+      gameId: "flesh-and-blood",
+      key: "cc",
+      name: "Classic Constructed",
+      isConstructed: true,
+    },
+    {
+      id: "fmt-blitz",
+      gameId: "flesh-and-blood",
+      key: "blitz",
+      name: "Blitz",
+      isConstructed: false,
+    },
+  ],
+};
+
 describe("MetaForm", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -25,7 +44,9 @@ describe("MetaForm", () => {
 
   it("rejects an inverted window before calling the API", async () => {
     const posted: unknown[] = [];
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/formats")) return json(formatsPayload);
       posted.push(init?.body);
       return json({});
     });
@@ -33,6 +54,7 @@ describe("MetaForm", () => {
     renderWithClient(<MetaForm teamId="team-1" onSaved={() => undefined} />);
 
     await user.type(screen.getByLabelText(/name/i), "Summer Season");
+    await user.selectOptions(await screen.findByLabelText(/format/i), "fmt-cc");
     await user.type(screen.getByLabelText(/start date/i), "2026-08-31");
     await user.type(screen.getByLabelText(/end date/i), "2026-07-01");
     await user.click(screen.getByRole("button", { name: /create meta/i }));
@@ -41,13 +63,37 @@ describe("MetaForm", () => {
     expect(posted).toHaveLength(0);
   });
 
-  it("submits a valid meta to the API", async () => {
+  it("requires a format before calling the API", async () => {
+    const posted: unknown[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/formats")) return json(formatsPayload);
+      posted.push(init?.body);
+      return json({});
+    });
+    const user = userEvent.setup();
+    renderWithClient(<MetaForm teamId="team-1" onSaved={() => undefined} />);
+
+    await user.type(screen.getByLabelText(/name/i), "Summer Season");
+    await user.type(screen.getByLabelText(/start date/i), "2026-07-01");
+    await user.type(screen.getByLabelText(/end date/i), "2026-08-31");
+    await user.click(screen.getByRole("button", { name: /create meta/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/a format is required/i);
+    expect(posted).toHaveLength(0);
+  });
+
+  it("submits a valid meta (with its format) to the API", async () => {
     const bodies: unknown[] = [];
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/formats")) return json(formatsPayload);
       bodies.push(init?.body ? JSON.parse(init.body as string) : undefined);
       return json({
         id: "meta-1",
         name: "Summer Season",
+        formatId: "fmt-cc",
+        formatName: "Classic Constructed",
         startDate: "2026-07-01T00:00:00.000Z",
         endDate: "2026-08-31T00:00:00.000Z",
         description: "",
@@ -61,6 +107,7 @@ describe("MetaForm", () => {
     renderWithClient(<MetaForm teamId="team-1" onSaved={(meta) => saved.push(meta)} />);
 
     await user.type(screen.getByLabelText(/name/i), "Summer Season");
+    await user.selectOptions(await screen.findByLabelText(/format/i), "fmt-cc");
     await user.type(screen.getByLabelText(/start date/i), "2026-07-01");
     await user.type(screen.getByLabelText(/end date/i), "2026-08-31");
     await user.click(screen.getByRole("button", { name: /create meta/i }));
@@ -68,6 +115,7 @@ describe("MetaForm", () => {
     await vi.waitFor(() => expect(saved).toHaveLength(1));
     expect(bodies[0]).toMatchObject({
       name: "Summer Season",
+      formatId: "fmt-cc",
       startDate: "2026-07-01",
       endDate: "2026-08-31",
     });

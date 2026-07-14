@@ -38,7 +38,8 @@ export function MetaList({ teamId }: { teamId: string | undefined }) {
               >
                 <span className="font-medium">{meta.name}</span>
                 <span className="text-xs text-muted-foreground">
-                  {formatMetaDate(meta.startDate)} → {formatMetaDate(meta.endDate)}
+                  {meta.formatName} · {formatMetaDate(meta.startDate)} →{" "}
+                  {formatMetaDate(meta.endDate)}
                 </span>
               </Link>
             </li>

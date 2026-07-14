@@ -269,6 +269,7 @@ model Format {
   decks            Deck[]
   gameLogs         GameLog[]
   matchupGamePlans MatchupGamePlan[]
+  metas            Meta[]
 
   @@unique([gameId, key])
   @@index([gameId])
@@ -851,12 +852,14 @@ enum MetaTier {
   fringe
 }
 
-/// A team's metagame window: a named, dated span with a tiered opponent-deck list.
-/// "Current meta" = the meta whose [startDate, endDate] contains today (latest
-/// startDate wins on overlap; resolved server-side). Soft-deleted via archivedAt.
+/// A team's metagame window for a specific format: a named, dated span with a tiered
+/// opponent-deck list. Every default that once resolved to a "current meta" now
+/// resolves to the most recent meta (max startDate, non-archived) of the relevant
+/// format; the metas list is ordered newest-first. Soft-deleted via archivedAt.
 model Meta {
   id          String    @id @default(cuid())
   teamId      String    @map("team_id")
+  formatId    String    @map("format_id")
   name        String
   startDate   DateTime  @map("start_date")
   endDate     DateTime  @map("end_date")
@@ -865,7 +868,8 @@ model Meta {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  format Format @relation(fields: [formatId], references: [id])
 
   metaDeckEntries MetaDeckEntry[]
   deckMetas       DeckMeta[]
@@ -874,6 +878,7 @@ model Meta {
 
   @@index([teamId])
   @@index([teamId, startDate])
+  @@index([teamId, formatId])
   @@map("meta")
 }
 
