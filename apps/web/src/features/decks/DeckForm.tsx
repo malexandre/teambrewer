@@ -30,9 +30,9 @@ function parseTags(raw: string): string[] {
 /**
  * Create or edit a deck. A deck is a link + metadata (ADR-0002): a name, a format
  * and optional hero from the game's reference data, the external list URL (with a
- * best-effort provider hint), visibility, tags, and notes.
- * There is no card-list editor. Status is not edited here — it moves through the
- * dedicated status control on the deck detail.
+ * best-effort provider hint), visibility, and tags. There is no card-list editor.
+ * Notes are edited separately on the deck page (with inline `+card` mentions), and
+ * status moves through the dedicated status control there.
  */
 export function DeckForm({
   teamId,
@@ -53,7 +53,6 @@ export function DeckForm({
   const [externalUrl, setExternalUrl] = useState(deck?.externalUrl ?? "");
   const [visibility, setVisibility] = useState<DeckVisibility>(deck?.visibility ?? "team");
   const [tags, setTags] = useState((deck?.tags ?? []).join(", "));
-  const [notes, setNotes] = useState(deck?.notes ?? "");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [recognizedLabel, setRecognizedLabel] = useState<string | null>(null);
 
@@ -131,7 +130,6 @@ export function DeckForm({
         externalUrl: externalUrl.trim(),
         visibility,
         tags: parseTags(tags),
-        notes,
         metaIds: selectedMetaIds,
       };
       updateDeck.mutate(input, { onSuccess: onSaved });
@@ -145,7 +143,8 @@ export function DeckForm({
       externalUrl: externalUrl.trim(),
       visibility,
       tags: parseTags(tags),
-      notes,
+      // Notes start empty and are written later via the deck page's +card editor.
+      notes: "",
       // Only send an explicit set once initialized; otherwise the server links the
       // current meta by default.
       ...(metaIds !== undefined ? { metaIds } : {}),
@@ -233,15 +232,9 @@ export function DeckForm({
         )}
       </fieldset>
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="deck-notes">Notes</Label>
-        <textarea
-          id="deck-notes"
-          className="min-h-20 w-full rounded-md border border-input bg-background p-2 text-sm"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Notes are edited on the deck page, where you can link cards inline with <code>+</code>.
+      </p>
 
       {validationError ? (
         <p role="alert" className="text-sm text-destructive">
