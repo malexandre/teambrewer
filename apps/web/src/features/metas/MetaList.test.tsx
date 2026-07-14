@@ -77,7 +77,7 @@ describe("MetaList", () => {
     vi.restoreAllMocks();
   });
 
-  it("lists every meta as a calendar card, newest-first, showing each format", async () => {
+  it("lists every meta as a card, newest-first, showing each format", async () => {
     mockMetas();
     renderInApp(<MetaList teamId="team-1" />);
 

@@ -35,9 +35,10 @@ export function toDateInputValue(isoDate: string | undefined): string {
 }
 
 /**
- * The short month + day-of-month for a meta's boundary, for the calendar-page motif on
- * a meta card. Formatted in **UTC** for the same reason as {@link formatMetaDate} —
- * boundaries are stored at UTC midnight, so a naive local read would shift the day west.
+ * The short month + day-of-month for an ISO boundary date, for a calendar-page motif
+ * (used by the Events page). Formatted in **UTC** for the same reason as
+ * {@link formatMetaDate} — boundaries are stored at UTC midnight, so a naive local read
+ * would shift the day west.
  */
 export function calendarParts(isoDate: string): { month: string; day: string } {
   const date = new Date(isoDate);
