@@ -14,6 +14,7 @@ import { DecksPage } from "@/features/decks/DecksPage";
 import { EventDetailPage } from "@/features/events/EventDetailPage";
 import { EventsPage } from "@/features/events/EventsPage";
 import { GameDetailPage } from "@/features/game-logging/GameDetailPage";
+import { EditGameLogPage, NewGameLogPage } from "@/features/game-logging/GameLogPage";
 import { GamesPage } from "@/features/game-logging/GamesPage";
 import { MetaDetailPage } from "@/features/metas/MetaDetailPage";
 import { MetasPage } from "@/features/metas/MetasPage";
@@ -128,12 +129,29 @@ const gamesRoute = createRoute({
   component: GamesPage,
 });
 
+// The static `/games/new` outranks the dynamic `/games/$gameLogId`, so logging a
+// game gets its own focused, full-screen route rather than a segment id.
+const gameNewRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/games/new",
+  component: NewGameLogPage,
+});
+
 const gameDetailRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/games/$gameLogId",
   component: function GameDetailRoute() {
     const { gameLogId } = gameDetailRoute.useParams();
     return <GameDetailPage gameLogId={gameLogId} />;
+  },
+});
+
+const gameEditRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/games/$gameLogId/edit",
+  component: function GameEditRoute() {
+    const { gameLogId } = gameEditRoute.useParams();
+    return <EditGameLogPage gameLogId={gameLogId} />;
   },
 });
 
@@ -189,7 +207,9 @@ const routeTree = rootRoute.addChildren([
     eventsRoute,
     eventDetailRoute,
     gamesRoute,
+    gameNewRoute,
     gameDetailRoute,
+    gameEditRoute,
     tasksRoute,
     adminIndexRoute,
     adminTeamsRoute,

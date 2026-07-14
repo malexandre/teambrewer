@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import type { GameLogDetail as GameLogDetailType } from "@teambrewer/shared";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useHeroes } from "@/features/cards/use-heroes";
@@ -23,7 +23,6 @@ import {
   SERIOUSNESS_FIELD,
   SKILL_PARITY_FIELD,
 } from "./game-display";
-import { GameLogWizard } from "./GameLogWizard";
 import { useArchiveGame } from "./use-game-mutations";
 
 function optionLabel<Value extends string>(
@@ -36,7 +35,7 @@ function optionLabel<Value extends string>(
 /**
  * A game log's detail: the header (matchup, result, first player, confidence weight
  * + factors), plus the shared comment thread and activity feed. The logger or a
- * team-admin may edit (swaps in the form in place) or archive.
+ * team-admin may edit (on the dedicated edit route) or archive.
  */
 export function GameDetail({
   teamId,
@@ -46,7 +45,6 @@ export function GameDetail({
   game: GameLogDetailType;
 }) {
   const navigate = useNavigate();
-  const [editing, setEditing] = useState(false);
   const archiveGame = useArchiveGame(teamId, game.id);
 
   const { data: decks } = useDecks(teamId, {});
@@ -61,17 +59,6 @@ export function GameDetail({
     }),
     [decks, heroes, members],
   );
-
-  if (editing) {
-    return (
-      <GameLogWizard
-        teamId={teamId}
-        gameLog={game}
-        onSaved={() => setEditing(false)}
-        onCancel={() => setEditing(false)}
-      />
-    );
-  }
 
   function archive() {
     if (!window.confirm("Archive this game? It will be hidden but its history is kept.")) return;
@@ -90,7 +77,13 @@ export function GameDetail({
           {ourDeck} vs {describeOpponent(game.sideB, maps)}
         </h2>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              void navigate({ to: "/games/$gameLogId/edit", params: { gameLogId: game.id } })
+            }
+          >
             Edit
           </Button>
           <Button size="sm" variant="ghost" onClick={archive} disabled={archiveGame.isPending}>
