@@ -7,9 +7,12 @@ import {
 } from "@teambrewer/shared";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
+import { matchupSubjectDisplayName } from "@teambrewer/shared";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useHeroes } from "@/features/cards/use-heroes";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { formatMetaDate, SELECT_CLASS } from "@/features/metas/meta-display";
 import {
@@ -95,8 +98,19 @@ export function DeckForm({
       : {},
   );
   const entriesById = useMetaDeckEntriesByMeta(teamId, selectedMetaIds);
+  const { data: heroData } = useHeroes(teamId);
+  const heroNameById = new Map((heroData?.data ?? []).map((hero) => [hero.id, hero.name]));
   function entriesForMeta(metaId: string) {
     return [...entriesById.values()].filter((entry) => entry.metaId === metaId);
+  }
+  /** An entry's option label, leading with its hero, then its archetype label. */
+  function entryOptionLabel(entry: {
+    heroId: string | null;
+    label: string;
+    opponentSnapshotLabel: string;
+  }) {
+    const heroName = entry.heroId ? heroNameById.get(entry.heroId) : undefined;
+    return matchupSubjectDisplayName(heroName, entry.label) || entry.opponentSnapshotLabel;
   }
 
   function toggleMeta(metaId: string) {
@@ -289,7 +303,7 @@ export function DeckForm({
                         <option value="">— not a listed meta deck —</option>
                         {metaEntries.map((entry) => (
                           <option key={entry.id} value={entry.id}>
-                            {entry.opponentSnapshotLabel}
+                            {entryOptionLabel(entry)}
                           </option>
                         ))}
                       </select>

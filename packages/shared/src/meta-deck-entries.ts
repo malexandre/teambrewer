@@ -18,6 +18,24 @@ import { gameLogSummarySchema } from "./game-log.js";
  */
 
 /**
+ * The display name of a matchup subject (a meta deck entry, a readiness opponent, a
+ * deck→meta link): the hero name **first**, then the free-text label after a middle
+ * dot (U+00B7) when a label is present. Hero-only → the hero name; label-only (no
+ * hero) → the label. The single source of truth so the whole app leads with the hero
+ * and never shows a bare label when a hero is known. (The meta board's hero squares
+ * are the deliberate exception — they show the hero *image* instead of the name.)
+ */
+export function matchupSubjectDisplayName(
+  heroName: string | null | undefined,
+  label: string,
+): string {
+  if (!heroName) {
+    return label;
+  }
+  return label.trim().length > 0 ? `${heroName} · ${label}` : heroName;
+}
+
+/**
  * A meta deck entry's tier: how central the archetype is to the current field.
  * Ordered most-central first. Single source of truth for the tier vocabulary.
  */

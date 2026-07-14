@@ -384,6 +384,7 @@ export {
 } from "./meta-readiness.js";
 
 export {
+  matchupSubjectDisplayName,
   metaTierSchema,
   META_TIERS,
   META_TIER_LABELS,

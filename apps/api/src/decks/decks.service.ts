@@ -24,6 +24,7 @@ import {
   errorCode,
   type IterationEntry,
   type IterationEntryList,
+  matchupSubjectDisplayName,
   type MatchupGame,
   type MetaTier,
   META_TIERS,
@@ -85,6 +86,30 @@ interface GameLogReadinessRow {
 
 /** Fallback `source` label for a link no adapter recognized. */
 const UNRECOGNIZED_SOURCE = "other";
+
+/** Prisma select for a meta deck entry's display fields (hero name + label). */
+const DECK_ENTRY_DISPLAY_SELECT = {
+  id: true,
+  label: true,
+  opponentSnapshotLabel: true,
+  hero: { select: { name: true } },
+} as const;
+
+/** A meta deck entry joined with its hero's name, for the `hero · label` display. */
+interface DeckEntryDisplayRow {
+  id: string;
+  label: string;
+  opponentSnapshotLabel: string;
+  hero: { name: string } | null;
+}
+
+/**
+ * A deck→entry link's display string: `hero · label` (leads with the hero, per the
+ * app-wide rule), falling back to the durable snapshot label if neither resolves.
+ */
+function entryDisplayName(entry: DeckEntryDisplayRow): string {
+  return matchupSubjectDisplayName(entry.hero?.name, entry.label) || entry.opponentSnapshotLabel;
+}
 
 /**
  * Team-scoped deck CRUD, status lifecycle, and the manual iteration log
@@ -548,18 +573,18 @@ export class DecksService {
       where: { deckId },
       include: {
         meta: { select: { id: true, name: true, startDate: true } },
-        metaDeckEntry: { select: { id: true, opponentSnapshotLabel: true } },
+        metaDeckEntry: { select: DECK_ENTRY_DISPLAY_SELECT },
       },
       orderBy: { meta: { startDate: "desc" } },
     })) as {
       meta: { id: string; name: string; startDate: Date };
-      metaDeckEntry: { id: string; opponentSnapshotLabel: string } | null;
+      metaDeckEntry: DeckEntryDisplayRow | null;
     }[];
     return links.map((link) => ({
       id: link.meta.id,
       name: link.meta.name,
       metaDeckEntryId: link.metaDeckEntry?.id ?? null,
-      metaDeckEntryLabel: link.metaDeckEntry?.opponentSnapshotLabel ?? null,
+      metaDeckEntryLabel: link.metaDeckEntry ? entryDisplayName(link.metaDeckEntry) : null,
     }));
   }
 
@@ -577,11 +602,11 @@ export class DecksService {
     }
     const links = (await this.scoped.db.deckMeta.findMany({
       where: { deckId: { in: deckIds }, metaDeckEntryId: { not: null } },
-      include: { metaDeckEntry: { select: { id: true, opponentSnapshotLabel: true } } },
+      include: { metaDeckEntry: { select: DECK_ENTRY_DISPLAY_SELECT } },
     })) as {
       deckId: string;
       metaId: string;
-      metaDeckEntry: { id: string; opponentSnapshotLabel: string } | null;
+      metaDeckEntry: DeckEntryDisplayRow | null;
     }[];
     for (const link of links) {
       if (!link.metaDeckEntry) {
@@ -591,7 +616,7 @@ export class DecksService {
       list.push({
         metaId: link.metaId,
         metaDeckEntryId: link.metaDeckEntry.id,
-        label: link.metaDeckEntry.opponentSnapshotLabel,
+        label: entryDisplayName(link.metaDeckEntry),
       });
       byDeck.set(link.deckId, list);
     }

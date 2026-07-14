@@ -1,8 +1,9 @@
-import type { MetaDeckEntry } from "@teambrewer/shared";
+import { matchupSubjectDisplayName, type MetaDeckEntry } from "@teambrewer/shared";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { useHeroes } from "@/features/cards/use-heroes";
 import { formatPlayedAt, formatResult } from "@/features/game-logging/game-display";
 import { ApiError } from "@/lib/api-client";
 
@@ -34,6 +35,8 @@ export function LinkRecordedGamesModal({
   const candidates = useEntryLinkCandidates(teamId, metaId, entryId, { enabled: open });
   const linkGames = useLinkGamesToEntry(teamId, metaId, entryId);
   const games = candidates.data?.data ?? [];
+  const { data: heroData } = useHeroes(teamId);
+  const heroNameById = new Map((heroData?.data ?? []).map((hero) => [hero.id, hero.name]));
 
   // Default every candidate to selected whenever a fresh list loads.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -63,7 +66,13 @@ export function LinkRecordedGamesModal({
     linkGames.mutate({ gameLogIds }, { onSuccess: onClose });
   }
 
-  const title = entry ? `Link recorded games to ${entry.opponentSnapshotLabel}` : "";
+  const entryName = entry
+    ? matchupSubjectDisplayName(
+        entry.heroId ? heroNameById.get(entry.heroId) : undefined,
+        entry.label,
+      ) || entry.opponentSnapshotLabel
+    : "";
+  const title = entry ? `Link recorded games to ${entryName}` : "";
 
   return (
     <Dialog open={open} onClose={onClose} title={title}>
@@ -93,9 +102,15 @@ export function LinkRecordedGamesModal({
                   />
                   <span className="flex-1">{formatPlayedAt(game.playedAt)}</span>
                   <span className="font-medium">{formatResult(game.bestOf, game.result)}</span>
-                  {game.sideB.archetypeLabel ? (
-                    <span className="text-muted-foreground">{game.sideB.archetypeLabel}</span>
-                  ) : null}
+                  {(() => {
+                    const opponentName = matchupSubjectDisplayName(
+                      game.sideB.heroId ? heroNameById.get(game.sideB.heroId) : undefined,
+                      game.sideB.archetypeLabel ?? "",
+                    );
+                    return opponentName ? (
+                      <span className="text-muted-foreground">{opponentName}</span>
+                    ) : null;
+                  })()}
                 </label>
               </li>
             ))}

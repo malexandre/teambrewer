@@ -317,11 +317,17 @@ describe("Decks endpoints (integration)", () => {
         metaEntryLinks: [{ metaId: meta.id, metaDeckEntryId: entry.id }],
       });
       expect(response.status).toBe(201);
+      // The link display leads with the hero, then the label (app-wide rule).
       expect(response.body.linkedMetas).toEqual([
-        { id: meta.id, name: "Now", metaDeckEntryId: entry.id, metaDeckEntryLabel: "Dash IO" },
+        {
+          id: meta.id,
+          name: "Now",
+          metaDeckEntryId: entry.id,
+          metaDeckEntryLabel: "Dorinthea · Dash IO",
+        },
       ]);
       expect(response.body.linkedMetaEntries).toEqual([
-        { metaId: meta.id, metaDeckEntryId: entry.id, label: "Dash IO" },
+        { metaId: meta.id, metaDeckEntryId: entry.id, label: "Dorinthea · Dash IO" },
       ]);
     });
 
