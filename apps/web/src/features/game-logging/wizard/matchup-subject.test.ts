@@ -54,14 +54,25 @@ describe("matchup subject helpers", () => {
   describe("buildSideBInput — opponent player category", () => {
     it("attaches the player category independently of the subject", () => {
       const input = buildSideBInput(
-        stateWith({ mode: "hero_label", archetypeLabel: "Aggro Red", playerCategory: "other" }),
+        stateWith({
+          mode: "hero_label",
+          heroId: "hero-1",
+          archetypeLabel: "Aggro Red",
+          playerCategory: "other",
+        }),
       );
-      expect(input).toEqual({ archetypeLabel: "Aggro Red", playerCategory: "other" });
+      expect(input).toEqual({
+        heroId: "hero-1",
+        archetypeLabel: "Aggro Red",
+        playerCategory: "other",
+      });
       expect(input).not.toHaveProperty("deckId");
     });
 
-    it("returns null when the opponent subject is incomplete", () => {
-      expect(buildSideBInput(stateWith({ mode: "hero_label", archetypeLabel: "" }))).toBeNull();
+    it("returns null when the opponent subject has no hero", () => {
+      expect(
+        buildSideBInput(stateWith({ mode: "hero_label", archetypeLabel: "Aggro Red" })),
+      ).toBeNull();
     });
   });
 

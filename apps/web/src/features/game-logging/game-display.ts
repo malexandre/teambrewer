@@ -14,30 +14,34 @@ import type {
 export interface GameLogLabelMaps {
   decks: Record<string, string>;
   heroes: Record<string, string>;
+  /** Meta deck entry id → its resolved `hero · label` display name. */
+  metaEntries: Record<string, string>;
+}
+
+/** Render a meta deck entry reference as its `hero · label (Meta Deck)` display. */
+function describeMetaEntry(entryId: string, maps: GameLogLabelMaps): string {
+  return `${maps.metaEntries[entryId] ?? "Meta deck"} (Meta Deck)`;
 }
 
 /** A human description of our side, from whichever matchup subject it carries. */
 export function describeSelf(sideA: GameLogSummary["sideA"], maps: GameLogLabelMaps): string {
   if (sideA.deckId) return maps.decks[sideA.deckId] ?? "Our deck";
-  if (sideA.archetypeLabel) {
-    return sideA.heroId
-      ? `${maps.heroes[sideA.heroId] ?? "Hero"} — ${sideA.archetypeLabel}`
-      : sideA.archetypeLabel;
+  if (sideA.metaDeckEntryId) return describeMetaEntry(sideA.metaDeckEntryId, maps);
+  if (sideA.heroId) {
+    const hero = maps.heroes[sideA.heroId] ?? "Hero";
+    return sideA.archetypeLabel ? `${hero} — ${sideA.archetypeLabel}` : hero;
   }
-  if (sideA.metaDeckEntryId) return "Meta deck";
   return "Our side";
 }
 
 /** A human description of the opponent side, from whichever matchup subject it carries. */
 export function describeOpponent(sideB: GameLogSummary["sideB"], maps: GameLogLabelMaps): string {
   if (sideB.deckId) return maps.decks[sideB.deckId] ?? "Team deck";
-  if (sideB.metaDeckEntryId) return "Meta deck";
-  if (sideB.archetypeLabel) {
-    return sideB.heroId
-      ? `${maps.heroes[sideB.heroId] ?? "Hero"} — ${sideB.archetypeLabel}`
-      : sideB.archetypeLabel;
+  if (sideB.metaDeckEntryId) return describeMetaEntry(sideB.metaDeckEntryId, maps);
+  if (sideB.heroId) {
+    const hero = maps.heroes[sideB.heroId] ?? "Unknown hero";
+    return sideB.archetypeLabel ? `${hero} — ${sideB.archetypeLabel}` : hero;
   }
-  if (sideB.heroId) return maps.heroes[sideB.heroId] ?? "Unknown hero";
   return "Unknown opponent";
 }
 

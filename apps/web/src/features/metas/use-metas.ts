@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import {
+  type MetaDeckEntry,
   type MetaDeckEntryList,
   metaDeckEntryListSchema,
   type MetaDetail,
@@ -53,6 +54,44 @@ export function useMeta(teamId: string | undefined, metaId: string | undefined) 
     },
     enabled: Boolean(teamId && metaId),
   });
+}
+
+/**
+ * Resolve the deck entries of several metas at once into a Map keyed by entry id
+ * (one team-scoped query per meta, sharing the same cache key as {@link
+ * useMetaDeckEntries}). Used where a stored `metaDeckEntryId` needs to be rendered
+ * as its hero · label — e.g. the game-log list, which references entries across
+ * whatever metas its games count toward.
+ */
+export function useMetaDeckEntriesByMeta(
+  teamId: string | undefined,
+  metaIds: string[],
+): Map<string, MetaDeckEntry> {
+  const results = useQueries({
+    queries: metaIds.map((metaId) => ({
+      queryKey: teamId
+        ? queryKeys.metaDeckEntries(teamId, metaId)
+        : ["meta-deck-entries", "none", metaId],
+      queryFn: () => {
+        if (!teamId) {
+          throw new Error("No active team.");
+        }
+        return apiClient.get(`/metas/${metaId}/deck-entries`, {
+          teamId,
+          schema: metaDeckEntryListSchema,
+        });
+      },
+      enabled: Boolean(teamId),
+    })),
+  });
+
+  const entriesById = new Map<string, MetaDeckEntry>();
+  for (const result of results) {
+    for (const entry of result.data?.data ?? []) {
+      entriesById.set(entry.id, entry);
+    }
+  }
+  return entriesById;
 }
 
 /** A meta's tiered opponent-deck list, via GET /api/metas/:metaId/deck-entries. */

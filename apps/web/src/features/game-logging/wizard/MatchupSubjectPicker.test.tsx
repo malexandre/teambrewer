@@ -137,27 +137,32 @@ describe("MatchupSubjectPicker", () => {
     expect(emitted()).toEqual({ metaDeckEntryId: "entry-1", playerCategory: "teammate" });
   });
 
-  it("choosing Other reveals hero + label and auto-fills the label from the hero", async () => {
+  it("choosing Other requires a hero and emits it alone (label optional, not pre-filled)", async () => {
+    const user = userEvent.setup();
+    mockApi();
+    renderHarness("opponent");
+    await user.selectOptions(screen.getByLabelText("Opponent deck"), "other");
+    // Before a hero is picked the subject is incomplete.
+    expect(emitted()).toBeNull();
+    await screen.findByRole("option", { name: "Dorinthea" });
+    await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
+    // Hero alone is a valid subject; the label is not auto-filled.
+    expect(emitted()).toEqual({ heroId: "hero-dori", playerCategory: "other" });
+  });
+
+  it("attaches the optional label and the player category to a hero subject", async () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("opponent");
     await user.selectOptions(screen.getByLabelText("Opponent deck"), "other");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
-    expect(emitted()).toEqual({
-      archetypeLabel: "Dorinthea",
-      heroId: "hero-dori",
-      playerCategory: "other",
-    });
-  });
-
-  it("records the opponent player category from the radio", async () => {
-    const user = userEvent.setup();
-    mockApi();
-    renderHarness("opponent");
-    await user.selectOptions(screen.getByLabelText("Opponent deck"), "other");
-    await user.type(screen.getByLabelText("Opponent archetype label"), "Aggro Red");
+    await user.type(screen.getByLabelText(/opponent archetype label/i), "Aggro Red");
     await user.click(screen.getByRole("button", { name: "Circuit player" }));
-    expect(emitted()).toEqual({ archetypeLabel: "Aggro Red", playerCategory: "circuit_player" });
+    expect(emitted()).toEqual({
+      heroId: "hero-dori",
+      archetypeLabel: "Aggro Red",
+      playerCategory: "circuit_player",
+    });
   });
 });

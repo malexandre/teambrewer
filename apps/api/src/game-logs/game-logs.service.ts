@@ -395,8 +395,8 @@ export class GameLogsService {
   }
 
   /**
-   * Validate + normalize a matchup subject (a team deck, a meta deck entry, or an
-   * archetype label with an optional hero) into its three neutral columns. The
+   * Validate + normalize a matchup subject (a team deck, a meta deck entry, or a
+   * hero with an optional archetype label) into its neutral columns. The
    * exactly-one shape is already enforced by the shared schema; this adds the
    * cross-team/game FK checks (→ 422). Returns generic keys the callers map onto the
    * self- or opponent-prefixed columns.

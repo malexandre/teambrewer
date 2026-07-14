@@ -185,7 +185,7 @@ describe("GameLogWizard", () => {
     await screen.findAllByRole("option", { name: "Our Deck" });
     await user.selectOptions(screen.getByLabelText(/your deck/i), "deck:deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
-    await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
     expect(await screen.findByRole("button", { name: /single game/i })).toHaveAttribute(
       "aria-pressed",
@@ -205,7 +205,7 @@ describe("GameLogWizard", () => {
     await screen.findAllByRole("option", { name: "Our Deck" });
     await user.selectOptions(screen.getByLabelText(/your deck/i), "deck:deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
-    await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
     // step 2 → Next
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -248,14 +248,15 @@ describe("GameLogWizard", () => {
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
     await screen.findAllByRole("option", { name: "Our Deck" });
     await user.selectOptions(screen.getByLabelText("Your deck"), "deck:deck-ours");
-    await user.type(screen.getByLabelText(/opponent archetype label/i), "Aggro Red");
+    await screen.findByRole("option", { name: "Dorinthea" });
+    await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
     // Step 2 shows the result control and a Back control.
     await screen.findByRole("button", { name: /single game/i });
     await user.click(screen.getByRole("button", { name: /^back$/i }));
     // Back on step 1, with the previously entered values intact.
     expect(await screen.findByLabelText("Your deck")).toHaveValue("deck:deck-ours");
-    expect(screen.getByLabelText(/opponent archetype label/i)).toHaveValue("Aggro Red");
+    expect(screen.getByRole("combobox", { name: "Hero" })).toHaveValue("hero-dori");
   });
 
   it("captures an impressive card and includes it in the create payload", async () => {
@@ -270,7 +271,7 @@ describe("GameLogWizard", () => {
     await screen.findAllByRole("option", { name: "Our Deck" });
     await user.selectOptions(screen.getByLabelText(/your deck/i), "deck:deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
-    await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
 
     // Step 2 → Step 3.

@@ -85,18 +85,6 @@ export function MatchupSubjectPicker({
     onChange({ ...state, ...changes });
   }
 
-  /**
-   * Selecting a hero pre-fills the archetype label with the hero's name when the
-   * label is still empty, so picking a hero alone yields a valid subject (the label
-   * stays freely editable).
-   */
-  function changeHero(heroId: string): void {
-    const hero = heroes.find((candidate) => candidate.id === heroId);
-    const archetypeLabel =
-      state.archetypeLabel.trim().length === 0 && hero ? hero.name : state.archetypeLabel;
-    patch({ heroId, archetypeLabel });
-  }
-
   /** The display name of a meta entry: its hero (when resolved) then its label. */
   function metaEntryDisplayName(entry: (typeof metaEntries)[number]): string {
     const heroName = entry.heroId
@@ -143,25 +131,25 @@ export function MatchupSubjectPicker({
       {state.mode === "hero_label" ? (
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
+            <Label htmlFor={`${side}-hero`}>
+              {isSelf ? "Your" : "Opponent"} {identityLabel.toLowerCase()}
+            </Label>
+            <HeroPicker
+              id={`${side}-hero`}
+              teamId={teamId}
+              value={state.heroId}
+              onChange={(heroId) => patch({ heroId })}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
             <Label htmlFor={`${side}-archetype-label`}>
-              {isSelf ? "Your archetype label" : "Opponent archetype label"}
+              {isSelf ? "Your archetype label" : "Opponent archetype label"} (optional)
             </Label>
             <Input
               id={`${side}-archetype-label`}
               placeholder="e.g. Aggro Red"
               value={state.archetypeLabel}
               onChange={(event) => patch({ archetypeLabel: event.target.value })}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${side}-hero`}>
-              {isSelf ? "Your" : "Opponent"} {identityLabel.toLowerCase()} (optional)
-            </Label>
-            <HeroPicker
-              id={`${side}-hero`}
-              teamId={teamId}
-              value={state.heroId}
-              onChange={changeHero}
             />
           </div>
         </div>

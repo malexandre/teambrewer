@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 
 import { useHeroes } from "@/features/cards/use-heroes";
 import { useDecks } from "@/features/decks/use-decks";
-import { useMetas } from "@/features/metas/use-metas";
+import { matchupSubjectDisplayName } from "@/features/metas/meta-display";
+import { useMetaDeckEntriesByMeta, useMetas } from "@/features/metas/use-metas";
 
 import {
   describeOpponent,
@@ -40,14 +41,23 @@ export function GameList({ teamId }: { teamId: string | undefined }) {
   const { data: decks } = useDecks(teamId, {});
   const { data: heroes } = useHeroes(teamId);
   const { data: metas } = useMetas(teamId);
-
-  const maps: GameLogLabelMaps = useMemo(
-    () => ({
-      decks: toNameMap(decks?.data ?? []),
-      heroes: toNameMap(heroes?.data ?? []),
-    }),
-    [decks, heroes],
+  const metaEntriesById = useMetaDeckEntriesByMeta(
+    teamId,
+    (metas?.data ?? []).map((meta) => meta.id),
   );
+
+  const maps: GameLogLabelMaps = useMemo(() => {
+    const heroesMap = toNameMap(heroes?.data ?? []);
+    const metaEntries: Record<string, string> = {};
+    for (const entry of metaEntriesById.values()) {
+      metaEntries[entry.id] =
+        matchupSubjectDisplayName(
+          entry.heroId ? heroesMap[entry.heroId] : undefined,
+          entry.label,
+        ) || entry.opponentSnapshotLabel;
+    }
+    return { decks: toNameMap(decks?.data ?? []), heroes: heroesMap, metaEntries };
+  }, [decks, heroes, metaEntriesById]);
 
   const deckOptions = decks?.data ?? [];
   const heroOptions = heroes?.data ?? [];

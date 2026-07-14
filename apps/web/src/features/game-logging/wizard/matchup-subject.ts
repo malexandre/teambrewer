@@ -118,8 +118,10 @@ interface MatchupSubjectFields {
 
 /**
  * The subject fields for the current mode, or `null` when the mode is not yet
- * validly filled (no deck / no meta entry / no archetype label). Exactly one
- * subject form is emitted, matching the shared schema's exactly-one-subject rule.
+ * validly filled (no deck / no meta entry / no hero). Exactly one subject form is
+ * emitted, matching the shared schema's exactly-one-subject rule. In the free
+ * "Other" (hero + label) mode the hero is required and the label is an optional
+ * qualifier — mirroring a meta deck entry, but with the hero mandatory.
  */
 function buildSubjectFields(state: MatchupSubjectState): MatchupSubjectFields | null {
   if (state.mode === "team_deck") {
@@ -128,9 +130,9 @@ function buildSubjectFields(state: MatchupSubjectState): MatchupSubjectFields | 
   if (state.mode === "meta_deck") {
     return state.metaDeckEntryId ? { metaDeckEntryId: state.metaDeckEntryId } : null;
   }
+  if (!state.heroId) return null;
   const label = state.archetypeLabel.trim();
-  if (!label) return null;
-  return { archetypeLabel: label, ...(state.heroId ? { heroId: state.heroId } : {}) };
+  return { heroId: state.heroId, ...(label ? { archetypeLabel: label } : {}) };
 }
 
 /** Whether the side's subject is validly filled (gates advancing past the matchup step). */

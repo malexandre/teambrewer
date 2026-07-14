@@ -217,22 +217,23 @@ export const PLAYER_CATEGORY_LABELS: Record<PlayerCategory, string> = {
 
 /**
  * Both game-log sides are **matchup subjects**: exactly one of a team `deckId`, a
- * `metaDeckEntryId`, or a free-text `archetypeLabel` (with an optional `heroId`
- * qualifier). `deckId`/`metaDeckEntryId`/`archetypeLabel` are the three mutually
- * exclusive forms; a `heroId` is only meaningful alongside an `archetypeLabel`.
+ * `metaDeckEntryId`, or a `heroId` (with an optional free-text `archetypeLabel`
+ * qualifier). `deckId`/`metaDeckEntryId`/`heroId` are the three mutually exclusive
+ * forms; an `archetypeLabel` is only meaningful alongside a `heroId` (so the free
+ * "Other" form requires a hero, and the label is optional).
  */
-const matchupSubjectFormKeys = ["deckId", "metaDeckEntryId", "archetypeLabel"] as const;
+const matchupSubjectFormKeys = ["deckId", "metaDeckEntryId", "heroId"] as const;
 
 function countSubjectForms(value: {
   deckId?: unknown;
   metaDeckEntryId?: unknown;
-  archetypeLabel?: unknown;
+  heroId?: unknown;
 }): number {
   return matchupSubjectFormKeys.filter((key) => value[key] !== undefined && value[key] !== null)
     .length;
 }
 
-/** Add the exactly-one-subject + hero-needs-label issues to a side's refinement. */
+/** Add the exactly-one-subject + label-needs-hero issues to a side's refinement. */
 function refineMatchupSubject(
   value: {
     deckId?: string | undefined;
@@ -246,20 +247,20 @@ function refineMatchupSubject(
   if (countSubjectForms(value) !== 1) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `${sideLabel} must be exactly one of: a team deck, a meta deck entry, or an archetype label.`,
+      message: `${sideLabel} must be exactly one of: a team deck, a meta deck entry, or a hero.`,
     });
   }
-  if (value.heroId && !value.archetypeLabel) {
+  if (value.archetypeLabel && !value.heroId) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `A ${sideLabel.toLowerCase()} hero qualifier needs an archetype label.`,
+      message: `A ${sideLabel.toLowerCase()} archetype label needs a hero.`,
     });
   }
 }
 
 /**
- * Our side: a matchup subject (team deck / meta deck entry / archetype label + optional
- * hero) plus a `playerCategory` classifying who piloted it (defaults to `teammate`).
+ * Our side: a matchup subject (team deck / meta deck entry / hero + optional label)
+ * plus a `playerCategory` classifying who piloted it (defaults to `teammate`).
  */
 export const gameSideASchema = z
   .object({
@@ -273,8 +274,8 @@ export const gameSideASchema = z
 export type GameSideA = z.infer<typeof gameSideASchema>;
 
 /**
- * The opponent side: a matchup subject (team deck / meta deck entry / archetype label
- * + optional hero) plus a `playerCategory` classifying the opponent (defaults to `other`).
+ * The opponent side: a matchup subject (team deck / meta deck entry / hero + optional
+ * label) plus a `playerCategory` classifying the opponent (defaults to `other`).
  */
 export const gameSideBSchema = z
   .object({

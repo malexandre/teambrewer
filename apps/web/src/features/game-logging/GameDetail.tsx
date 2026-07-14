@@ -12,6 +12,8 @@ import { useHeroes } from "@/features/cards/use-heroes";
 import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
 import { CommentThread } from "@/features/collaboration/CommentThread";
 import { useDecks } from "@/features/decks/use-decks";
+import { matchupSubjectDisplayName } from "@/features/metas/meta-display";
+import { useMetaDeckEntriesByMeta, useMetas } from "@/features/metas/use-metas";
 import { ApiError } from "@/lib/api-client";
 
 import {
@@ -53,14 +55,28 @@ export function GameDetail({
 
   const { data: decks } = useDecks(teamId, {});
   const { data: heroes } = useHeroes(teamId);
-
-  const maps: GameLogLabelMaps = useMemo(
-    () => ({
-      decks: Object.fromEntries((decks?.data ?? []).map((d) => [d.id, d.name])),
-      heroes: Object.fromEntries((heroes?.data ?? []).map((h) => [h.id, h.name])),
-    }),
-    [decks, heroes],
+  const { data: metas } = useMetas(teamId);
+  const metaEntriesById = useMetaDeckEntriesByMeta(
+    teamId,
+    (metas?.data ?? []).map((meta) => meta.id),
   );
+
+  const maps: GameLogLabelMaps = useMemo(() => {
+    const heroesMap = Object.fromEntries((heroes?.data ?? []).map((h) => [h.id, h.name]));
+    const metaEntries: Record<string, string> = {};
+    for (const entry of metaEntriesById.values()) {
+      metaEntries[entry.id] =
+        matchupSubjectDisplayName(
+          entry.heroId ? heroesMap[entry.heroId] : undefined,
+          entry.label,
+        ) || entry.opponentSnapshotLabel;
+    }
+    return {
+      decks: Object.fromEntries((decks?.data ?? []).map((d) => [d.id, d.name])),
+      heroes: heroesMap,
+      metaEntries,
+    };
+  }, [decks, heroes, metaEntriesById]);
 
   function archive() {
     if (!window.confirm("Archive this game? It will be hidden but its history is kept.")) return;

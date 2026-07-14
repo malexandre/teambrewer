@@ -153,9 +153,15 @@ describe("createGameLogSchema", () => {
     expect(parsed.sideB.archetypeLabel).toBe("Aggro Fai");
   });
 
-  it("rejects a hero opponent qualifier without an archetype label", () => {
+  it("accepts a hero opponent subject with no label (label is the optional qualifier)", () => {
+    const parsed = createGameLogSchema.parse(validCreateInput({ sideB: { heroId: "hero_x" } }));
+    expect(parsed.sideB.heroId).toBe("hero_x");
+    expect(parsed.sideB.archetypeLabel).toBeUndefined();
+  });
+
+  it("rejects an archetype label with no hero", () => {
     expect(() =>
-      createGameLogSchema.parse(validCreateInput({ sideB: { heroId: "hero_x" } })),
+      createGameLogSchema.parse(validCreateInput({ sideB: { archetypeLabel: "Aggro Fai" } })),
     ).toThrow();
   });
 
