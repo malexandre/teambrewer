@@ -55,30 +55,30 @@ function ReadinessRow({
   return (
     <tr className="border-b border-border/60 last:border-0">
       <td className="py-2 pr-3 align-middle">
-        <Badge tone={META_TIER_TONE[row.tier]} size="sm" className="whitespace-normal">
+        <Badge tone={META_TIER_TONE[row.tier]} size="sm">
           {META_TIER_LABELS[row.tier]}
         </Badge>
       </td>
-      <td className="truncate py-2 pr-3 align-middle font-medium" title={opponentLabel}>
+      <td className="w-full py-2 pr-3 align-middle font-medium" title={opponentLabel}>
         {opponentLabel}
       </td>
       <td
         className={cn(
-          "py-2 pr-3 text-right align-middle font-semibold tabular-nums",
+          "py-2 pr-3 text-right align-middle font-semibold whitespace-nowrap tabular-nums",
           winRateToneClass(row.weightedWinRate),
         )}
       >
         {formatWinRate(row.weightedWinRate)}
       </td>
-      <td className="py-2 pr-3 text-right align-middle tabular-nums text-muted-foreground">
+      <td className="py-2 pr-3 text-right align-middle whitespace-nowrap tabular-nums text-muted-foreground">
         {row.rawSampleCount}
       </td>
-      <td className="py-2 pr-3 align-middle">
+      <td className="py-2 pr-3 align-middle whitespace-nowrap">
         <Badge tone={trust.tone} size="sm">
           {trust.label}
         </Badge>
       </td>
-      <td className="py-2 text-center align-middle">
+      <td className="py-2 text-center align-middle whitespace-nowrap">
         {row.hasGamePlan ? (
           <span
             role="img"
@@ -161,23 +161,17 @@ export function DeckReadinessSection({
         <p className="text-sm text-muted-foreground">This meta has no decks yet.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-sm">
-            <colgroup>
-              <col style={{ width: "116px" }} />
-              <col />
-              <col style={{ width: "64px" }} />
-              <col style={{ width: "56px" }} />
-              <col style={{ width: "108px" }} />
-              <col style={{ width: "52px" }} />
-            </colgroup>
+          {/* Auto layout: every column hugs its content (whitespace-nowrap) except
+              Matchup, which is w-full and soaks up all the remaining width. */}
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                 <th className="py-2 pr-3 font-medium">Rank</th>
-                <th className="py-2 pr-3 font-medium">Matchup</th>
-                <th className="py-2 pr-3 text-right font-medium">Win rate</th>
-                <th className="py-2 pr-3 text-right font-medium">Games</th>
-                <th className="py-2 pr-3 font-medium">Confidence</th>
-                <th className="py-2 text-center font-medium">Plan</th>
+                <th className="w-full py-2 pr-3 font-medium">Matchup</th>
+                <th className="whitespace-nowrap py-2 pr-3 text-right font-medium">Win rate</th>
+                <th className="whitespace-nowrap py-2 pr-3 text-right font-medium">Games</th>
+                <th className="whitespace-nowrap py-2 pr-3 font-medium">Confidence</th>
+                <th className="whitespace-nowrap py-2 text-center font-medium">Plan</th>
               </tr>
             </thead>
             <tbody>
