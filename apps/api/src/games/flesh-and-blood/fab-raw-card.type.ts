@@ -24,4 +24,19 @@ export interface FabRawCard {
   health: string;
   types: string[];
   printings: FabRawPrinting[];
+  /**
+   * Per-format legality booleans (verified against the card schema at the pinned
+   * v8.2.0 tag: https://raw.githubusercontent.com/the-fab-cube/flesh-and-blood-cards/v8.2.0/web/json-schemas/card-schema.html).
+   * A card legal in a format has the matching `*_legal` set true; the
+   * `*_living_legend` markers flag a card retired to the Living Legend format (so
+   * it is no longer legal in Classic Constructed / Blitz even though `*_legal`
+   * may remain true).
+   */
+  cc_legal: boolean;
+  blitz_legal: boolean;
+  commoner_legal: boolean;
+  ll_legal: boolean;
+  silver_age_legal: boolean;
+  cc_living_legend: boolean;
+  blitz_living_legend: boolean;
 }

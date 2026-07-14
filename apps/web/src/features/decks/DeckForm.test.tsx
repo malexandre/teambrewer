@@ -47,6 +47,7 @@ function mockApi(
             talents: [],
             startingLife: 20,
             imageUrl: null,
+            legalFormatKeys: [],
           },
         ],
       });

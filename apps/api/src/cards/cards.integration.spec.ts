@@ -230,6 +230,82 @@ describe("Cards endpoints (integration)", () => {
       const rift = await asRift(http().get("/api/heroes"));
       expect(rift.body.data.map((hero: { name: string }) => hero.name)).toEqual(["Rift Legend"]);
     });
+
+    it("exposes each hero's legal format keys", async () => {
+      await createHero(prisma, {
+        gameId: "flesh-and-blood",
+        name: "Legal Hero",
+        legalFormatKeys: ["cc", "blitz"],
+      });
+      const fab = await asFab(http().get("/api/heroes"));
+      const legalHero = fab.body.data.find((hero: { name: string }) => hero.name === "Legal Hero");
+      expect(legalHero.legalFormatKeys).toEqual(["cc", "blitz"]);
+    });
+  });
+
+  describe("GET /api/heroes?formatId (coverage-aware legality filter)", () => {
+    it("filters to heroes legal in the format when coverage exists", async () => {
+      // Dorinthea (seeded) carries no legal formats; add two that list "cc".
+      await createHero(prisma, {
+        gameId: "flesh-and-blood",
+        name: "CC Hero",
+        legalFormatKeys: ["cc"],
+      });
+      await createHero(prisma, {
+        gameId: "flesh-and-blood",
+        name: "Blitz Only Hero",
+        legalFormatKeys: ["blitz"],
+      });
+      const ccFormat = await prisma.format.findFirst({
+        where: { gameId: "flesh-and-blood", key: "cc" },
+      });
+
+      const response = await asFab(http().get("/api/heroes").query({ formatId: ccFormat!.id }));
+      expect(response.status).toBe(200);
+      // Only the hero listing "cc" — not Dorinthea ([]) nor the Blitz-only hero.
+      expect(response.body.data.map((hero: { name: string }) => hero.name)).toEqual(["CC Hero"]);
+    });
+
+    it("returns all heroes when the format has no legality coverage", async () => {
+      await createHero(prisma, {
+        gameId: "flesh-and-blood",
+        name: "CC Hero",
+        legalFormatKeys: ["cc"],
+      });
+      // A constructed format that no hero lists — no coverage, so no filtering.
+      const blitz = await createFormat(prisma, {
+        gameId: "flesh-and-blood",
+        key: "blitz",
+        name: "Blitz",
+        sortOrder: 1,
+      });
+
+      const response = await asFab(http().get("/api/heroes").query({ formatId: blitz.id }));
+      expect(response.status).toBe(200);
+      expect(response.body.data.map((hero: { name: string }) => hero.name).sort()).toEqual([
+        "CC Hero",
+        "Dorinthea",
+      ]);
+    });
+
+    it("ignores a format id belonging to another game (no filter, no leak)", async () => {
+      await createHero(prisma, {
+        gameId: "flesh-and-blood",
+        name: "CC Hero",
+        legalFormatKeys: ["cc"],
+      });
+      const riftFormat = await prisma.format.findFirst({
+        where: { gameId: "riftbound", key: "standard" },
+      });
+
+      const response = await asFab(http().get("/api/heroes").query({ formatId: riftFormat!.id }));
+      expect(response.status).toBe(200);
+      // Cross-game format id resolves to no key → no filter → all FaB heroes.
+      expect(response.body.data.map((hero: { name: string }) => hero.name).sort()).toEqual([
+        "CC Hero",
+        "Dorinthea",
+      ]);
+    });
   });
 
   describe("GET /api/card-data/version", () => {

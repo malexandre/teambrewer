@@ -44,7 +44,17 @@ Global reference entities from [data-model](../architecture/data-model.md#game-r
 - **CardDataVersion** `{ gameId, sourceName, sourceUrl, sourceVersion, lastSyncedAt, cardCount }` — one row
   per game; drives "card data as of …".
 - **Hero** / **Format** — sibling per-game reference data (owned by the adapter; consumed by
-  [decks](decks.md) and events). Heroes are derived from the synced card dataset.
+  [decks](decks.md) and events). Heroes are derived from the synced card dataset. A hero also stores
+  **`legalFormatKeys`** — the `Format.key`s it is legal in, mapped per-format by the adapter from the
+  source's legality (the earlier "no format legality" note is scoped to **cards**; heroes/identities do
+  carry it, because pickers narrow by format — see below). All game-specific legality semantics (e.g.
+  Flesh and Blood's young-heroes-only-in-Blitz, or Living-Legend retirement excluding a hero from CC and
+  Blitz) live in the adapter; the read path filters on the generic stored key only. `GET /api/heroes`
+  takes an optional `?formatId=` and is **coverage-aware**: it filters to legal heroes only when at least
+  one of the game's heroes lists that format's key, and otherwise returns every hero (so a format with no
+  legality data — Draft/Sealed, an un-synced DB, or a game like Riftbound with no wired legality — never
+  yields an empty picker). The meta hero picker passes the meta's format so the "decks to beat" board
+  only offers heroes legal in that format.
 
 These are **global** (no `teamId`) but **game-filtered** — see
 [data-model](../architecture/data-model.md#global-vs-team-scoped). Pull the **exact** FaB field list from
@@ -139,8 +149,9 @@ Per [testing-strategy](../architecture/testing-strategy.md) and the
 - **Deck contents / deck building** — decks are links ([ADR-0002](../decisions/0002-decks-as-links.md)).
 - **Automated external meta feeds / scraping** — cut
   ([ADR-0007](../decisions/0007-external-data-approach.md)).
-- **Legality enforcement** — legality flags are reference context only, not a validation engine
-  ([flesh-and-blood](../domain/flesh-and-blood.md)).
+- **Legality enforcement** — legality is reference context only, not a validation engine. Heroes carry
+  `legalFormatKeys` and the meta hero picker narrows by it, but decks are still links and no deck/game-log
+  input is rejected for legality ([flesh-and-blood](../domain/flesh-and-blood.md)).
 
 ## See also
 

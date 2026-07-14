@@ -90,7 +90,14 @@ export {
 
 export { formatSchema, formatListSchema, type Format, type FormatList } from "./formats.js";
 
-export { heroSchema, heroListSchema, type Hero, type HeroList } from "./heroes.js";
+export {
+  heroSchema,
+  heroListSchema,
+  heroListQuerySchema,
+  type Hero,
+  type HeroList,
+  type HeroListQuery,
+} from "./heroes.js";
 
 export {
   cardDataVersionSchema,

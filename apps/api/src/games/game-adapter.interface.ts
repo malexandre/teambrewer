@@ -42,6 +42,14 @@ export interface NormalizedHero {
   talents: string[];
   startingLife: number | null;
   imageUrl: string | null;
+  /**
+   * The `Format.key`s in which this hero is legal, derived by the adapter from the
+   * source's per-format legality. A generic, game-agnostic surface: all
+   * game-specific legality semantics (e.g. Flesh and Blood's young-only-in-Blitz or
+   * Living-Legend retirement) live in the adapter, never in the core read path.
+   * Empty when the source carries no legality for the hero.
+   */
+  legalFormatKeys: string[];
 }
 
 /** A play format definition the core stores as a `Format` row for the game. */

@@ -37,11 +37,14 @@ import {
 export function MetaDeckEntryBuilder({
   teamId,
   metaId,
+  formatId,
   entries,
   canEdit,
 }: {
   teamId: string | undefined;
   metaId: string;
+  /** The meta's format — the hero pickers are narrowed to heroes legal in it. */
+  formatId: string;
   entries: MetaDeckEntry[];
   canEdit: boolean;
 }) {
@@ -215,6 +218,7 @@ export function MetaDeckEntryBuilder({
               <HeroPicker
                 id="meta-entry-hero"
                 teamId={teamId}
+                formatId={formatId}
                 value={heroId}
                 onChange={setHeroId}
               />
@@ -334,6 +338,7 @@ export function MetaDeckEntryBuilder({
               <HeroPicker
                 id="edit-hero"
                 teamId={teamId}
+                formatId={formatId}
                 value={editHeroId}
                 onChange={setEditHeroId}
               />

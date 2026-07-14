@@ -22,6 +22,7 @@ function mockApi(
     createErrorMessage?: string;
   } = {},
 ) {
+  const requestedHeroUrls: string[] = [];
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = typeof input === "string" ? input : input.toString();
     const method = init?.method ?? "GET";
@@ -45,6 +46,7 @@ function mockApi(
       return json({ gameId: "flesh-and-blood", identityLabel: "Hero", defaultBestOf: 1 });
     }
     if (url.includes("/api/heroes")) {
+      requestedHeroUrls.push(url);
       return json({
         data: [
           {
@@ -54,6 +56,7 @@ function mockApi(
             talents: [],
             startingLife: 20,
             imageUrl: null,
+            legalFormatKeys: ["cc"],
           },
         ],
       });
@@ -89,6 +92,7 @@ function mockApi(
     }
     return json({}, 404);
   });
+  return { requestedHeroUrls };
 }
 
 function json(payload: unknown, status = 200): Response {
@@ -131,7 +135,13 @@ describe("MetaDeckEntryBuilder", () => {
   it("groups entries by tier with the tier labels", () => {
     mockApi();
     renderWithClient(
-      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={entries} canEdit />,
+      <MetaDeckEntryBuilder
+        teamId="team-1"
+        metaId="meta-1"
+        formatId="format-cc"
+        entries={entries}
+        canEdit
+      />,
     );
     expect(screen.getByRole("heading", { name: "Meta-defining" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /fringe/i })).toBeInTheDocument();
@@ -140,11 +150,36 @@ describe("MetaDeckEntryBuilder", () => {
     expect(screen.getByText("Aggro Red")).toBeInTheDocument();
   });
 
+  it("requests heroes filtered to the meta's format", async () => {
+    const { requestedHeroUrls } = mockApi();
+    renderWithClient(
+      <MetaDeckEntryBuilder
+        teamId="team-1"
+        metaId="meta-1"
+        formatId="format-cc"
+        entries={entries}
+        canEdit
+      />,
+    );
+
+    await screen.findByRole("option", { name: "Dorinthea" });
+    // The picker fetches heroes narrowed to the meta's format. (A separate
+    // unfiltered lookup also runs, to render existing entries' hero images
+    // regardless of their legality — so we assert the filtered request was made.)
+    expect(requestedHeroUrls.some((url) => url.includes("formatId=format-cc"))).toBe(true);
+  });
+
   it("requires at least a hero or a label before adding", async () => {
     mockApi();
     const user = userEvent.setup();
     renderWithClient(
-      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={entries} canEdit />,
+      <MetaDeckEntryBuilder
+        teamId="team-1"
+        metaId="meta-1"
+        formatId="format-cc"
+        entries={entries}
+        canEdit
+      />,
     );
 
     // Neither a hero nor a label → validation blocks the add.
@@ -157,7 +192,13 @@ describe("MetaDeckEntryBuilder", () => {
     mockApi({ onCreate: (body) => created.push(body) });
     const user = userEvent.setup();
     renderWithClient(
-      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={entries} canEdit />,
+      <MetaDeckEntryBuilder
+        teamId="team-1"
+        metaId="meta-1"
+        formatId="format-cc"
+        entries={entries}
+        canEdit
+      />,
     );
 
     await screen.findByRole("option", { name: "Dorinthea" });
@@ -175,7 +216,13 @@ describe("MetaDeckEntryBuilder", () => {
     mockApi({ onCreate: (body) => created.push(body) });
     const user = userEvent.setup();
     renderWithClient(
-      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={entries} canEdit />,
+      <MetaDeckEntryBuilder
+        teamId="team-1"
+        metaId="meta-1"
+        formatId="format-cc"
+        entries={entries}
+        canEdit
+      />,
     );
 
     await screen.findByRole("option", { name: "Dorinthea" });
@@ -208,7 +255,13 @@ describe("MetaDeckEntryBuilder", () => {
     ];
     mockApi();
     renderWithClient(
-      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={heroQualified} canEdit />,
+      <MetaDeckEntryBuilder
+        teamId="team-1"
+        metaId="meta-1"
+        formatId="format-cc"
+        entries={heroQualified}
+        canEdit
+      />,
     );
 
     // The hero (mock has no image) fills the square as a name tile; the archetype
@@ -226,7 +279,13 @@ describe("MetaDeckEntryBuilder", () => {
     mockApi();
     const user = userEvent.setup();
     renderWithClient(
-      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={entries} canEdit />,
+      <MetaDeckEntryBuilder
+        teamId="team-1"
+        metaId="meta-1"
+        formatId="format-cc"
+        entries={entries}
+        canEdit
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Details for Aggro Red" }));
@@ -259,7 +318,13 @@ describe("MetaDeckEntryBuilder", () => {
     });
     const user = userEvent.setup();
     renderWithClient(
-      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={existing} canEdit />,
+      <MetaDeckEntryBuilder
+        teamId="team-1"
+        metaId="meta-1"
+        formatId="format-cc"
+        entries={existing}
+        canEdit
+      />,
     );
 
     await screen.findByRole("option", { name: "Dorinthea" });
@@ -279,7 +344,13 @@ describe("MetaDeckEntryBuilder", () => {
     mockApi({ onUpdate: (body) => updated.push(body) });
     const user = userEvent.setup();
     renderWithClient(
-      <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={entries} canEdit />,
+      <MetaDeckEntryBuilder
+        teamId="team-1"
+        metaId="meta-1"
+        formatId="format-cc"
+        entries={entries}
+        canEdit
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: /edit aggro red/i }));

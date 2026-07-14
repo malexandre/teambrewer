@@ -87,6 +87,10 @@ describe("RiftboundAdapter.deriveHeroes", () => {
     expect(yasuo.startingLife).toBeNull();
     expect(yasuo.imageUrl).toBe("https://cards.test/yasuo.png");
   });
+
+  it("carries no legal formats (Riftcodex legality is not wired)", () => {
+    expect(legends[0]!.legalFormatKeys).toEqual([]);
+  });
 });
 
 describe("RiftboundAdapter.listFormats", () => {

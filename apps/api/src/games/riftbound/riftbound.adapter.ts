@@ -78,6 +78,9 @@ export class RiftboundAdapter implements GameAdapter {
         talents: [...(card.tags ?? [])],
         startingLife: null,
         imageUrl: card.media?.image_url ?? null,
+        // Riftcodex legality is not wired yet; with no coverage the hero-list read
+        // shows every Legend for any format (never an empty picker).
+        legalFormatKeys: [],
       });
     }
     return legends;

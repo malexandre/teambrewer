@@ -55,6 +55,18 @@ describe("CardSyncService (integration)", () => {
     const heroes = await prisma.hero.findMany({ where: { gameId: GAME_ID } });
     expect(heroes.map((hero) => hero.name).sort()).toEqual(["Arakni", "Briar, Warden of Thorns"]);
 
+    // The adapter's per-format legality is persisted: the young hero is Blitz-legal
+    // but not CC-legal, and the Living-Legend-retired hero is out of CC and Blitz.
+    const arakni = heroes.find((hero) => hero.name === "Arakni")!;
+    expect(arakni.legalFormatKeys).toEqual(
+      expect.arrayContaining(["blitz", "commoner", "silver_age"]),
+    );
+    expect(arakni.legalFormatKeys).not.toContain("cc");
+    const briar = heroes.find((hero) => hero.name === "Briar, Warden of Thorns")!;
+    expect(briar.legalFormatKeys).toContain("ll");
+    expect(briar.legalFormatKeys).not.toContain("cc");
+    expect(briar.legalFormatKeys).not.toContain("blitz");
+
     const version = await prisma.cardDataVersion.findUnique({ where: { gameId: GAME_ID } });
     expect(version?.sourceVersion).toBe("v-test");
     expect(version?.cardCount).toBe(FLESH_AND_BLOOD_CARD_FIXTURE.length);

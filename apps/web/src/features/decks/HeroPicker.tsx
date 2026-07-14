@@ -6,20 +6,24 @@ import { SELECT_CLASS } from "./deck-display";
 /**
  * Native identity picker (the game's "Hero"/"Legend") drawn from the active
  * game's reference data (GET /api/heroes). The identity is optional, so an
- * explicit "none" option maps to the empty value.
+ * explicit "none" option maps to the empty value. An optional `formatId` narrows
+ * the choices to heroes legal in that format (used by the meta board, which is
+ * scoped to a format); omitted elsewhere, it lists every hero.
  */
 export function HeroPicker({
   teamId,
   value,
   onChange,
   id,
+  formatId,
 }: {
   teamId: string | undefined;
   value: string;
   onChange: (heroId: string) => void;
   id?: string;
+  formatId?: string;
 }) {
-  const { data } = useHeroes(teamId);
+  const { data } = useHeroes(teamId, formatId);
   const identityLabel = useIdentityLabel(teamId);
   const heroes = data?.data ?? [];
   return (

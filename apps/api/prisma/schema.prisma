@@ -287,6 +287,10 @@ model Hero {
   talents      String[]
   startingLife Int?      @map("starting_life")
   imageUrl     String?   @map("image_url")
+  /// The `Format.key`s in which this hero is legal, sourced per-format from the
+  /// card dataset by the game adapter. Empty until a re-sync; the hero-list read
+  /// is coverage-aware so missing data never yields an empty picker.
+  legalFormatKeys String[] @map("legal_format_keys")
   archivedAt   DateTime? @map("archived_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")

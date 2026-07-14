@@ -74,6 +74,23 @@ describe("FleshAndBloodAdapter.deriveHeroes", () => {
     expect(arakni.talents).toEqual([]);
     expect(arakni.startingLife).toBe(20);
   });
+
+  it("keeps a young hero out of Classic Constructed but legal in Blitz/Commoner", () => {
+    const arakni = heroes.find((hero) => hero.name === "Arakni")!;
+    expect(arakni.legalFormatKeys).not.toContain("cc");
+    expect(arakni.legalFormatKeys).toEqual(
+      expect.arrayContaining(["blitz", "commoner", "silver_age"]),
+    );
+  });
+
+  it("excludes a Living-Legend-retired hero from CC and Blitz while keeping it LL-legal", () => {
+    const briar = heroes.find((hero) => hero.name === "Briar, Warden of Thorns")!;
+    // The source still reports cc_legal/blitz_legal true, but the living_legend
+    // markers demote it — the adapter's rule (not the core) enforces that.
+    expect(briar.legalFormatKeys).not.toContain("cc");
+    expect(briar.legalFormatKeys).not.toContain("blitz");
+    expect(briar.legalFormatKeys).toContain("ll");
+  });
 });
 
 describe("FleshAndBloodAdapter.recognizeDeckUrl", () => {

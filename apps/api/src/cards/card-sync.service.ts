@@ -159,6 +159,7 @@ async function upsertHeroes(
         talents: hero.talents,
         startingLife: hero.startingLife,
         imageUrl: hero.imageUrl,
+        legalFormatKeys: hero.legalFormatKeys,
       },
       update: {
         name: hero.name,
@@ -166,6 +167,7 @@ async function upsertHeroes(
         talents: hero.talents,
         startingLife: hero.startingLife,
         imageUrl: hero.imageUrl,
+        legalFormatKeys: hero.legalFormatKeys,
         archivedAt: null,
       },
     });

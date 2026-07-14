@@ -72,7 +72,13 @@ export function MetaDetail({ teamId, meta }: { teamId: string | undefined; meta:
         </Section>
       ) : null}
 
-      <MetaDeckEntryBuilder teamId={teamId} metaId={meta.id} entries={entries} canEdit />
+      <MetaDeckEntryBuilder
+        teamId={teamId}
+        metaId={meta.id}
+        formatId={meta.formatId}
+        entries={entries}
+        canEdit
+      />
 
       <Dialog open={editing} onClose={() => setEditing(false)} title="Edit meta">
         <MetaForm

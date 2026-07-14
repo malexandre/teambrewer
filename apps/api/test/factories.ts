@@ -197,6 +197,7 @@ export interface CreateHeroOptions {
   talents?: string[];
   startingLife?: number | null;
   imageUrl?: string | null;
+  legalFormatKeys?: string[];
 }
 
 export async function createHero(
@@ -213,6 +214,7 @@ export async function createHero(
       talents: options.talents ?? [],
       startingLife: options.startingLife ?? null,
       imageUrl: options.imageUrl ?? null,
+      legalFormatKeys: options.legalFormatKeys ?? [],
     },
   });
   return { id: created.id, name: created.name, gameId: created.gameId };

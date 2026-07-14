@@ -28,9 +28,12 @@ the concepts the data model and features depend on. For exact card-schema fields
   Weapon, plus subtypes (e.g. Aura, Item, Arrow) and supertypes (e.g. Young, Ally, Token).
 - **Keywords** — e.g. Go again, Dominate, Overpower, Reprise, Fusion, Arcane, etc.
 - **Text / abilities**, **rarity**, **artist**, **sets/printings** (including foil variants).
-- **Legality per format** — the dataset tracks per-format legality flags (e.g. Classic Constructed,
-  Blitz, Commoner, etc.). *(TeamBrewer's lean `Card` model does not store these — see
-  [card-database](../features/card-database.md); the card image conveys them.)*
+- **Legality per format** — the dataset tracks per-format legality flags (`cc_legal`, `blitz_legal`,
+  `commoner_legal`, `ll_legal`, `silver_age_legal`) plus Living-Legend markers (`cc_living_legend`,
+  `blitz_living_legend`) that demote a retired hero out of CC and Blitz even while its `*_legal` flag
+  stays true. *(TeamBrewer's lean `Card` model does not store these — the card image conveys them — but
+  the `Hero` model does store a derived `legalFormatKeys`, mapped from these flags by the FaB adapter, so
+  the meta hero picker can narrow by format. See [card-database](../features/card-database.md).)*
 
 TeamBrewer stores **card reference data** (global per game) — it does not store deck card-lists (decks are
 links). Cards power autocomplete, hover-preview, and references inside suggestions, game-plans, and

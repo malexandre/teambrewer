@@ -63,6 +63,7 @@ function mockApi(options: { onCreate?: (body: unknown) => void } = {}) {
             talents: [],
             startingLife: 20,
             imageUrl: null,
+            legalFormatKeys: [],
           },
         ],
       });
