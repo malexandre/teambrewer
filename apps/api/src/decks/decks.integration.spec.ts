@@ -295,6 +295,57 @@ describe("Decks endpoints (integration)", () => {
       expect(response.status).toBe(422);
       expect(response.body.error.code).toBe("DOMAIN_RULE_VIOLATION");
     });
+
+    it("links a meta deck entry per meta and reflects it in the response", async () => {
+      const meta = await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "Now",
+        ...newerWindow,
+      });
+      const entry = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        heroId: fabHeroId,
+        label: "Dash IO",
+        opponentSnapshotLabel: "Dash IO",
+      });
+
+      const response = await asMemberA(http().post("/api/decks")).send({
+        ...validBody(),
+        metaIds: [meta.id],
+        metaEntryLinks: [{ metaId: meta.id, metaDeckEntryId: entry.id }],
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.linkedMetas).toEqual([
+        { id: meta.id, name: "Now", metaDeckEntryId: entry.id, metaDeckEntryLabel: "Dash IO" },
+      ]);
+      expect(response.body.linkedMetaEntries).toEqual([
+        { metaId: meta.id, metaDeckEntryId: entry.id, label: "Dash IO" },
+      ]);
+    });
+
+    it("rejects an entry link whose entry is not in the linked meta (422)", async () => {
+      const meta = await createMeta(prisma, { teamId: teamA.id, formatId: fabFormatId, name: "M" });
+      const otherMeta = await createMeta(prisma, {
+        teamId: teamA.id,
+        formatId: fabFormatId,
+        name: "Other",
+        ...olderWindow,
+      });
+      const otherEntry = await createMetaDeckEntry(prisma, {
+        metaId: otherMeta.id,
+        teamId: teamA.id,
+        label: "Elsewhere",
+      });
+      const response = await asMemberA(http().post("/api/decks")).send({
+        ...validBody(),
+        metaIds: [meta.id],
+        metaEntryLinks: [{ metaId: meta.id, metaDeckEntryId: otherEntry.id }],
+      });
+      expect(response.status).toBe(422);
+      expect(response.body.error.code).toBe("DOMAIN_RULE_VIOLATION");
+    });
   });
 
   describe("GET /api/decks", () => {
@@ -641,6 +692,56 @@ describe("Decks endpoints (integration)", () => {
       expect(archetypeRow.weightedWinRate).toBe(1);
       expect(archetypeRow.rawSampleCount).toBe(1);
       expect(archetypeRow.hasGamePlan).toBe(false);
+    });
+
+    it("feeds a game vs a team deck linked to an entry into that entry's readiness", async () => {
+      const ourDeck = await createDeck(prisma, {
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+        name: "Ours",
+      });
+      // A teammate's build of the meta deck, linked to the entry within this meta.
+      const teamDashIo = await createDeck(prisma, {
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+        name: "Our Dash IO",
+      });
+      const meta = await createMeta(prisma, { teamId: teamA.id, name: "July" });
+      const entry = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        heroId: fabHeroId,
+        label: "Dash IO",
+        opponentSnapshotLabel: "Dash IO",
+      });
+      await prisma.deckMeta.create({
+        data: { deckId: teamDashIo.id, metaId: meta.id, metaDeckEntryId: entry.id },
+      });
+
+      // A practice game: our deck vs the linked team deck (opponent is a team deck, no
+      // hero/label) — it counts toward the entry only via the deck link.
+      await createGameLog(prisma, {
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: ourDeck.id,
+        opponentDeckId: teamDashIo.id,
+        confidenceWeight: 1,
+        gamesWonA: 2,
+        gamesWonB: 0,
+      });
+
+      const response = await asMemberA(
+        http().get(`/api/decks/${ourDeck.id}/meta-readiness`).query({ metaId: meta.id }),
+      );
+      expect(response.status).toBe(200);
+      const row = response.body.rows.find(
+        (candidate: { metaDeckEntryId: string }) => candidate.metaDeckEntryId === entry.id,
+      );
+      expect(row.rawSampleCount).toBe(1);
+      expect(row.weightedWinRate).toBe(1);
     });
 
     it("aggregates two entries with the SAME hero but different labels distinctly", async () => {

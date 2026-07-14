@@ -11,6 +11,7 @@ import {
   type DeckDetail,
   type DeckLinkedMeta,
   type DeckLinkedMetaEntry,
+  type DeckMetaEntryLink,
   type DeckListQuery,
   type DeckListResponse,
   type DeckMetaReadinessQuery,
@@ -165,6 +166,8 @@ export class DecksService {
       await assertHeroInGame(this.scoped.db, team.gameId, input.heroId);
     }
     const metaIdsToLink = await this.resolveMetaIdsToLink(input.metaIds, input.formatId);
+    const entryLinks = input.metaEntryLinks ?? [];
+    await this.assertTeamMetaEntries(entryLinks, metaIdsToLink);
 
     const recognized = this.recognizeUrl(team.gameId, input.externalUrl);
     const created = (await this.scoped.db.deck.create({
@@ -184,7 +187,7 @@ export class DecksService {
         notes: input.notes,
       },
     })) as DeckRow;
-    await this.replaceDeckMetaLinks(created.id, metaIdsToLink);
+    await this.replaceDeckMetaLinks(created.id, metaIdsToLink, entryLinks);
     await this.recordDeckActivity(team, created, "deck_created");
     return this.getDeck(team, created.id);
   }
@@ -213,12 +216,26 @@ export class DecksService {
         this.recognizeUrl(team.gameId, input.externalUrl)?.provider ?? UNRECOGNIZED_SOURCE;
     }
 
-    // `metaIds` is not a deck column — a provided set replaces the deck's links.
+    // `metaIds`/`metaEntryLinks` are not deck columns — a provided set replaces the
+    // deck's `DeckMeta` links (metas + their per-meta entry).
     if (Object.keys(data).length > 0) {
       await this.scoped.db.deck.updateMany({ where: { id: deckId }, data });
     }
-    if (input.metaIds !== undefined) {
-      await this.replaceDeckMetaLinks(deckId, await this.assertTeamMetas(input.metaIds));
+    if (input.metaIds !== undefined || input.metaEntryLinks !== undefined) {
+      const current = await this.loadDeckMetaLinks(deckId);
+      const metaIdsToLink =
+        input.metaIds !== undefined
+          ? await this.assertTeamMetas(input.metaIds)
+          : current.map((link) => link.metaId);
+      const entryLinks =
+        input.metaEntryLinks ??
+        current.flatMap((link) =>
+          link.metaDeckEntryId
+            ? [{ metaId: link.metaId, metaDeckEntryId: link.metaDeckEntryId }]
+            : [],
+        );
+      await this.assertTeamMetaEntries(entryLinks, metaIdsToLink);
+      await this.replaceDeckMetaLinks(deckId, metaIdsToLink, entryLinks);
     }
     const updated = await this.getDeck(team, deckId);
     await this.recordDeckActivity(team, updated, "deck_updated");
@@ -327,8 +344,26 @@ export class DecksService {
       plans.flatMap((plan) => plan.metaDeckEntries.map((link) => link.metaDeckEntryId)),
     );
 
+    // Feed matchup data: team decks linked to each entry in this meta (per-meta), so a
+    // game whose opponent was such a deck counts toward that entry's matchup.
+    const linkRows = (await this.scoped.db.deckMeta.findMany({
+      where: { metaId: meta.id, metaDeckEntryId: { not: null } },
+      select: { deckId: true, metaDeckEntryId: true },
+    })) as { deckId: string; metaDeckEntryId: string | null }[];
+    const linkedDecksByEntry = new Map<string, Set<string>>();
+    for (const link of linkRows) {
+      if (!link.metaDeckEntryId) {
+        continue;
+      }
+      const decks = linkedDecksByEntry.get(link.metaDeckEntryId) ?? new Set<string>();
+      decks.add(link.deckId);
+      linkedDecksByEntry.set(link.metaDeckEntryId, decks);
+    }
+
     const rows = sortEntriesByTier(entries).map((entry) => {
-      const matched = games.filter((game) => gameMatchesEntry(game, entry)).map(toMatchupGame);
+      const matched = games
+        .filter((game) => gameMatchesEntry(game, entry, linkedDecksByEntry.get(entry.id)))
+        .map(toMatchupGame);
       const aggregate = aggregateMatchup(matched);
       const opponentRef = deriveMatchupSubjectRef({ heroId: entry.heroId, label: entry.label });
       return {
@@ -417,6 +452,49 @@ export class DecksService {
     return mostRecent ? [mostRecent.id] : [];
   }
 
+  /**
+   * Reject any per-meta entry link that isn't valid: its meta must be among the metas
+   * the deck is linking (`allowedMetaIds`), and the entry must belong to that meta and
+   * the team (cross-team/cross-meta → 422). The scoped read hides other teams' entries.
+   */
+  private async assertTeamMetaEntries(
+    entryLinks: DeckMetaEntryLink[],
+    allowedMetaIds: string[],
+  ): Promise<void> {
+    for (const link of entryLinks) {
+      if (!allowedMetaIds.includes(link.metaId)) {
+        throw new UnprocessableEntityException({
+          error: {
+            code: errorCode.domainRuleViolation,
+            message: "An entry link's meta must be one of the deck's linked metas.",
+          },
+        });
+      }
+      const entry = await this.scoped.db.metaDeckEntry.findFirst({
+        where: { id: link.metaDeckEntryId, metaId: link.metaId },
+        select: { id: true },
+      });
+      if (!entry) {
+        throw new UnprocessableEntityException({
+          error: {
+            code: errorCode.domainRuleViolation,
+            message: "A linked meta deck entry does not belong to this meta.",
+          },
+        });
+      }
+    }
+  }
+
+  /** The deck's current `DeckMeta` links (meta id + its chosen entry, if any). */
+  private async loadDeckMetaLinks(
+    deckId: string,
+  ): Promise<{ metaId: string; metaDeckEntryId: string | null }[]> {
+    return (await this.scoped.db.deckMeta.findMany({
+      where: { deckId },
+      select: { metaId: true, metaDeckEntryId: true },
+    })) as { metaId: string; metaDeckEntryId: string | null }[];
+  }
+
   /** Reject any meta id that is not a non-archived meta of the team (cross-team → 422). */
   private async assertTeamMetas(metaIds: string[]): Promise<string[]> {
     for (const metaId of metaIds) {
@@ -437,15 +515,25 @@ export class DecksService {
   }
 
   /**
-   * Replace a deck's `DeckMeta` links with exactly `metaIds`. The parent deck is
-   * already verified team-scoped, so operating on its transitive join rows by
+   * Replace a deck's `DeckMeta` links with exactly `metaIds`, attaching each meta's
+   * chosen entry from `entryLinks` (per-meta `metaDeckEntryId`, or null). The parent
+   * deck is already verified team-scoped, so operating on its transitive join rows by
    * `deckId` is safe (DeckMeta carries no `teamId`; it is reached through its parents).
    */
-  private async replaceDeckMetaLinks(deckId: string, metaIds: string[]): Promise<void> {
+  private async replaceDeckMetaLinks(
+    deckId: string,
+    metaIds: string[],
+    entryLinks: DeckMetaEntryLink[] = [],
+  ): Promise<void> {
+    const entryByMeta = new Map(entryLinks.map((link) => [link.metaId, link.metaDeckEntryId]));
     await this.scoped.db.deckMeta.deleteMany({ where: { deckId } });
     if (metaIds.length > 0) {
       await this.scoped.db.deckMeta.createMany({
-        data: metaIds.map((metaId) => ({ deckId, metaId })),
+        data: metaIds.map((metaId) => ({
+          deckId,
+          metaId,
+          metaDeckEntryId: entryByMeta.get(metaId) ?? null,
+        })),
       });
     }
   }
@@ -584,9 +672,19 @@ function sortEntriesByTier(entries: MetaEntryRow[]): MetaEntryRow[] {
  * (self-only) opponents never match a meta entry. Side A (this deck) already filters
  * the games, so only the opponent identity drives matching.
  */
-function gameMatchesEntry(game: GameLogReadinessRow, entry: MetaEntryRow): boolean {
+function gameMatchesEntry(
+  game: GameLogReadinessRow,
+  entry: MetaEntryRow,
+  linkedDeckIds?: ReadonlySet<string>,
+): boolean {
+  // An explicit entry link is authoritative.
   if (game.opponentMetaDeckEntryId !== null) {
     return game.opponentMetaDeckEntryId === entry.id;
+  }
+  // Feed matchup data: the opponent was a team deck linked to this entry (in this
+  // meta) — a teammate piloting the team's build of the meta deck (per-meta link).
+  if (linkedDeckIds && game.opponentDeckId !== null && linkedDeckIds.has(game.opponentDeckId)) {
+    return true;
   }
   if (game.opponentArchetypeLabel === null) {
     return false;
