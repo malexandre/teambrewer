@@ -7,6 +7,7 @@ import {
   addMembership,
   createFormat,
   createGame,
+  createGameLog,
   createHero,
   createMeta,
   createMetaDeckEntry,
@@ -437,6 +438,35 @@ describe("Metas endpoints (integration)", () => {
       expect(removed.status).toBe(204);
       const list = await asMemberA(http().get(`/api/metas/${meta.id}/deck-entries`));
       expect(list.body.data).toHaveLength(0);
+    });
+
+    it("backfills a linked game's hero + label when its entry is deleted", async () => {
+      const meta = await createMeta(prisma, { teamId: teamA.id });
+      const entry = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        heroId: fabHeroId,
+        label: "Draconic Dorinthea",
+      });
+      // A game whose opponent is this meta deck entry — hero/label stored as null.
+      const game = await createGameLog(prisma, {
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        opponentMetaDeckEntryId: entry.id,
+      });
+
+      const removed = await asMemberA(
+        http().delete(`/api/metas/${meta.id}/deck-entries/${entry.id}`),
+      );
+      expect(removed.status).toBe(204);
+
+      // The game keeps its opponent identity: the entry link is cleared, and its
+      // hero + label were copied onto the game so it still describes the matchup.
+      const persisted = await prisma.gameLog.findUnique({ where: { id: game.id } });
+      expect(persisted?.opponentMetaDeckEntryId).toBeNull();
+      expect(persisted?.opponentHeroId).toBe(fabHeroId);
+      expect(persisted?.opponentArchetypeLabel).toBe("Draconic Dorinthea");
     });
   });
 

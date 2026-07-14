@@ -265,10 +265,32 @@ export class MetasService {
     return toMetaDeckEntry(updated);
   }
 
-  /** Remove a deck entry (hard delete — entries are not soft-deleted). */
+  /**
+   * Remove a deck entry (hard delete — entries are not soft-deleted). Before deleting,
+   * **backfill** the entry's hero + label onto every game log that references it (as
+   * self or opponent), so those games keep their matchup identity: the FK is
+   * `onDelete: SetNull`, and a game logged against a meta entry stores *only* the entry
+   * id (hero/label null), so without this the delete would leave the game's opponent
+   * fully unknown. After the backfill the game reverts to a plain hero/label subject
+   * and continues to count via ref-matching (an entry always has a hero or a label).
+   */
   async removeDeckEntry(metaId: string, entryId: string): Promise<void> {
     await this.requireMeta(metaId);
-    await this.requireDeckEntry(metaId, entryId);
+    const entry = await this.requireDeckEntry(metaId, entryId);
+
+    // Copy the entry's identity onto its linked games first. `gameLog` is team-owned,
+    // so the scoped proxy filters these writes to the team's own logs.
+    await this.scoped.db.gameLog.updateMany({
+      where: { opponentMetaDeckEntryId: entryId },
+      data: { opponentHeroId: entry.heroId, opponentArchetypeLabel: entry.label },
+    });
+    await this.scoped.db.gameLog.updateMany({
+      where: { selfMetaDeckEntryId: entryId },
+      data: { selfHeroId: entry.heroId, selfArchetypeLabel: entry.label },
+    });
+
+    // The delete nulls the games' `*MetaDeckEntryId` (SetNull); the hero/label copied
+    // above is what preserves each game's opponent/self identity.
     await this.scoped.db.metaDeckEntry.deleteMany({ where: { id: entryId } });
   }
 
