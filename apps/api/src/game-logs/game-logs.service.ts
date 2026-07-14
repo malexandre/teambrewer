@@ -420,9 +420,9 @@ export class GameLogsService {
   /**
    * Validate + normalize the opponent side into its persisted columns. A teammate
    * opponent references a team member on a team deck; an external opponent is one of
-   * a reference deck (the team's own `isReference` deck), a hero in the team's game,
-   * or a free-text archetype label. The exactly-one shape is already enforced by the
-   * schema; this adds the cross-team/game FK checks (→ 422).
+   * any team deck, a hero in the team's game, or a free-text archetype label. The
+   * exactly-one shape is already enforced by the schema; this adds the cross-team/game
+   * FK checks (→ 422).
    */
   private async resolveSideB(
     gameId: string,
@@ -454,15 +454,15 @@ export class GameLogsService {
 
     const externalOpponentName = sideB.externalOpponentName ?? null;
     if (sideB.deckId !== undefined) {
-      const referenceDeck = await this.scoped.db.deck.findFirst({
-        where: { id: sideB.deckId, isReference: true },
+      const deck = await this.scoped.db.deck.findFirst({
+        where: { id: sideB.deckId },
         select: { id: true },
       });
-      if (!referenceDeck) {
+      if (!deck) {
         throw new UnprocessableEntityException({
           error: {
             code: errorCode.domainRuleViolation,
-            message: "The opponent deck is not a reference deck for this team.",
+            message: "The opponent deck does not belong to this team.",
           },
         });
       }

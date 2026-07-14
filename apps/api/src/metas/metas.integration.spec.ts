@@ -5,8 +5,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createDatabaseClient, resetDatabase } from "../../test/database.js";
 import {
   addMembership,
-  createDeck,
-  createFormat,
   createGame,
   createHero,
   createMeta,
@@ -24,10 +22,10 @@ import type { PrismaClient } from "../generated/prisma/client.js";
 /**
  * Endpoint tests for metas and their tiered deck lists. The critical properties are
  * tenant isolation (a team never reaches another team's metas/entries), the
- * current-meta resolution, the deck-entry target rules (exactly-one target,
- * reference-deck ownership, cross-game hero, duplicates), and that a meta emits its
- * lifecycle activity. A two-team Flesh and Blood world plus a Riftbound game (for
- * cross-game rejection) backs the suite.
+ * current-meta resolution, the deck-entry matchup-subject rules (label required,
+ * optional hero qualifier, repeated heroes, cross-game hero, exact duplicates), and
+ * that a meta emits its lifecycle activity. A two-team Flesh and Blood world plus a
+ * Riftbound game (for cross-game rejection) backs the suite.
  */
 describe("Metas endpoints (integration)", () => {
   let app: INestApplication;
@@ -40,7 +38,6 @@ describe("Metas endpoints (integration)", () => {
   let memberA2: TestUser;
   let memberB: TestUser;
 
-  let fabFormatId: string;
   let fabHeroId: string;
   let riftHeroId: string;
 
@@ -78,13 +75,6 @@ describe("Metas endpoints (integration)", () => {
     await addMembership(prisma, { teamId: teamA.id, userId: memberA2.id, role: "member" });
     await addMembership(prisma, { teamId: teamB.id, userId: memberB.id, role: "member" });
 
-    fabFormatId = (
-      await createFormat(prisma, {
-        gameId: "flesh-and-blood",
-        key: "cc",
-        name: "Classic Constructed",
-      })
-    ).id;
     fabHeroId = (await createHero(prisma, { gameId: "flesh-and-blood", name: "Dorinthea" })).id;
     riftHeroId = (await createHero(prisma, { gameId: "riftbound", name: "Rift Legend" })).id;
   });
@@ -293,123 +283,90 @@ describe("Metas endpoints (integration)", () => {
   });
 
   describe("Deck entries", () => {
-    it("adds entries for a reference deck, a hero, and an archetype label with derived labels", async () => {
+    it("adds a hero-qualified entry and a label-only entry with derived snapshot labels", async () => {
       const meta = await createMeta(prisma, { teamId: teamA.id });
-      const referenceDeck = await createDeck(prisma, {
-        teamId: teamA.id,
-        ownerId: memberA.id,
-        formatId: fabFormatId,
-        isReference: true,
-        name: "Boltyn Reference",
-      });
-
-      const byDeck = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
-        tier: "meta_defining",
-        referenceDeckId: referenceDeck.id,
-      });
-      expect(byDeck.status).toBe(201);
-      expect(byDeck.body.referenceDeckId).toBe(referenceDeck.id);
-      expect(byDeck.body.opponentSnapshotLabel).toBe("Boltyn Reference");
 
       const byHero = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
-        tier: "contender",
+        tier: "meta_defining",
         heroId: fabHeroId,
+        label: "Draconic Dorinthea",
       });
       expect(byHero.status).toBe(201);
-      expect(byHero.body.opponentSnapshotLabel).toBe("Dorinthea");
+      expect(byHero.body.heroId).toBe(fabHeroId);
+      expect(byHero.body.label).toBe("Draconic Dorinthea");
+      expect(byHero.body.opponentSnapshotLabel).toBe("Draconic Dorinthea");
 
       const byLabel = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
         tier: "fringe",
-        archetypeLabel: "Aggro Red",
+        label: "Aggro Red",
       });
       expect(byLabel.status).toBe(201);
+      expect(byLabel.body.heroId).toBeNull();
       expect(byLabel.body.opponentSnapshotLabel).toBe("Aggro Red");
 
       const list = await asMemberA(http().get(`/api/metas/${meta.id}/deck-entries`));
-      expect(list.body.data).toHaveLength(3);
-      // Sorted by tier priority: meta_defining → contender → fringe.
+      expect(list.body.data).toHaveLength(2);
+      // Sorted by tier priority: meta_defining → fringe.
       expect(list.body.data.map((entry: { tier: string }) => entry.tier)).toEqual([
         "meta_defining",
-        "contender",
         "fringe",
       ]);
     });
 
-    it("rejects zero or multiple target forms with 400", async () => {
+    it("requires a label with 400", async () => {
       const meta = await createMeta(prisma, { teamId: teamA.id });
       const none = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
         tier: "contender",
       });
       expect(none.status).toBe(400);
-      const both = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
+      const heroOnly = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
         tier: "contender",
         heroId: fabHeroId,
-        archetypeLabel: "Aggro Red",
       });
-      expect(both.status).toBe(400);
+      expect(heroOnly.status).toBe(400);
     });
 
     it("rejects an unknown tier with 400", async () => {
       const meta = await createMeta(prisma, { teamId: teamA.id });
       const response = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
         tier: "tier_one",
-        heroId: fabHeroId,
+        label: "Aggro Red",
       });
       expect(response.status).toBe(400);
     });
 
-    it("rejects a duplicate target within one meta with 422", async () => {
-      const meta = await createMeta(prisma, { teamId: teamA.id });
-      await createMetaDeckEntry(prisma, { metaId: meta.id, teamId: teamA.id, heroId: fabHeroId });
-      const response = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
-        tier: "contender",
-        heroId: fabHeroId,
-      });
-      expect(response.status).toBe(422);
-    });
-
-    it("rejects a case-insensitive duplicate archetype label with 422", async () => {
+    it("rejects only an EXACT duplicate (same hero + same label) with 422, allowing repeated heroes", async () => {
       const meta = await createMeta(prisma, { teamId: teamA.id });
       await createMetaDeckEntry(prisma, {
         metaId: meta.id,
         teamId: teamA.id,
-        archetypeLabel: "Aggro Red",
+        heroId: fabHeroId,
+        label: "Fatigue Dorinthea",
       });
-      const response = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
+
+      // Same hero, DIFFERENT label → allowed (repeated heroes are distinguished by label).
+      const differentLabel = await asMemberA(
+        http().post(`/api/metas/${meta.id}/deck-entries`),
+      ).send({ tier: "contender", heroId: fabHeroId, label: "Aggro Dorinthea" });
+      expect(differentLabel.status).toBe(201);
+
+      // Same hero + same label (case-insensitive) → rejected as an exact duplicate.
+      const exact = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
         tier: "contender",
-        archetypeLabel: "aggro red",
+        heroId: fabHeroId,
+        label: "fatigue dorinthea",
       });
-      expect(response.status).toBe(422);
+      expect(exact.status).toBe(422);
     });
 
-    it("rejects a deck that is not a reference deck with 422", async () => {
+    it("rejects a case-insensitive duplicate label-only subject with 422", async () => {
       const meta = await createMeta(prisma, { teamId: teamA.id });
-      const nonReferenceDeck = await createDeck(prisma, {
-        teamId: teamA.id,
-        ownerId: memberA.id,
-        formatId: fabFormatId,
-        isReference: false,
-      });
+      await createMetaDeckEntry(prisma, { metaId: meta.id, teamId: teamA.id, label: "Aggro Red" });
       const response = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
         tier: "contender",
-        referenceDeckId: nonReferenceDeck.id,
+        label: "aggro red",
       });
       expect(response.status).toBe(422);
-    });
-
-    it("rejects a reference deck belonging to another team with 404 (cross-team FK)", async () => {
-      const meta = await createMeta(prisma, { teamId: teamA.id });
-      const teamBDeck = await createDeck(prisma, {
-        teamId: teamB.id,
-        ownerId: memberB.id,
-        formatId: fabFormatId,
-        isReference: true,
-      });
-      const response = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
-        tier: "contender",
-        referenceDeckId: teamBDeck.id,
-      });
-      expect(response.status).toBe(404);
     });
 
     it("rejects a hero from another game with 422 (cross-game FK)", async () => {
@@ -417,32 +374,35 @@ describe("Metas endpoints (integration)", () => {
       const response = await asMemberA(http().post(`/api/metas/${meta.id}/deck-entries`)).send({
         tier: "contender",
         heroId: riftHeroId,
+        label: "Some Riftbound Deck",
       });
       expect(response.status).toBe(422);
     });
 
-    it("updates an entry's tier/notes (target is immutable) and removes it", async () => {
+    it("edits the whole matchup subject (tier, label, hero, notes) and removes it", async () => {
       const meta = await createMeta(prisma, { teamId: teamA.id });
       const entry = await createMetaDeckEntry(prisma, {
         metaId: meta.id,
         teamId: teamA.id,
         heroId: fabHeroId,
-        opponentSnapshotLabel: "Dorinthea",
+        label: "Draconic Dorinthea",
         tier: "contender",
       });
 
       const updated = await asMemberA(
         http().patch(`/api/metas/${meta.id}/deck-entries/${entry.id}`),
-      ).send({ tier: "meta_defining", notes: "Now the top deck." });
+      ).send({
+        tier: "meta_defining",
+        label: "Now the top deck",
+        heroId: null,
+        notes: "Reclassified.",
+      });
       expect(updated.status).toBe(200);
       expect(updated.body.tier).toBe("meta_defining");
-      expect(updated.body.notes).toBe("Now the top deck.");
-
-      // The strict update schema rejects any attempt to change the target form.
-      const changeTarget = await asMemberA(
-        http().patch(`/api/metas/${meta.id}/deck-entries/${entry.id}`),
-      ).send({ heroId: riftHeroId });
-      expect(changeTarget.status).toBe(400);
+      expect(updated.body.label).toBe("Now the top deck");
+      expect(updated.body.heroId).toBeNull();
+      expect(updated.body.opponentSnapshotLabel).toBe("Now the top deck");
+      expect(updated.body.notes).toBe("Reclassified.");
 
       const removed = await asMemberA(
         http().delete(`/api/metas/${meta.id}/deck-entries/${entry.id}`),
@@ -480,6 +440,7 @@ describe("Metas endpoints (integration)", () => {
       const addEntry = await asMemberA(http().post(`/api/metas/${metaB.id}/deck-entries`)).send({
         tier: "contender",
         heroId: fabHeroId,
+        label: "Draconic Dorinthea",
       });
       expect([update.status, archive.status, addEntry.status]).toEqual([404, 404, 404]);
 
@@ -514,6 +475,7 @@ describe("Metas endpoints (integration)", () => {
       const entry = await asMemberA2(http().post(`/api/metas/${metaId}/deck-entries`)).send({
         tier: "contender",
         heroId: fabHeroId,
+        label: "Draconic Dorinthea",
       });
       expect(entry.status).toBe(201);
 

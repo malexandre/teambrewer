@@ -18,7 +18,6 @@ export interface DeckFilters {
   formatId?: string;
   heroId?: string;
   ownerId?: string;
-  isReference?: boolean;
 }
 
 /** Reduce filters to a flat, serializable object for the query key. */
@@ -28,7 +27,6 @@ function toKeyFilters(filters: DeckFilters): Record<string, string | boolean> {
   if (filters.formatId) keyFilters["formatId"] = filters.formatId;
   if (filters.heroId) keyFilters["heroId"] = filters.heroId;
   if (filters.ownerId) keyFilters["ownerId"] = filters.ownerId;
-  if (filters.isReference !== undefined) keyFilters["isReference"] = filters.isReference;
   return keyFilters;
 }
 
@@ -38,7 +36,6 @@ function toQueryString(filters: DeckFilters): string {
   if (filters.formatId) params.set("formatId", filters.formatId);
   if (filters.heroId) params.set("heroId", filters.heroId);
   if (filters.ownerId) params.set("ownerId", filters.ownerId);
-  if (filters.isReference !== undefined) params.set("isReference", String(filters.isReference));
   const query = params.toString();
   return query ? `?${query}` : "";
 }

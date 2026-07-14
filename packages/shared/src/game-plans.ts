@@ -10,6 +10,10 @@ import { archetypeLabelSchema } from "./events.js";
  * sequencing, and lines; there are no MTG-style sideboards). There is one canonical
  * plan per `(ourDeckId, opponentRef, formatId)`.
  *
+ * The opponent is a **matchup subject** mirroring MetaDeckEntry: a required
+ * `opponentArchetypeLabel` with an optional `opponentHeroId` qualifier. A plan may
+ * also be explicitly attached to specific meta deck entries via `metaDeckEntryIds`.
+ *
  * Key cards are referenced inline in the `body` as `+[[cardId]]` tokens (see
  * card-tokens.ts) — the meta-pivot redesign (WS-4) dropped the structured
  * `MatchupGamePlanCard` chip list in favor of the shared `+card` mention model.
@@ -33,49 +37,67 @@ export const gamePlanBodySchema = z
   .min(1, "A game-plan needs a body.")
   .max(20000, "The game-plan body must be at most 20000 characters.");
 
-// --- Opponent target (exactly one form) -------------------------------------
+/**
+ * The meta deck entries a plan is explicitly attached to. Each id is validated
+ * server-side as belonging to the same team. On create, omitting it attaches
+ * nothing; on update, passing it **replaces** the whole attached set. Distinct
+ * ids only.
+ */
+export const gamePlanMetaDeckEntryIdsSchema = z
+  .array(z.string().min(1))
+  .max(50, "A game-plan can attach at most 50 meta deck entries.")
+  .refine((ids) => new Set(ids).size === ids.length, {
+    message: "Attached meta deck entries must be distinct.",
+  });
 
-/** The opponent target forms; exactly one must be provided on a game-plan. */
-const opponentRefKeys = ["opponentHeroId", "opponentArchetypeLabel"] as const;
-
-function countPresentOpponentRefs(value: {
-  opponentHeroId?: unknown;
-  opponentArchetypeLabel?: unknown;
-}): number {
-  return opponentRefKeys.filter((key) => value[key] !== undefined && value[key] !== null).length;
+/**
+ * Normalize a matchup subject (an optional hero qualifier + a required label) into a
+ * stable `opponentRef` key. The single source of truth shared by game-plans, meta
+ * deck entries, and readiness matching: a hero-qualified subject keys as
+ * `hero:<id>|label:<lowercased>` and a label-only subject as `label:<lowercased>`,
+ * so uniqueness holds across the polymorphic target and repeated heroes under
+ * different labels stay distinct.
+ */
+export function deriveMatchupSubjectRef(subject: {
+  heroId?: string | null;
+  label: string;
+}): string {
+  const normalizedLabel = subject.label.trim().toLowerCase();
+  return subject.heroId
+    ? `hero:${subject.heroId}|label:${normalizedLabel}`
+    : `label:${normalizedLabel}`;
 }
 
 // --- Inputs -----------------------------------------------------------------
 
 /**
- * Create-game-plan input. Names exactly one opponent target form — a bare hero or a
- * free-text archetype label — plus our deck, the format, and the body (key cards live
- * inline in the body as `+[[cardId]]` tokens). `teamId`, `updatedById`, and the derived
- * `opponentSnapshotLabel` are server-stamped and omitted; unknown keys are stripped.
+ * Create-game-plan input. The opponent is a matchup subject — a required
+ * `opponentArchetypeLabel` with an optional `opponentHeroId` qualifier — plus our
+ * deck, the format, and the body (key cards live inline in the body as `+[[cardId]]`
+ * tokens). `metaDeckEntryIds` optionally attaches the plan to specific meta deck
+ * entries. `teamId`, `updatedById`, and the derived `opponentSnapshotLabel`/
+ * `opponentRef` are server-stamped and omitted; unknown keys are stripped.
  */
-export const createMatchupGamePlanSchema = z
-  .object({
-    ourDeckId: z.string().min(1, "A deck is required."),
-    formatId: z.string().min(1, "A format is required."),
-    opponentHeroId: z.string().min(1).optional(),
-    opponentArchetypeLabel: archetypeLabelSchema.optional(),
-    body: gamePlanBodySchema,
-  })
-  .refine((value) => countPresentOpponentRefs(value) === 1, {
-    message:
-      "A game-plan must reference exactly one opponent target: a hero or an archetype label.",
-  });
+export const createMatchupGamePlanSchema = z.object({
+  ourDeckId: z.string().min(1, "A deck is required."),
+  formatId: z.string().min(1, "A format is required."),
+  opponentHeroId: z.string().min(1).optional(),
+  opponentArchetypeLabel: archetypeLabelSchema,
+  body: gamePlanBodySchema,
+  metaDeckEntryIds: gamePlanMetaDeckEntryIdsSchema.optional(),
+});
 export type CreateMatchupGamePlanInput = z.infer<typeof createMatchupGamePlanSchema>;
 
 /**
  * Update-game-plan input. Partial and `.strict()`. The matchup key (`ourDeckId`,
- * `formatId`, and the opponent target) is immutable — editing a plan revises its body
- * in place (including its inline `+[[cardId]]` tokens); to change the matchup, create
- * a new plan.
+ * `formatId`, and the opponent subject) is immutable — editing a plan revises its
+ * body in place (including its inline `+[[cardId]]` tokens) and/or replaces its
+ * attached meta deck entries; to change the matchup, create a new plan.
  */
 export const updateMatchupGamePlanSchema = z
   .object({
     body: gamePlanBodySchema.optional(),
+    metaDeckEntryIds: gamePlanMetaDeckEntryIdsSchema.optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
@@ -86,7 +108,7 @@ export type UpdateMatchupGamePlanInput = z.infer<typeof updateMatchupGamePlanSch
 /**
  * Query parameters for `GET /api/game-plans`. Values arrive as strings, so `limit` is
  * coerced. Archived plans are excluded server-side. `opponentRef` is a normalized key
- * (`hero:<id>` | `label:<lowercased>`) matching how plans are keyed.
+ * (see {@link deriveMatchupSubjectRef}) matching how plans are keyed.
  */
 export const matchupGamePlanListQuerySchema = z.object({
   ourDeckId: z.string().optional(),
@@ -109,10 +131,12 @@ export type GamePlanUser = z.infer<typeof gamePlanUserSchema>;
 
 /**
  * A matchup game-plan as returned by the API. The opponent is exposed both as its live
- * reference ids (any may be null) and as `opponentSnapshotLabel` — a human label
- * resolved server-side at write time that survives deletion of a referenced hero.
- * `opponentRef` is the normalized key used for the canonical-plan constraint and list
- * filtering. Key cards are inline `+[[cardId]]` tokens in `body`.
+ * reference ids (`opponentHeroId` may be null; `opponentArchetypeLabel` is always
+ * present) and as `opponentSnapshotLabel` — a human label resolved server-side at
+ * write time that survives deletion of a referenced hero. `opponentRef` is the
+ * normalized key used for the canonical-plan constraint and list filtering.
+ * `metaDeckEntryIds` lists the meta deck entries the plan is explicitly attached to.
+ * Key cards are inline `+[[cardId]]` tokens in `body`.
  */
 export const matchupGamePlanSchema = z.object({
   id: z.string(),
@@ -120,10 +144,11 @@ export const matchupGamePlanSchema = z.object({
   ourDeckName: z.string(),
   formatId: z.string(),
   opponentHeroId: z.string().nullable(),
-  opponentArchetypeLabel: z.string().nullable(),
+  opponentArchetypeLabel: z.string(),
   opponentRef: z.string(),
   opponentSnapshotLabel: z.string(),
   body: z.string(),
+  metaDeckEntryIds: z.array(z.string()),
   updatedBy: gamePlanUserSchema,
   archivedAt: z.string().nullable(),
   createdAt: z.string(),

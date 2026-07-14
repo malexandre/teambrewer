@@ -27,9 +27,8 @@ function mockApi(
         id: "entry-1",
         metaId: "meta-1",
         tier: "meta_defining",
-        referenceDeckId: null,
         heroId: null,
-        archetypeLabel: "Aggro Red",
+        label: "Aggro Red",
         opponentSnapshotLabel: "Aggro Red",
         notes: "Now the top deck.",
         createdAt: "2026-07-12T00:00:00.000Z",
@@ -63,10 +62,9 @@ function mockApi(
         id: "entry-new",
         metaId: "meta-1",
         tier: "contender",
-        referenceDeckId: null,
         heroId: "hero-dori",
-        archetypeLabel: null,
-        opponentSnapshotLabel: "Dorinthea",
+        label: "Draconic Dorinthea",
+        opponentSnapshotLabel: "Draconic Dorinthea",
         notes: "",
         createdAt: "2026-07-12T00:00:00.000Z",
         updatedAt: "2026-07-12T00:00:00.000Z",
@@ -88,9 +86,8 @@ const entries: MetaDeckEntry[] = [
     id: "entry-1",
     metaId: "meta-1",
     tier: "meta_defining",
-    referenceDeckId: null,
     heroId: null,
-    archetypeLabel: "Aggro Red",
+    label: "Aggro Red",
     opponentSnapshotLabel: "Aggro Red",
     notes: "The deck to beat.",
     createdAt: "2026-07-12T00:00:00.000Z",
@@ -100,9 +97,8 @@ const entries: MetaDeckEntry[] = [
     id: "entry-2",
     metaId: "meta-1",
     tier: "fringe",
-    referenceDeckId: null,
     heroId: null,
-    archetypeLabel: "Control Blue",
+    label: "Control Blue",
     opponentSnapshotLabel: "Control Blue",
     notes: "",
     createdAt: "2026-07-12T00:00:00.000Z",
@@ -126,20 +122,19 @@ describe("MetaDeckEntryBuilder", () => {
     expect(screen.getByText("The deck to beat.")).toBeInTheDocument();
   });
 
-  it("validates a target is chosen before adding", async () => {
+  it("requires a label before adding", async () => {
     mockApi();
     const user = userEvent.setup();
     renderWithClient(
       <MetaDeckEntryBuilder teamId="team-1" metaId="meta-1" entries={entries} canEdit />,
     );
 
-    await user.selectOptions(screen.getByRole("combobox", { name: /target kind/i }), "archetype");
-    // Archetype label left blank → validation blocks the add.
+    // The archetype label is left blank → validation blocks the add.
     await user.click(screen.getByRole("button", { name: /add deck/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/archetype label/i);
   });
 
-  it("adds a hero entry with the chosen tier", async () => {
+  it("adds a label + optional hero entry with the chosen tier", async () => {
     const created: unknown[] = [];
     mockApi({ onCreate: (body) => created.push(body) });
     const user = userEvent.setup();
@@ -148,12 +143,17 @@ describe("MetaDeckEntryBuilder", () => {
     );
 
     await screen.findByRole("option", { name: "Dorinthea" });
-    await user.selectOptions(screen.getByRole("combobox", { name: /^hero$/i }), "hero-dori");
+    await user.type(screen.getByLabelText(/^archetype$/i), "Draconic Dorinthea");
+    await user.selectOptions(screen.getByRole("combobox", { name: /hero/i }), "hero-dori");
     await user.selectOptions(screen.getByRole("combobox", { name: /^tier$/i }), "contender");
     await user.click(screen.getByRole("button", { name: /add deck/i }));
 
     await vi.waitFor(() => expect(created).toHaveLength(1));
-    expect(created[0]).toMatchObject({ heroId: "hero-dori", tier: "contender" });
+    expect(created[0]).toMatchObject({
+      heroId: "hero-dori",
+      label: "Draconic Dorinthea",
+      tier: "contender",
+    });
   });
 
   it("edits an existing entry's tier and notes", async () => {

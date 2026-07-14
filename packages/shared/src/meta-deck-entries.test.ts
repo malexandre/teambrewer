@@ -28,42 +28,43 @@ describe("meta tier enum", () => {
 });
 
 describe("createMetaDeckEntrySchema", () => {
-  it("accepts exactly one target form", () => {
-    expect(
-      createMetaDeckEntrySchema.safeParse({ tier: "contender", heroId: "hero_1" }).success,
-    ).toBe(true);
-    expect(
-      createMetaDeckEntrySchema.safeParse({ tier: "fringe", archetypeLabel: "Aggro" }).success,
-    ).toBe(true);
-  });
-
-  it("rejects zero or multiple target forms", () => {
+  it("always requires a label", () => {
     expect(createMetaDeckEntrySchema.safeParse({ tier: "contender" }).success).toBe(false);
-    expect(
-      createMetaDeckEntrySchema.safeParse({
-        tier: "contender",
-        heroId: "hero_1",
-        archetypeLabel: "Aggro",
-      }).success,
-    ).toBe(false);
+    expect(createMetaDeckEntrySchema.safeParse({ tier: "fringe", label: "Aggro" }).success).toBe(
+      true,
+    );
   });
 
-  it("defaults notes to an empty string", () => {
-    const parsed = createMetaDeckEntrySchema.parse({ tier: "meta_defining", heroId: "hero_1" });
+  it("accepts a label with an optional hero qualifier", () => {
+    const parsed = createMetaDeckEntrySchema.parse({
+      tier: "contender",
+      heroId: "hero_1",
+      label: "Fatigue Kano",
+    });
+    expect(parsed.heroId).toBe("hero_1");
+    expect(parsed.label).toBe("Fatigue Kano");
+  });
+
+  it("defaults notes to an empty string and leaves the hero optional", () => {
+    const parsed = createMetaDeckEntrySchema.parse({ tier: "meta_defining", label: "Aggro" });
     expect(parsed.notes).toBe("");
+    expect(parsed.heroId).toBeUndefined();
   });
 });
 
 describe("updateMetaDeckEntrySchema", () => {
-  it("allows changing the tier or notes", () => {
+  it("allows changing the tier, label, hero, or notes", () => {
     expect(updateMetaDeckEntrySchema.safeParse({ tier: "fringe" }).success).toBe(true);
+    expect(updateMetaDeckEntrySchema.safeParse({ label: "Renamed archetype" }).success).toBe(true);
+    expect(updateMetaDeckEntrySchema.safeParse({ heroId: "hero_2" }).success).toBe(true);
+    // Passing null clears the hero qualifier.
+    expect(updateMetaDeckEntrySchema.safeParse({ heroId: null }).success).toBe(true);
     expect(updateMetaDeckEntrySchema.safeParse({ notes: "watch the go-wide plan" }).success).toBe(
       true,
     );
   });
 
-  it("rejects an empty update or an attempt to change the target", () => {
+  it("rejects an empty update", () => {
     expect(updateMetaDeckEntrySchema.safeParse({}).success).toBe(false);
-    expect(updateMetaDeckEntrySchema.safeParse({ heroId: "hero_2" }).success).toBe(false);
   });
 });

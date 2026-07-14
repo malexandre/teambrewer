@@ -11,6 +11,8 @@ import {
   createGame,
   createHero,
   createMatchupGamePlan,
+  createMeta,
+  createMetaDeckEntry,
   createTeam,
   createTestPrismaClient,
   createUser,
@@ -125,12 +127,13 @@ describe("Game-plans endpoints (integration)", () => {
     ourDeckId: deckA.id,
     formatId: fabFormatId,
     opponentHeroId: fabHeroId,
+    opponentArchetypeLabel: "Draconic Dorinthea",
     // Key cards are referenced inline in the body as +[[cardId]] tokens (WS-4).
     body: `Mulligan for +[[${cardA.id}]]; sequence attacks before defense reactions.`,
   });
 
   describe("POST /api/game-plans", () => {
-    it("creates a plan, stamping teamId/updatedBy server-side and resolving the opponent label", async () => {
+    it("creates a plan, stamping teamId/updatedBy server-side and resolving the opponent subject", async () => {
       const response = await asMemberA(http().post("/api/game-plans")).send({
         ...validBody(),
         teamId: teamB.id,
@@ -138,11 +141,26 @@ describe("Game-plans endpoints (integration)", () => {
       });
       expect(response.status).toBe(201);
       expect(response.body.opponentHeroId).toBe(fabHeroId);
-      expect(response.body.opponentSnapshotLabel).toBe("Dorinthea");
-      expect(response.body.opponentRef).toBe(`hero:${fabHeroId}`);
+      expect(response.body.opponentArchetypeLabel).toBe("Draconic Dorinthea");
+      expect(response.body.opponentSnapshotLabel).toBe("Draconic Dorinthea");
+      // The ref encodes hero + lowercased label so repeated heroes stay distinct.
+      expect(response.body.opponentRef).toBe(`hero:${fabHeroId}|label:draconic dorinthea`);
+      expect(response.body.metaDeckEntryIds).toEqual([]);
       expect(response.body.updatedBy.userId).toBe(memberA.id);
       // The body carries the inline card token verbatim (resolved to a chip in the UI).
       expect(response.body.body).toContain(`+[[${cardA.id}]]`);
+    });
+
+    it("accepts a label-only opponent subject", async () => {
+      const { opponentHeroId, ...labelOnly } = validBody();
+      void opponentHeroId;
+      const response = await asMemberA(http().post("/api/game-plans")).send({
+        ...labelOnly,
+        opponentArchetypeLabel: "Aggro Fai",
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.opponentHeroId).toBeNull();
+      expect(response.body.opponentRef).toBe("label:aggro fai");
     });
 
     it("rejects a second create for the same matchup key with 409", async () => {
@@ -152,12 +170,40 @@ describe("Game-plans endpoints (integration)", () => {
       expect(dup.body.error.code).toBe("CONFLICT");
     });
 
-    it("rejects an opponent target that is not exactly one form (400)", async () => {
-      const response = await asMemberA(http().post("/api/game-plans")).send({
-        ...validBody(),
-        opponentArchetypeLabel: "Aggro Fai",
-      });
+    it("rejects a plan with no opponent label (400)", async () => {
+      const { opponentArchetypeLabel, ...withoutLabel } = validBody();
+      void opponentArchetypeLabel;
+      const response = await asMemberA(http().post("/api/game-plans")).send(withoutLabel);
       expect(response.status).toBe(400);
+    });
+
+    it("attaches meta deck entries and rejects an entry from another team (422)", async () => {
+      const meta = await createMeta(prisma, { teamId: teamA.id });
+      const entry = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        heroId: fabHeroId,
+        label: "Draconic Dorinthea",
+      });
+      const created = await asMemberA(http().post("/api/game-plans")).send({
+        ...validBody(),
+        metaDeckEntryIds: [entry.id],
+      });
+      expect(created.status).toBe(201);
+      expect(created.body.metaDeckEntryIds).toEqual([entry.id]);
+
+      const foreignMeta = await createMeta(prisma, { teamId: teamB.id });
+      const foreignEntry = await createMetaDeckEntry(prisma, {
+        metaId: foreignMeta.id,
+        teamId: teamB.id,
+        label: "Bravo Deck",
+      });
+      const rejected = await asMemberA(http().post("/api/game-plans")).send({
+        ...validBody(),
+        opponentArchetypeLabel: "Another Matchup",
+        metaDeckEntryIds: [foreignEntry.id],
+      });
+      expect(rejected.status).toBe(422);
     });
 
     it("rejects a deck from another team (cross-team FK → 422)", async () => {

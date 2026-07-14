@@ -91,11 +91,12 @@ export class MetasController {
 
   @Patch(":metaId/deck-entries/:entryId")
   updateDeckEntry(
+    @CurrentTeam() team: TeamContext,
     @Param("metaId") metaId: string,
     @Param("entryId") entryId: string,
     @Body() body: unknown,
   ): Promise<MetaDeckEntry> {
-    return this.metas.updateDeckEntry(metaId, entryId, updateMetaDeckEntrySchema.parse(body));
+    return this.metas.updateDeckEntry(team, metaId, entryId, updateMetaDeckEntrySchema.parse(body));
   }
 
   @Delete(":metaId/deck-entries/:entryId")

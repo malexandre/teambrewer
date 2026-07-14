@@ -64,7 +64,6 @@ export function GameLogWizard({
   const { data: currentUser } = useCurrentUser();
   const { data: gameConfig } = useGameConfig(teamId);
   const { data: teamDecks } = useDecks(teamId, {});
-  const { data: referenceDecks } = useDecks(teamId, { isReference: true });
   const { data: members } = useMembers(teamId);
   const { data: metas } = useMetas(teamId);
   const { data: currentMeta, isPending: currentMetaPending } = useCurrentMeta(teamId);
@@ -92,9 +91,7 @@ export function GameLogWizard({
   const [opponentHeroId, setOpponentHeroId] = useState(initialOpponent.heroId);
   const [opponentPilotUserId, setOpponentPilotUserId] = useState(initialOpponent.pilotUserId);
   const [opponentTeamDeckId, setOpponentTeamDeckId] = useState(initialOpponent.teamDeckId);
-  const [opponentReferenceDeckId, setOpponentReferenceDeckId] = useState(
-    initialOpponent.referenceDeckId,
-  );
+  const [opponentDeckId, setOpponentDeckId] = useState(initialOpponent.opponentDeckId);
   const [archetypeLabel, setArchetypeLabel] = useState(initialOpponent.archetypeLabel);
   const [externalOpponentName, setExternalOpponentName] = useState(
     initialOpponent.externalOpponentName,
@@ -226,10 +223,8 @@ export function GameLogWizard({
         ? { pilotUserId: opponentPilotUserId, deckId: opponentTeamDeckId }
         : null;
     }
-    if (opponentKind === "reference_deck") {
-      return opponentReferenceDeckId
-        ? { deckId: opponentReferenceDeckId, externalOpponentName: externalName }
-        : null;
+    if (opponentKind === "team_deck") {
+      return opponentDeckId ? { deckId: opponentDeckId, externalOpponentName: externalName } : null;
     }
     const trimmedLabel = archetypeLabel.trim();
     return trimmedLabel.length > 0
@@ -319,7 +314,6 @@ export function GameLogWizard({
   }
 
   const deckOptions = teamDecks?.data ?? [];
-  const referenceDeckOptions = referenceDecks?.data ?? [];
   const memberOptions = members?.data ?? [];
   const metaOptions = metas?.data ?? [];
 
@@ -340,7 +334,6 @@ export function GameLogWizard({
           setDeckId={setDeckId}
           deckOptions={deckOptions}
           memberOptions={memberOptions}
-          referenceDeckOptions={referenceDeckOptions}
           opponentKind={opponentKind}
           setOpponentKind={setOpponentKind}
           opponentHeroId={opponentHeroId}
@@ -349,8 +342,8 @@ export function GameLogWizard({
           setOpponentPilotUserId={setOpponentPilotUserId}
           opponentTeamDeckId={opponentTeamDeckId}
           setOpponentTeamDeckId={setOpponentTeamDeckId}
-          opponentReferenceDeckId={opponentReferenceDeckId}
-          setOpponentReferenceDeckId={setOpponentReferenceDeckId}
+          opponentDeckId={opponentDeckId}
+          setOpponentDeckId={setOpponentDeckId}
           archetypeLabel={archetypeLabel}
           setArchetypeLabel={setArchetypeLabel}
         />

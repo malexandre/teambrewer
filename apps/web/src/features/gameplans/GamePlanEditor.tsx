@@ -1,7 +1,6 @@
 import type { MatchupGamePlan } from "@teambrewer/shared";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { MentionComposer } from "@/features/collaboration/MentionComposer";
 import { HeroPicker } from "@/features/decks/HeroPicker";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
@@ -9,16 +8,14 @@ import { ApiError } from "@/lib/api-client";
 
 import { useCreateGamePlan, useUpdateGamePlan } from "./use-game-plan-mutations";
 
-type OpponentKind = "hero" | "archetype";
-
 /**
  * Create/edit form for a matchup game-plan, surfaced from the deck detail page. On
- * create it names the opponent (a hero from the game's reference data, or a free-text
- * archetype label) and the body. On edit the matchup key is immutable (server-enforced),
- * so only the body changes. Key cards are referenced inline in the body via the shared
- * {@link MentionComposer} with `+card` mentions on (type `+` to link a card) — there is
- * no separate structured key-card strip (WS-4). The composer's submit is the form's
- * submit; the body carries the plan.
+ * create it names the opponent as a matchup subject — a required free-text archetype
+ * label with an optional hero qualifier — plus the body. On edit the matchup key is
+ * immutable (server-enforced), so only the body changes. Key cards are referenced
+ * inline in the body via the shared {@link MentionComposer} with `+card` mentions on
+ * (type `+` to link a card) — there is no separate structured key-card strip (WS-4).
+ * The composer's submit is the form's submit; the body carries the plan.
  */
 export function GamePlanEditor({
   teamId,
@@ -35,7 +32,6 @@ export function GamePlanEditor({
 }) {
   const isEdit = existing !== undefined;
   const identityLabel = useIdentityLabel(teamId);
-  const [opponentKind, setOpponentKind] = useState<OpponentKind>("hero");
   const [heroId, setHeroId] = useState("");
   const [archetypeLabel, setArchetypeLabel] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -61,13 +57,8 @@ export function GamePlanEditor({
       return;
     }
 
-    if (opponentKind === "hero" && heroId === "") {
-      setValidationError("Choose an opponent, or switch to an archetype label.");
-      restoreComposer(body);
-      return;
-    }
-    if (opponentKind === "archetype" && archetypeLabel.trim().length === 0) {
-      setValidationError("Enter an archetype label, or switch to an opponent.");
+    if (archetypeLabel.trim().length === 0) {
+      setValidationError("Enter an archetype label for the matchup.");
       restoreComposer(body);
       return;
     }
@@ -77,9 +68,8 @@ export function GamePlanEditor({
         ourDeckId: deckId,
         formatId,
         body,
-        ...(opponentKind === "hero"
-          ? { opponentHeroId: heroId }
-          : { opponentArchetypeLabel: archetypeLabel.trim() }),
+        opponentArchetypeLabel: archetypeLabel.trim(),
+        ...(heroId ? { opponentHeroId: heroId } : {}),
       },
       { onSuccess: onDone, onError: () => restoreComposer(body) },
     );
@@ -95,32 +85,16 @@ export function GamePlanEditor({
       {!isEdit ? (
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">Opponent</span>
-          <div className="flex items-center gap-1">
-            {(["hero", "archetype"] as OpponentKind[]).map((kind) => (
-              <Button
-                key={kind}
-                type="button"
-                size="sm"
-                variant={opponentKind === kind ? "default" : "outline"}
-                aria-pressed={opponentKind === kind}
-                onClick={() => setOpponentKind(kind)}
-              >
-                {kind === "hero" ? identityLabel : "Archetype label"}
-              </Button>
-            ))}
-          </div>
-          {opponentKind === "hero" ? (
-            <HeroPicker teamId={teamId} value={heroId} onChange={setHeroId} id="game-plan-hero" />
-          ) : (
-            <input
-              type="text"
-              aria-label="Archetype label"
-              className="w-full rounded-md border border-input bg-background p-2 text-sm"
-              value={archetypeLabel}
-              onChange={(event) => setArchetypeLabel(event.target.value)}
-              placeholder="e.g. Aggro Fai"
-            />
-          )}
+          <input
+            type="text"
+            aria-label="Archetype label"
+            className="w-full rounded-md border border-input bg-background p-2 text-sm"
+            value={archetypeLabel}
+            onChange={(event) => setArchetypeLabel(event.target.value)}
+            placeholder="e.g. Aggro Fai"
+          />
+          <span className="text-xs text-muted-foreground">{identityLabel} (optional)</span>
+          <HeroPicker teamId={teamId} value={heroId} onChange={setHeroId} id="game-plan-hero" />
         </div>
       ) : null}
 

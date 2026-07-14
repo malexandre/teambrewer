@@ -8,6 +8,7 @@ import {
 
 import {
   type CreateMatchupGamePlanInput,
+  deriveMatchupSubjectRef,
   errorCode,
   type MatchupGamePlan,
   type MatchupGamePlanListQuery,
@@ -35,7 +36,7 @@ interface GamePlanRow {
   ourDeckId: string;
   formatId: string;
   opponentHeroId: string | null;
-  opponentArchetypeLabel: string | null;
+  opponentArchetypeLabel: string;
   opponentRef: string;
   opponentSnapshotLabel: string;
   body: string;
@@ -44,12 +45,13 @@ interface GamePlanRow {
   updatedAt: Date;
   ourDeck: { name: string };
   updatedBy: UserRow;
+  metaDeckEntries: { metaDeckEntryId: string }[];
 }
 
 /** The resolved opponent columns + normalized key + human snapshot label, ready to persist. */
 interface ResolvedOpponent {
   opponentHeroId: string | null;
-  opponentArchetypeLabel: string | null;
+  opponentArchetypeLabel: string;
   opponentRef: string;
   opponentSnapshotLabel: string;
 }
@@ -57,6 +59,7 @@ interface ResolvedOpponent {
 const GAME_PLAN_INCLUDE = {
   ourDeck: { select: { name: true } },
   updatedBy: { select: { id: true, username: true, displayName: true } },
+  metaDeckEntries: { select: { metaDeckEntryId: true } },
 } as const;
 
 /**
@@ -129,6 +132,7 @@ export class GamePlansService {
     await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
     const opponent = await this.resolveOpponent(team.gameId, input);
     await this.assertNoDuplicatePlan(input.ourDeckId, opponent.opponentRef, input.formatId);
+    const entryIds = await this.assertTeamMetaDeckEntries(input.metaDeckEntryIds ?? []);
 
     const created = await this.scoped.db.matchupGamePlan.create({
       data: {
@@ -146,6 +150,7 @@ export class GamePlansService {
       },
       select: { id: true },
     });
+    await this.replaceAttachedEntries(created.id, entryIds);
 
     await this.recordActivity(team, created.id, "matchup_game_plan_created");
     return this.getGamePlan(created.id);
@@ -163,9 +168,19 @@ export class GamePlansService {
   ): Promise<MatchupGamePlan> {
     await this.requireActiveGamePlanRow(gamePlanId);
 
+    // Validate any provided attachment set (same-team) BEFORE writing, so a bad id
+    // rejects without committing a partial change.
+    const entryIds =
+      input.metaDeckEntryIds !== undefined
+        ? await this.assertTeamMetaDeckEntries(input.metaDeckEntryIds)
+        : null;
+
     const data: Record<string, unknown> = { updatedById: team.userId };
     if (input.body !== undefined) data["body"] = input.body;
     await this.scoped.db.matchupGamePlan.updateMany({ where: { id: gamePlanId }, data });
+    if (entryIds !== null) {
+      await this.replaceAttachedEntries(gamePlanId, entryIds);
+    }
 
     await this.recordActivity(team, gamePlanId, "matchup_game_plan_updated");
     return this.getGamePlan(gamePlanId);
@@ -211,44 +226,68 @@ export class GamePlansService {
   }
 
   /**
-   * Resolve the single opponent target (already exactly-one-of by the schema) into its
-   * persisted columns, a normalized `opponentRef` key (so uniqueness holds across the
-   * polymorphic target), and a human `opponentSnapshotLabel`. A hero must belong to the
-   * team's game (→ 404).
+   * Resolve the opponent matchup subject (a required label + an optional hero
+   * qualifier) into its persisted columns, a normalized `opponentRef` key (so
+   * uniqueness holds across the polymorphic target and repeated heroes under
+   * different labels stay distinct — see {@link deriveMatchupSubjectRef}), and a
+   * human `opponentSnapshotLabel` (the label, which survives hero deletion). A hero,
+   * when provided, must belong to the team's game (→ 404).
    */
   private async resolveOpponent(
     gameId: string,
     input: {
       opponentHeroId?: string | undefined;
-      opponentArchetypeLabel?: string | undefined;
+      opponentArchetypeLabel: string;
     },
   ): Promise<ResolvedOpponent> {
-    const empty = {
-      opponentHeroId: null,
-      opponentArchetypeLabel: null,
-    };
-
-    if (input.opponentHeroId !== undefined) {
-      await assertHeroInGame(this.scoped.db, gameId, input.opponentHeroId);
-      const hero = await this.scoped.db.hero.findFirst({
-        where: { id: input.opponentHeroId },
-        select: { name: true },
-      });
-      return {
-        ...empty,
-        opponentHeroId: input.opponentHeroId,
-        opponentRef: `hero:${input.opponentHeroId}`,
-        opponentSnapshotLabel: hero?.name ?? "Hero",
-      };
+    const heroId = input.opponentHeroId ?? null;
+    if (heroId !== null) {
+      await assertHeroInGame(this.scoped.db, gameId, heroId);
     }
-
-    const label = input.opponentArchetypeLabel ?? "";
     return {
-      ...empty,
-      opponentArchetypeLabel: label,
-      opponentRef: `label:${label.trim().toLowerCase()}`,
-      opponentSnapshotLabel: label,
+      opponentHeroId: heroId,
+      opponentArchetypeLabel: input.opponentArchetypeLabel,
+      opponentRef: deriveMatchupSubjectRef({ heroId, label: input.opponentArchetypeLabel }),
+      opponentSnapshotLabel: input.opponentArchetypeLabel,
     };
+  }
+
+  /**
+   * Validate that every attached meta-deck-entry id belongs to the team (a
+   * cross-team/missing id is a domain-rule 422; the team-scoped read never leaks
+   * existence). Returns the distinct ids to persist.
+   */
+  private async assertTeamMetaDeckEntries(entryIds: string[]): Promise<string[]> {
+    for (const entryId of entryIds) {
+      const entry = await this.scoped.db.metaDeckEntry.findFirst({
+        where: { id: entryId },
+        select: { id: true },
+      });
+      if (!entry) {
+        throw new UnprocessableEntityException({
+          error: {
+            code: errorCode.domainRuleViolation,
+            message: "An attached meta deck entry does not belong to this team.",
+          },
+        });
+      }
+    }
+    return entryIds;
+  }
+
+  /**
+   * Replace a plan's attached meta deck entries with exactly `entryIds`. The parent
+   * plan is already verified team-scoped and the entries validated same-team, so
+   * operating on the join rows by `gamePlanId` is safe (the join carries no teamId;
+   * it is reached through its parents).
+   */
+  private async replaceAttachedEntries(gamePlanId: string, entryIds: string[]): Promise<void> {
+    await this.scoped.db.gamePlanMetaDeckEntry.deleteMany({ where: { gamePlanId } });
+    if (entryIds.length > 0) {
+      await this.scoped.db.gamePlanMetaDeckEntry.createMany({
+        data: entryIds.map((metaDeckEntryId) => ({ gamePlanId, metaDeckEntryId })),
+      });
+    }
   }
 
   /** Enforce the one-canonical-plan-per-matchup rule (→ 409 on a create collision). */
@@ -306,6 +345,7 @@ function toMatchupGamePlan(row: GamePlanRow): MatchupGamePlan {
     opponentRef: row.opponentRef,
     opponentSnapshotLabel: row.opponentSnapshotLabel,
     body: row.body,
+    metaDeckEntryIds: row.metaDeckEntries.map((link) => link.metaDeckEntryId),
     updatedBy: {
       userId: row.updatedBy.id,
       username: row.updatedBy.username ?? "",

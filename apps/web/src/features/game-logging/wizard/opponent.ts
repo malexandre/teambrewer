@@ -1,13 +1,13 @@
 import type { GameLogDetail } from "@teambrewer/shared";
 
 /** How the opponent is identified. Drives which opponent sub-control is shown. */
-export type OpponentKind = "hero" | "teammate" | "archetype" | "reference_deck";
+export type OpponentKind = "hero" | "teammate" | "archetype" | "team_deck";
 
 export const OPPONENT_KIND_LABELS: Record<OpponentKind, string> = {
   hero: "Opponent hero",
   teammate: "Teammate",
   archetype: "Archetype label",
-  reference_deck: "Reference deck",
+  team_deck: "Team deck",
 };
 
 /** The opponent-related slice of wizard state, derived from an existing log in edit mode. */
@@ -16,7 +16,7 @@ export interface OpponentState {
   heroId: string;
   pilotUserId: string;
   teamDeckId: string;
-  referenceDeckId: string;
+  opponentDeckId: string;
   archetypeLabel: string;
   externalOpponentName: string;
 }
@@ -28,7 +28,7 @@ export function opponentStateFromLog(gameLog: GameLogDetail | undefined): Oppone
     heroId: "",
     pilotUserId: "",
     teamDeckId: "",
-    referenceDeckId: "",
+    opponentDeckId: "",
     archetypeLabel: "",
     externalOpponentName: sideB?.externalOpponentName ?? "",
   };
@@ -41,7 +41,7 @@ export function opponentStateFromLog(gameLog: GameLogDetail | undefined): Oppone
       teamDeckId: sideB.deckId ?? "",
     };
   }
-  if (sideB.deckId) return { kind: "reference_deck", ...base, referenceDeckId: sideB.deckId };
+  if (sideB.deckId) return { kind: "team_deck", ...base, opponentDeckId: sideB.deckId };
   if (sideB.heroId) return { kind: "hero", ...base, heroId: sideB.heroId };
   if (sideB.archetypeLabel)
     return { kind: "archetype", ...base, archetypeLabel: sideB.archetypeLabel };

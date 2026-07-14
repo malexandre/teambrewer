@@ -192,7 +192,7 @@ describe("Riftbound cross-game acceptance (integration)", () => {
     const deckEntry = await asRiftboundMember(
       request(app.getHttpServer())
         .post(`/api/metas/${metaId}/deck-entries`)
-        .send({ tier: "meta_defining", heroId: legendId }),
+        .send({ tier: "meta_defining", heroId: legendId, label: "Rift Aggro" }),
     );
     expect(deckEntry.status).toBe(201);
 

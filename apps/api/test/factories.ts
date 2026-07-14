@@ -258,7 +258,6 @@ export interface CreateDeckOptions {
   source?: string;
   status?: "exploratory" | "testing" | "tournament_ready" | "retired";
   visibility?: "team" | "private";
-  isReference?: boolean;
   tags?: string[];
   notes?: string;
   archivedAt?: Date | null;
@@ -290,7 +289,6 @@ export async function createDeck(
       source: options.source ?? "fabrary",
       status: options.status ?? "exploratory",
       visibility: options.visibility ?? "team",
-      isReference: options.isReference ?? false,
       tags: options.tags ?? [],
       notes: options.notes ?? "",
       archivedAt: options.archivedAt ?? null,
@@ -593,12 +591,13 @@ export async function createMatchupGamePlan(
   prisma: PrismaClient,
   options: CreateMatchupGamePlanOptions,
 ): Promise<{ id: string; teamId: string; ourDeckId: string; opponentRef: string }> {
-  const label = options.opponentArchetypeLabel ?? (options.opponentHeroId ? "Hero" : "Aggro Red");
+  const label = options.opponentArchetypeLabel ?? "Aggro Red";
+  const normalizedLabel = label.trim().toLowerCase();
   const opponentRef =
     options.opponentRef ??
     (options.opponentHeroId
-      ? `hero:${options.opponentHeroId}`
-      : `label:${(options.opponentArchetypeLabel ?? "Aggro Red").trim().toLowerCase()}`);
+      ? `hero:${options.opponentHeroId}|label:${normalizedLabel}`
+      : `label:${normalizedLabel}`);
   const created = await prisma.matchupGamePlan.create({
     data: {
       teamId: options.teamId,
@@ -606,8 +605,7 @@ export async function createMatchupGamePlan(
       formatId: options.formatId,
       updatedById: options.updatedById,
       opponentHeroId: options.opponentHeroId ?? null,
-      opponentArchetypeLabel:
-        options.opponentArchetypeLabel ?? (options.opponentHeroId ? null : "Aggro Red"),
+      opponentArchetypeLabel: label,
       opponentRef,
       opponentSnapshotLabel: options.opponentSnapshotLabel ?? label,
       body: options.body ?? "Mulligan aggressively; race the clock.",
@@ -669,9 +667,8 @@ export interface CreateMetaDeckEntryOptions {
   metaId: string;
   teamId: string;
   tier?: MetaTierValue;
-  referenceDeckId?: string | null;
   heroId?: string | null;
-  archetypeLabel?: string | null;
+  label?: string;
   opponentSnapshotLabel?: string;
   notes?: string;
 }
@@ -680,17 +677,15 @@ export async function createMetaDeckEntry(
   prisma: PrismaClient,
   options: CreateMetaDeckEntryOptions,
 ): Promise<{ id: string; metaId: string; teamId: string; tier: string }> {
-  const archetypeLabel =
-    options.archetypeLabel ?? (options.referenceDeckId || options.heroId ? null : "Aggro Red");
+  const label = options.label ?? options.opponentSnapshotLabel ?? "Aggro Red";
   const created = await prisma.metaDeckEntry.create({
     data: {
       metaId: options.metaId,
       teamId: options.teamId,
       tier: options.tier ?? "contender",
-      referenceDeckId: options.referenceDeckId ?? null,
       heroId: options.heroId ?? null,
-      archetypeLabel,
-      opponentSnapshotLabel: options.opponentSnapshotLabel ?? archetypeLabel ?? "Target",
+      label,
+      opponentSnapshotLabel: options.opponentSnapshotLabel ?? label,
       notes: options.notes ?? "",
     },
   });

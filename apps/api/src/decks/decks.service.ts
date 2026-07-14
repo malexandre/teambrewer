@@ -18,6 +18,7 @@ import {
   type DeckStatus,
   type DeckSummary,
   deriveGameOutcome,
+  deriveMatchupSubjectRef,
   errorCode,
   type IterationEntry,
   type IterationEntryList,
@@ -52,7 +53,6 @@ interface DeckRow {
   ownerId: string;
   status: DeckStatus;
   visibility: "team" | "private";
-  isReference: boolean;
   tags: string[];
   notes: string;
   archivedAt: Date | null;
@@ -60,13 +60,12 @@ interface DeckRow {
   updatedAt: Date;
 }
 
-/** A meta deck entry, as loaded for a readiness read. */
+/** A meta deck entry (a label + optional hero matchup subject), loaded for a readiness read. */
 interface MetaEntryRow {
   id: string;
   tier: MetaTier;
-  referenceDeckId: string | null;
   heroId: string | null;
-  archetypeLabel: string | null;
+  label: string;
   opponentSnapshotLabel: string;
   createdAt: Date;
 }
@@ -134,7 +133,6 @@ export class DecksService {
         ...(query.formatId ? { formatId: query.formatId } : {}),
         ...(query.heroId ? { heroId: query.heroId } : {}),
         ...(query.ownerId ? { ownerId: query.ownerId } : {}),
-        ...(query.isReference !== undefined ? { isReference: query.isReference } : {}),
         ...(query.visibility ? { visibility: query.visibility } : {}),
         ...(query.tag ? { tags: { has: query.tag } } : {}),
         ...(andClauses.length > 0 ? { AND: andClauses } : {}),
@@ -184,7 +182,6 @@ export class DecksService {
         source: recognized?.provider ?? UNRECOGNIZED_SOURCE,
         ownerId: team.userId,
         visibility: input.visibility,
-        isReference: input.isReference,
         tags: input.tags,
         notes: input.notes,
       },
@@ -210,7 +207,6 @@ export class DecksService {
     if (input.formatId !== undefined) data["formatId"] = input.formatId;
     if (input.heroId !== undefined) data["heroId"] = input.heroId;
     if (input.visibility !== undefined) data["visibility"] = input.visibility;
-    if (input.isReference !== undefined) data["isReference"] = input.isReference;
     if (input.tags !== undefined) data["tags"] = input.tags;
     if (input.notes !== undefined) data["notes"] = input.notes;
     if (input.externalUrl !== undefined && input.externalUrl !== deck.externalUrl) {
@@ -299,14 +295,15 @@ export class DecksService {
       select: {
         id: true,
         tier: true,
-        referenceDeckId: true,
         heroId: true,
-        archetypeLabel: true,
+        label: true,
         opponentSnapshotLabel: true,
         createdAt: true,
       },
     })) as MetaEntryRow[];
 
+    // Side A of a readiness read is always this team deck (deckId); only team-deck
+    // self logs feed a deck's readiness, so opponent-only identity fields drive matching.
     const games = (await this.scoped.db.gameLog.findMany({
       where: { deckId, archivedAt: null },
       select: {
@@ -319,19 +316,22 @@ export class DecksService {
       },
     })) as GameLogReadinessRow[];
 
-    const planRefs = new Set(
-      (
-        (await this.scoped.db.matchupGamePlan.findMany({
-          where: { ourDeckId: deckId, formatId: deck.formatId, archivedAt: null },
-          select: { opponentRef: true },
-        })) as { opponentRef: string }[]
-      ).map((plan) => plan.opponentRef),
+    // A matchup game-plan covers an entry either by matching its normalized
+    // opponentRef (a hero+label / label-only subject) or by an explicit attachment
+    // through GamePlanMetaDeckEntry. Both are loaded from the team-scoped plans.
+    const plans = (await this.scoped.db.matchupGamePlan.findMany({
+      where: { ourDeckId: deckId, formatId: deck.formatId, archivedAt: null },
+      select: { opponentRef: true, metaDeckEntries: { select: { metaDeckEntryId: true } } },
+    })) as { opponentRef: string; metaDeckEntries: { metaDeckEntryId: string }[] }[];
+    const planRefs = new Set(plans.map((plan) => plan.opponentRef));
+    const plannedEntryIds = new Set(
+      plans.flatMap((plan) => plan.metaDeckEntries.map((link) => link.metaDeckEntryId)),
     );
 
     const rows = sortEntriesByTier(entries).map((entry) => {
       const matched = games.filter((game) => gameMatchesEntry(game, entry)).map(toMatchupGame);
       const aggregate = aggregateMatchup(matched);
-      const opponentRef = deriveEntryOpponentRef(entry);
+      const opponentRef = deriveMatchupSubjectRef({ heroId: entry.heroId, label: entry.label });
       return {
         metaDeckEntryId: entry.id,
         tier: entry.tier,
@@ -340,7 +340,7 @@ export class DecksService {
         rawSampleCount: aggregate.rawSampleCount,
         effectiveSample: aggregate.effectiveSample,
         trustIndicator: aggregate.trustIndicator,
-        hasGamePlan: opponentRef !== null && planRefs.has(opponentRef),
+        hasGamePlan: planRefs.has(opponentRef) || plannedEntryIds.has(entry.id),
       } satisfies DeckMetaReadinessRow;
     });
 
@@ -500,7 +500,6 @@ function toDeckSummary(deck: DeckRow): DeckSummary {
     ownerId: deck.ownerId,
     status: deck.status,
     visibility: deck.visibility,
-    isReference: deck.isReference,
     tags: deck.tags,
     archivedAt: deck.archivedAt ? deck.archivedAt.toISOString() : null,
     createdAt: deck.createdAt.toISOString(),
@@ -523,37 +522,21 @@ function sortEntriesByTier(entries: MetaEntryRow[]): MetaEntryRow[] {
   });
 }
 
-/** Whether a game log's side-B identity matches a meta deck entry's single target form. */
+/**
+ * Whether a game log's opponent identity matches a meta deck entry's matchup subject.
+ * A hero entry matches a game logged against that hero; a label-only entry matches a
+ * game logged with the same free-text archetype label (case-insensitively). Team-deck
+ * opponents don't match meta entries. (Direct entry-id matching + full hero+label
+ * normalization arrive once game logs carry those fields — R-1 part C.)
+ */
 function gameMatchesEntry(game: GameLogReadinessRow, entry: MetaEntryRow): boolean {
-  if (entry.referenceDeckId !== null) {
-    return game.opponentDeckId === entry.referenceDeckId;
-  }
   if (entry.heroId !== null) {
     return game.heroId === entry.heroId;
   }
-  if (entry.archetypeLabel !== null) {
-    return (
-      game.archetypeLabel !== null &&
-      game.archetypeLabel.trim().toLowerCase() === entry.archetypeLabel.trim().toLowerCase()
-    );
-  }
-  return false;
-}
-
-/**
- * The normalized game-plan `opponentRef` for a meta deck entry's target, matching the
- * game-plans keying (`hero:<id>` | `label:<lowercased>`). A reference-deck target has no
- * game-plan opponent form (plans target a gauntlet entry / hero / archetype label, never
- * a bare deck), so it returns null and never matches a plan.
- */
-function deriveEntryOpponentRef(entry: MetaEntryRow): string | null {
-  if (entry.heroId !== null) {
-    return `hero:${entry.heroId}`;
-  }
-  if (entry.archetypeLabel !== null) {
-    return `label:${entry.archetypeLabel.trim().toLowerCase()}`;
-  }
-  return null;
+  return (
+    game.archetypeLabel !== null &&
+    game.archetypeLabel.trim().toLowerCase() === entry.label.trim().toLowerCase()
+  );
 }
 
 /** Map a matched game log to the shared aggregation input (our-side outcome + weight). */

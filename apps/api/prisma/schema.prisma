@@ -366,8 +366,8 @@ enum DeckVisibility {
 
 /// A team's deck: a link to an external list (Fabrary, etc.) plus structured,
 /// aggregable metadata. `source` is the recognized link provider (URL-pattern
-/// recognition only, never a content fetch). `isReference` marks an opponent/meta
-/// archetype used by gauntlets. Soft-deleted via `archivedAt` so history survives.
+/// recognition only, never a content fetch). Soft-deleted via `archivedAt` so
+/// history survives.
 model Deck {
   id          String         @id @default(cuid())
   teamId      String         @map("team_id")
@@ -380,7 +380,6 @@ model Deck {
   ownerId     String         @map("owner_id")
   status      DeckStatus     @default(exploratory)
   visibility  DeckVisibility @default(team)
-  isReference Boolean        @default(false) @map("is_reference")
   tags        String[]
   notes       String         @default("")
   archivedAt  DateTime?      @map("archived_at")
@@ -393,13 +392,12 @@ model Deck {
   hero   Hero?  @relation(fields: [heroId], references: [id])
   owner  User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
-  iterationEntries         DeckIterationEntry[]
-  gameLogsAsDeck           GameLog[]            @relation("GameLogDeck")
-  gameLogsAsOpponentDeck   GameLog[]            @relation("GameLogOpponentDeck")
-  matchupGamePlans         MatchupGamePlan[]
-  deckMetas                DeckMeta[]
-  referenceDeckMetaEntries MetaDeckEntry[]
-  tasks                    Task[]
+  iterationEntries       DeckIterationEntry[]
+  gameLogsAsDeck         GameLog[]            @relation("GameLogDeck")
+  gameLogsAsOpponentDeck GameLog[]            @relation("GameLogOpponentDeck")
+  matchupGamePlans       MatchupGamePlan[]
+  deckMetas              DeckMeta[]
+  tasks                  Task[]
 
   @@index([teamId])
   @@index([teamId, status])
@@ -760,43 +758,64 @@ model ActivityEvent {
 // MatchupGamePlan carries teamId and is team-scoped by construction. Key cards are
 // no longer a structured child table (meta-pivot redesign, WS-4): they live inline
 // in the plan `body` as
-// +[[cardId]] tokens (see packages/shared/src/card-tokens.ts). The opponent is
-// exactly one of a bare hero or a free-text archetype label; opponentSnapshotLabel
-// is a server-derived human label resolved at write time that survives deletion of
-// the referenced hero, and opponentRef is a normalized key
-// (hero:<id> | label:<lowercased>) so the one-canonical-plan uniqueness can be
-// enforced across the polymorphic target (Postgres treats NULLs as distinct, so a
-// unique index over the two nullable columns would not).
+// +[[cardId]] tokens (see packages/shared/src/card-tokens.ts). The opponent is a
+// **matchup subject**: a required `opponentArchetypeLabel` with an optional
+// `opponentHeroId` qualifier (mirroring MetaDeckEntry). opponentSnapshotLabel is a
+// server-derived human label resolved at write time that survives deletion of the
+// referenced hero, and opponentRef is a normalized key
+// (hero:<id>|label:<lowercased> for a hero-qualified subject, label:<lowercased>
+// otherwise) so the one-canonical-plan uniqueness can be enforced across the
+// polymorphic target and repeated-hero subjects stay distinct. A plan may also be
+// explicitly attached to specific MetaDeckEntry rows via GamePlanMetaDeckEntry.
 // ---------------------------------------------------------------------------
 
 /// A written, living guide for one matchup (our deck × an opponent archetype) —
 /// FaB's equivalent of a sideboard guide. One canonical plan per
 /// (teamId, ourDeckId, opponentRef, formatId). Soft-deleted via archivedAt.
 model MatchupGamePlan {
-  id                      String    @id @default(cuid())
-  teamId                  String    @map("team_id")
-  ourDeckId               String    @map("our_deck_id")
-  formatId                String    @map("format_id")
-  opponentHeroId          String?   @map("opponent_hero_id")
-  opponentArchetypeLabel  String?   @map("opponent_archetype_label")
-  opponentRef             String    @map("opponent_ref")
-  opponentSnapshotLabel   String    @map("opponent_snapshot_label")
-  body                    String
-  updatedById             String    @map("updated_by_id")
-  archivedAt              DateTime? @map("archived_at")
-  createdAt               DateTime  @default(now()) @map("created_at")
-  updatedAt               DateTime  @updatedAt @map("updated_at")
+  id                     String    @id @default(cuid())
+  teamId                 String    @map("team_id")
+  ourDeckId              String    @map("our_deck_id")
+  formatId               String    @map("format_id")
+  opponentHeroId         String?   @map("opponent_hero_id")
+  opponentArchetypeLabel String    @map("opponent_archetype_label")
+  opponentRef            String    @map("opponent_ref")
+  opponentSnapshotLabel  String    @map("opponent_snapshot_label")
+  body                   String
+  updatedById            String    @map("updated_by_id")
+  archivedAt             DateTime? @map("archived_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
-  team                  Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  ourDeck               Deck           @relation(fields: [ourDeckId], references: [id], onDelete: Cascade)
-  format                Format         @relation(fields: [formatId], references: [id])
-  opponentHero          Hero?          @relation(fields: [opponentHeroId], references: [id], onDelete: SetNull)
-  updatedBy             User           @relation("MatchupGamePlanUpdatedBy", fields: [updatedById], references: [id], onDelete: Cascade)
+  team            Team                    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  ourDeck         Deck                    @relation(fields: [ourDeckId], references: [id], onDelete: Cascade)
+  format          Format                  @relation(fields: [formatId], references: [id])
+  opponentHero    Hero?                   @relation(fields: [opponentHeroId], references: [id], onDelete: SetNull)
+  updatedBy       User                    @relation("MatchupGamePlanUpdatedBy", fields: [updatedById], references: [id], onDelete: Cascade)
+  metaDeckEntries GamePlanMetaDeckEntry[]
 
   @@unique([teamId, ourDeckId, opponentRef, formatId])
   @@index([teamId])
   @@index([teamId, ourDeckId])
   @@map("matchup_game_plan")
+}
+
+/// Explicit join attaching a game-plan to specific meta deck entries (so a plan can
+/// be pinned to the exact archetypes-to-beat it addresses, beyond the implicit
+/// opponentRef match). No teamId — it is reached only through its team-scoped
+/// parents (the plan / the entry), which are validated same-team at write time.
+model GamePlanMetaDeckEntry {
+  id              String   @id @default(cuid())
+  gamePlanId      String   @map("game_plan_id")
+  metaDeckEntryId String   @map("meta_deck_entry_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  gamePlan      MatchupGamePlan @relation(fields: [gamePlanId], references: [id], onDelete: Cascade)
+  metaDeckEntry MetaDeckEntry   @relation(fields: [metaDeckEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([gamePlanId, metaDeckEntryId])
+  @@index([metaDeckEntryId])
+  @@map("game_plan_meta_deck_entry")
 }
 
 // ---------------------------------------------------------------------------
@@ -847,28 +866,28 @@ model Meta {
   @@map("meta")
 }
 
-/// One tiered entry in a meta's opponent-deck list (the reshaped gauntlet). Names
-/// exactly one target form — a reference deck (a Deck where isReference is true), a
-/// bare hero, or a free-text archetype label — plus its tier. opponentSnapshotLabel
-/// is a server-derived human label resolved at write time that survives deletion of
-/// the referenced deck/hero. The exactly-one-target rule is enforced server-side.
+/// One tiered entry in a meta's opponent-deck list (the reshaped gauntlet). A
+/// **matchup subject**: a required free-text `label` (the human archetype name)
+/// with an optional `heroId` qualifier — so the same hero can appear more than once
+/// under different labels. `opponentSnapshotLabel` is the server-derived durable
+/// display string (from `label`) that survives deletion of the referenced hero. The
+/// label-required rule and exact-duplicate rejection are enforced server-side.
 model MetaDeckEntry {
   id                    String   @id @default(cuid())
   metaId                String   @map("meta_id")
   teamId                String   @map("team_id")
   tier                  MetaTier
-  referenceDeckId       String?  @map("reference_deck_id")
   heroId                String?  @map("hero_id")
-  archetypeLabel        String?  @map("archetype_label")
+  label                 String
   opponentSnapshotLabel String   @map("opponent_snapshot_label")
   notes                 String   @default("")
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
-  meta          Meta  @relation(fields: [metaId], references: [id], onDelete: Cascade)
-  team          Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  referenceDeck Deck? @relation(fields: [referenceDeckId], references: [id], onDelete: SetNull)
-  hero          Hero? @relation(fields: [heroId], references: [id], onDelete: SetNull)
+  meta          Meta                    @relation(fields: [metaId], references: [id], onDelete: Cascade)
+  team          Team                    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  hero          Hero?                   @relation(fields: [heroId], references: [id], onDelete: SetNull)
+  gamePlanLinks GamePlanMetaDeckEntry[]
 
   @@index([teamId])
   @@index([metaId])

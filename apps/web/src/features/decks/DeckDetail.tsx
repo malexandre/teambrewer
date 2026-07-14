@@ -104,12 +104,6 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
           <dt className="text-muted-foreground">Visibility</dt>
           <dd>{DECK_VISIBILITY_LABELS[deck.visibility]}</dd>
         </div>
-        {deck.isReference ? (
-          <div>
-            <dt className="text-muted-foreground">Kind</dt>
-            <dd>Reference deck</dd>
-          </div>
-        ) : null}
         {deck.tags.length > 0 ? (
           <div className="sm:col-span-2">
             <dt className="text-muted-foreground">Tags</dt>

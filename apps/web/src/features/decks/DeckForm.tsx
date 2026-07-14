@@ -30,7 +30,7 @@ function parseTags(raw: string): string[] {
 /**
  * Create or edit a deck. A deck is a link + metadata (ADR-0002): a name, a format
  * and optional hero from the game's reference data, the external list URL (with a
- * best-effort provider hint), visibility, a reference-deck flag, tags, and notes.
+ * best-effort provider hint), visibility, tags, and notes.
  * There is no card-list editor. Status is not edited here — it moves through the
  * dedicated status control on the deck detail.
  */
@@ -52,7 +52,6 @@ export function DeckForm({
   const [heroId, setHeroId] = useState(deck?.heroId ?? "");
   const [externalUrl, setExternalUrl] = useState(deck?.externalUrl ?? "");
   const [visibility, setVisibility] = useState<DeckVisibility>(deck?.visibility ?? "team");
-  const [isReference, setIsReference] = useState(deck?.isReference ?? false);
   const [tags, setTags] = useState((deck?.tags ?? []).join(", "));
   const [notes, setNotes] = useState(deck?.notes ?? "");
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -131,7 +130,6 @@ export function DeckForm({
         heroId: heroId ? heroId : null,
         externalUrl: externalUrl.trim(),
         visibility,
-        isReference,
         tags: parseTags(tags),
         notes,
         metaIds: selectedMetaIds,
@@ -146,7 +144,6 @@ export function DeckForm({
       ...(heroId ? { heroId } : {}),
       externalUrl: externalUrl.trim(),
       visibility,
-      isReference,
       tags: parseTags(tags),
       notes,
       // Only send an explicit set once initialized; otherwise the server links the
@@ -194,19 +191,9 @@ export function DeckForm({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="deck-visibility">Visibility</Label>
-          <DeckVisibilityControl id="deck-visibility" value={visibility} onChange={setVisibility} />
-        </div>
-        <label className="flex items-center gap-2 text-sm sm:mt-6">
-          <input
-            type="checkbox"
-            checked={isReference}
-            onChange={(event) => setIsReference(event.target.checked)}
-          />
-          Reference deck (opponent / meta archetype)
-        </label>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="deck-visibility">Visibility</Label>
+        <DeckVisibilityControl id="deck-visibility" value={visibility} onChange={setVisibility} />
       </div>
 
       <div className="flex flex-col gap-1">

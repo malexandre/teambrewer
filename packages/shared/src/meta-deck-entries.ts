@@ -5,9 +5,11 @@ import { archetypeLabelSchema } from "./events.js";
 /**
  * Shared meta-deck-entry contracts (see docs/features/metas.md). A
  * **MetaDeckEntry** is one tiered entry in a meta's opponent-deck list — the
- * reshaped gauntlet. It names exactly one target form (a reference deck, a bare
- * hero, or a free-text archetype label) plus a `tier` (how central the archetype
- * is to the field), replacing the old gauntlet's raw `expectedMetaShare %`.
+ * reshaped gauntlet — modelled as a **matchup subject**: a required free-text
+ * `label` (the human archetype name) with an optional `heroId` qualifier, plus a
+ * `tier` (how central the archetype is to the field). The same hero may appear
+ * more than once under different labels, so entries are distinguished by
+ * (hero, label) rather than by hero alone.
  *
  * Tenancy: `metaId`/`teamId` and the derived `opponentSnapshotLabel` are stamped
  * server-side — they are never accepted from the client, so create/update inputs
@@ -33,48 +35,36 @@ export const META_TIER_LABELS: Record<MetaTier, string> = {
   fringe: "Fringe — know it exists",
 };
 
+/** The human archetype name of a meta deck entry (always required). */
+export const metaDeckEntryLabelSchema = archetypeLabelSchema;
+
 /** Free-form notes on a meta deck entry. */
 export const metaDeckEntryNotesSchema = z.string().max(2000);
 
-/** The target forms; exactly one must be provided on a meta deck entry. */
-const metaDeckEntryTargetKeys = ["referenceDeckId", "heroId", "archetypeLabel"] as const;
-
-function countPresentTargets(value: {
-  referenceDeckId?: unknown;
-  heroId?: unknown;
-  archetypeLabel?: unknown;
-}): number {
-  return metaDeckEntryTargetKeys.filter((key) => value[key] !== undefined && value[key] !== null)
-    .length;
-}
-
 /**
- * Create-meta-deck-entry input. Names exactly one target form — a reference deck,
- * a bare hero, or a free-text archetype label — plus its tier. `metaId`/`teamId`,
- * the derived `opponentSnapshotLabel`, and timestamps are server-stamped and omitted.
+ * Create-meta-deck-entry input. A matchup subject: a required `label` with an
+ * optional `heroId` qualifier, plus its tier. `metaId`/`teamId`, the derived
+ * `opponentSnapshotLabel`, and timestamps are server-stamped and omitted.
  */
-export const createMetaDeckEntrySchema = z
-  .object({
-    tier: metaTierSchema,
-    referenceDeckId: z.string().min(1).optional(),
-    heroId: z.string().min(1).optional(),
-    archetypeLabel: archetypeLabelSchema.optional(),
-    notes: metaDeckEntryNotesSchema.default(""),
-  })
-  .refine((value) => countPresentTargets(value) === 1, {
-    message:
-      "A meta deck entry must reference exactly one target: a reference deck, a hero, or an archetype label.",
-  });
+export const createMetaDeckEntrySchema = z.object({
+  tier: metaTierSchema,
+  heroId: z.string().min(1).optional(),
+  label: metaDeckEntryLabelSchema,
+  notes: metaDeckEntryNotesSchema.default(""),
+});
 export type CreateMetaDeckEntryInput = z.infer<typeof createMetaDeckEntrySchema>;
 
 /**
- * Update-meta-deck-entry input. The target form is immutable once set (to change
- * it, delete the entry and add a new one), so only the tier and notes may change.
- * The schema is `.strict()`, which rejects any target-form key.
+ * Update-meta-deck-entry input. The whole matchup subject is editable: `tier`,
+ * `label`, the optional `heroId` (pass `null` to clear the hero qualifier), and
+ * `notes`. The schema is `.strict()` and requires at least one field; the server
+ * re-validates the hero and re-derives the snapshot label.
  */
 export const updateMetaDeckEntrySchema = z
   .object({
     tier: metaTierSchema.optional(),
+    heroId: z.string().min(1).nullable().optional(),
+    label: metaDeckEntryLabelSchema.optional(),
     notes: metaDeckEntryNotesSchema.optional(),
   })
   .strict()
@@ -88,9 +78,8 @@ export const metaDeckEntrySchema = z.object({
   id: z.string(),
   metaId: z.string(),
   tier: metaTierSchema,
-  referenceDeckId: z.string().nullable(),
   heroId: z.string().nullable(),
-  archetypeLabel: z.string().nullable(),
+  label: z.string(),
   opponentSnapshotLabel: z.string(),
   notes: z.string(),
   createdAt: z.string(),

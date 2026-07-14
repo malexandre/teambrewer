@@ -48,7 +48,7 @@ describe("Game-log endpoints (integration)", () => {
 
   let deckA: TestDeck;
   let deckA2: TestDeck;
-  let referenceDeckA: TestDeck;
+  let opponentTeamDeckA: TestDeck;
   let deckB: TestDeck;
 
   beforeAll(async () => {
@@ -110,12 +110,11 @@ describe("Game-log endpoints (integration)", () => {
       formatId: fabFormatId,
       name: "Teammate Deck",
     });
-    referenceDeckA = await createDeck(prisma, {
+    opponentTeamDeckA = await createDeck(prisma, {
       teamId: teamA.id,
       ownerId: adminA.id,
       formatId: fabFormatId,
-      name: "Reference Deck",
-      isReference: true,
+      name: "Opponent Team Deck",
     });
     deckB = await createDeck(prisma, {
       teamId: teamB.id,
@@ -184,13 +183,13 @@ describe("Game-log endpoints (integration)", () => {
       expect(response.body.sideB.deckId).toBe(deckA2.id);
     });
 
-    it("logs a game against a reference deck opponent", async () => {
+    it("logs a game against any team deck as the external opponent", async () => {
       const response = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        sideB: { externalOpponentName: "Some Pro", deckId: referenceDeckA.id },
+        sideB: { externalOpponentName: "Some Pro", deckId: opponentTeamDeckA.id },
       });
       expect(response.status).toBe(201);
-      expect(response.body.sideB.deckId).toBe(referenceDeckA.id);
+      expect(response.body.sideB.deckId).toBe(opponentTeamDeckA.id);
     });
 
     it("rejects a result inconsistent with best-of (400 at the schema boundary)", async () => {
@@ -226,10 +225,10 @@ describe("Game-log endpoints (integration)", () => {
       expect(response.status).toBe(404);
     });
 
-    it("rejects a non-reference deck as an external opponent (422)", async () => {
+    it("rejects an opponent deck belonging to another team (cross-team FK, 422)", async () => {
       const response = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        sideB: { externalOpponentName: "Rando", deckId: deckA.id },
+        sideB: { externalOpponentName: "Rando", deckId: deckB.id },
       });
       expect(response.status).toBe(422);
     });

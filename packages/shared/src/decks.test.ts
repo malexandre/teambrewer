@@ -38,7 +38,6 @@ describe("createDeckSchema", () => {
     const parsed = createDeckSchema.parse(validInput);
     expect(parsed.name).toBe("Aggro Dorinthea");
     expect(parsed.visibility).toBe("team");
-    expect(parsed.isReference).toBe(false);
     expect(parsed.tags).toEqual([]);
     expect(parsed.notes).toBe("");
     expect(parsed.heroId).toBeUndefined();
@@ -61,13 +60,11 @@ describe("createDeckSchema", () => {
       ...validInput,
       heroId: "hero-dorinthea",
       visibility: "private",
-      isReference: true,
       tags: ["aggro", "weapon"],
       notes: "Testing the new go-wide plan.",
     });
     expect(parsed.heroId).toBe("hero-dorinthea");
     expect(parsed.visibility).toBe("private");
-    expect(parsed.isReference).toBe(true);
     expect(parsed.tags).toEqual(["aggro", "weapon"]);
   });
 
@@ -165,12 +162,6 @@ describe("deckListQuerySchema", () => {
 
   it("rejects an over-large limit rather than silently clamping", () => {
     expect(() => deckListQuerySchema.parse({ limit: "500" })).toThrow();
-  });
-
-  it("coerces isReference from the query string precisely", () => {
-    expect(deckListQuerySchema.parse({ isReference: "true" }).isReference).toBe(true);
-    expect(deckListQuerySchema.parse({ isReference: "false" }).isReference).toBe(false);
-    expect(deckListQuerySchema.parse({}).isReference).toBeUndefined();
   });
 
   it("accepts the documented filters", () => {

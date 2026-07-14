@@ -113,7 +113,6 @@ function mockApi(options: { onCreate?: (body: unknown) => void } = {}) {
             ownerId: "user-me",
             status: "testing",
             visibility: "team",
-            isReference: false,
             tags: [],
             archivedAt: null,
             createdAt: "2026-07-01T00:00:00.000Z",

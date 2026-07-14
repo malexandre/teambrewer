@@ -18,7 +18,6 @@ export function StepMatchup({
   setDeckId,
   deckOptions,
   memberOptions,
-  referenceDeckOptions,
   opponentKind,
   setOpponentKind,
   opponentHeroId,
@@ -27,8 +26,8 @@ export function StepMatchup({
   setOpponentPilotUserId,
   opponentTeamDeckId,
   setOpponentTeamDeckId,
-  opponentReferenceDeckId,
-  setOpponentReferenceDeckId,
+  opponentDeckId,
+  setOpponentDeckId,
   archetypeLabel,
   setArchetypeLabel,
 }: {
@@ -39,7 +38,6 @@ export function StepMatchup({
   setDeckId: (deckId: string) => void;
   deckOptions: DeckSummary[];
   memberOptions: TeamMember[];
-  referenceDeckOptions: DeckSummary[];
   opponentKind: OpponentKind;
   setOpponentKind: (kind: OpponentKind) => void;
   opponentHeroId: string;
@@ -48,8 +46,8 @@ export function StepMatchup({
   setOpponentPilotUserId: (userId: string) => void;
   opponentTeamDeckId: string;
   setOpponentTeamDeckId: (deckId: string) => void;
-  opponentReferenceDeckId: string;
-  setOpponentReferenceDeckId: (deckId: string) => void;
+  opponentDeckId: string;
+  setOpponentDeckId: (deckId: string) => void;
   archetypeLabel: string;
   setArchetypeLabel: (label: string) => void;
 }) {
@@ -135,15 +133,15 @@ export function StepMatchup({
           </div>
         ) : null}
 
-        {opponentKind === "reference_deck" ? (
+        {opponentKind === "team_deck" ? (
           <select
             className={SELECT_CLASS}
-            value={opponentReferenceDeckId}
-            onChange={(event) => setOpponentReferenceDeckId(event.target.value)}
-            aria-label="Reference deck"
+            value={opponentDeckId}
+            onChange={(event) => setOpponentDeckId(event.target.value)}
+            aria-label="Opponent team deck"
           >
-            <option value="">Select a reference deck…</option>
-            {referenceDeckOptions.map((deck) => (
+            <option value="">Select a team deck…</option>
+            {deckOptions.map((deck) => (
               <option key={deck.id} value={deck.id}>
                 {deck.name}
               </option>

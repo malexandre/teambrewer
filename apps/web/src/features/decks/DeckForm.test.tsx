@@ -75,7 +75,6 @@ function mockApi(
         ownerId: "user-1",
         status: "exploratory",
         visibility: "team",
-        isReference: false,
         tags: [],
         notes: "",
         linkedMetas: [],

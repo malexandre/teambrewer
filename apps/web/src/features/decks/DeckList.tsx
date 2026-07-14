@@ -10,25 +10,20 @@ import { FormatPicker } from "./FormatPicker";
 import { HeroPicker } from "./HeroPicker";
 import { type DeckFilters, useDecks } from "./use-decks";
 
-/** "all" | "true" | "false" for the reference-deck filter select. */
-type ReferenceFilter = "all" | "true" | "false";
-
 /**
- * The team's decks with filters (status, format, hero, reference) and a
- * private/team indicator. Mobile-first; each row links to the deck detail. Format
- * and hero ids are resolved to names via the reference-data hooks.
+ * The team's decks with filters (status, format, hero) and a private/team indicator.
+ * Mobile-first; each row links to the deck detail. Format and hero ids are resolved
+ * to names via the reference-data hooks.
  */
 export function DeckList({ teamId }: { teamId: string | undefined }) {
   const [status, setStatus] = useState<DeckStatus | "">("");
   const [formatId, setFormatId] = useState("");
   const [heroId, setHeroId] = useState("");
-  const [reference, setReference] = useState<ReferenceFilter>("all");
 
   const filters: DeckFilters = {
     ...(status ? { status } : {}),
     ...(formatId ? { formatId } : {}),
     ...(heroId ? { heroId } : {}),
-    ...(reference !== "all" ? { isReference: reference === "true" } : {}),
   };
 
   const { data, isPending } = useDecks(teamId, filters);
@@ -64,16 +59,6 @@ export function DeckList({ teamId }: { teamId: string | undefined }) {
         </select>
         <FormatPicker teamId={teamId} value={formatId} onChange={setFormatId} />
         <HeroPicker teamId={teamId} value={heroId} onChange={setHeroId} />
-        <select
-          className={SELECT_CLASS}
-          value={reference}
-          onChange={(event) => setReference(event.target.value as ReferenceFilter)}
-          aria-label="Filter by deck kind"
-        >
-          <option value="all">All decks</option>
-          <option value="false">Our decks</option>
-          <option value="true">Reference decks</option>
-        </select>
       </div>
 
       {isPending ? (
@@ -97,11 +82,6 @@ export function DeckList({ teamId }: { teamId: string | undefined }) {
                   {deck.visibility === "private" ? (
                     <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                       {DECK_VISIBILITY_LABELS.private}
-                    </span>
-                  ) : null}
-                  {deck.isReference ? (
-                    <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                      Reference
                     </span>
                   ) : null}
                 </div>

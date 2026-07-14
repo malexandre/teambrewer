@@ -40,10 +40,11 @@ const plan = {
   ourDeckName: "Aggro Dori",
   formatId: "format-1",
   opponentHeroId: "hero-1",
-  opponentArchetypeLabel: null,
-  opponentRef: "hero:hero-1",
+  opponentArchetypeLabel: "Briar",
+  opponentRef: "hero:hero-1|label:briar",
   opponentSnapshotLabel: "Briar",
   body: "Race the clock; keep +[[card-1]] for the on-hit.",
+  metaDeckEntryIds: [],
   updatedBy: { userId: "user-1", username: "alice", displayName: "Alice" },
   archivedAt: null,
   createdAt: "2026-07-12T00:00:00.000Z",
@@ -95,7 +96,7 @@ describe("GamePlanSection", () => {
     expect(await screen.findByText(/Command and Conquer/)).toBeInTheDocument();
   });
 
-  it("reveals the editor with the plan body composer and an opponent toggle when writing", async () => {
+  it("reveals the editor with the plan body composer and the opponent subject fields when writing", async () => {
     mockApi();
     renderSection(
       <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
@@ -106,8 +107,7 @@ describe("GamePlanSection", () => {
 
     // The body is a +card-enabled composer (type + to link a card inline).
     expect(screen.getByLabelText("Plan")).toBeInTheDocument();
-    // Switching the opponent to an archetype label reveals the free-text field.
-    await userEvent.click(screen.getByRole("button", { name: "Archetype label" }));
+    // The opponent subject is a required archetype label with an optional hero qualifier.
     expect(screen.getByLabelText("Archetype label")).toBeInTheDocument();
   });
 

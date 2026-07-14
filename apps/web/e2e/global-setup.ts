@@ -229,9 +229,9 @@ async function seedTeamDeck(databaseUrl: string, name: string, ownerId: string):
     await client.query(
       `INSERT INTO "deck"
          (id, team_id, name, game_id, format_id, external_url, source, owner_id,
-          status, visibility, is_reference, tags, notes, updated_at)
+          status, visibility, tags, notes, updated_at)
        VALUES ($1,$2,$3,'flesh-and-blood',$4,$5,'fabrary',$6,
-          'testing','team',false, ARRAY[]::text[], '', $7)`,
+          'testing','team', ARRAY[]::text[], '', $7)`,
       [
         randomUUID(),
         E2E_TEAMS.alpha.id,

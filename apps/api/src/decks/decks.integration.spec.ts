@@ -299,28 +299,6 @@ describe("Decks endpoints (integration)", () => {
       const secondIds = second.body.data.map((deck: { id: string }) => deck.id);
       expect(firstIds.filter((id: string) => secondIds.includes(id))).toEqual([]);
     });
-
-    it("filters by isReference precisely", async () => {
-      await createDeck(prisma, {
-        teamId: teamA.id,
-        ownerId: memberA.id,
-        formatId: fabFormatId,
-        isReference: true,
-        name: "Ref",
-      });
-      await createDeck(prisma, {
-        teamId: teamA.id,
-        ownerId: memberA.id,
-        formatId: fabFormatId,
-        isReference: false,
-        name: "Ours",
-      });
-
-      const refs = await asMemberA(http().get("/api/decks").query({ isReference: "true" }));
-      expect(refs.body.data.map((deck: { name: string }) => deck.name)).toEqual(["Ref"]);
-      const ours = await asMemberA(http().get("/api/decks").query({ isReference: "false" }));
-      expect(ours.body.data.map((deck: { name: string }) => deck.name)).toEqual(["Ours"]);
-    });
   });
 
   describe("Tenant isolation (mandatory)", () => {
@@ -526,13 +504,14 @@ describe("Decks endpoints (integration)", () => {
         teamId: teamA.id,
         tier: "meta_defining",
         heroId: fabHeroId,
+        label: "Dorinthea",
         opponentSnapshotLabel: "Dorinthea",
       });
       const archetypeEntry = await createMetaDeckEntry(prisma, {
         metaId: meta.id,
         teamId: teamA.id,
         tier: "contender",
-        archetypeLabel: "Aggro Red",
+        label: "Aggro Red",
         opponentSnapshotLabel: "Aggro Red",
       });
 
@@ -565,13 +544,15 @@ describe("Decks endpoints (integration)", () => {
         gamesWonA: 2,
         gamesWonB: 0,
       });
-      // A game-plan exists for the hero matchup only.
+      // A game-plan exists for the hero matchup only — its opponent subject (hero +
+      // the same "Dorinthea" label) normalizes to the same opponentRef as the entry.
       await createMatchupGamePlan(prisma, {
         teamId: teamA.id,
         ourDeckId: ourDeck.id,
         formatId: fabFormatId,
         updatedById: memberA.id,
         opponentHeroId: fabHeroId,
+        opponentArchetypeLabel: "Dorinthea",
       });
 
       const response = await asMemberA(

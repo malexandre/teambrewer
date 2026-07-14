@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { HeroPicker } from "@/features/decks/HeroPicker";
-import { useDecks } from "@/features/decks/use-decks";
 import { ApiError } from "@/lib/api-client";
 
 import { SELECT_CLASS } from "./meta-display";
@@ -22,14 +21,13 @@ import {
   useUpdateMetaDeckEntry,
 } from "./use-meta-mutations";
 
-/** The kind of target being added: a reference deck, a bare hero, or a free-text label. */
-type TargetKind = "hero" | "deck" | "archetype";
-
 /**
- * A meta's tiered opponent-deck list — the reshaped gauntlet. Entries are grouped by
- * tier (most-central first); each shows its server-derived opponent label and notes.
- * The builder adds an entry by picking a reference deck, a hero, or an archetype
- * label, plus a tier. Any team member may edit the board (a shared team board).
+ * A meta's tiered opponent-deck list — the reshaped gauntlet. Each entry is a matchup
+ * subject: a required free-text archetype label with an optional hero qualifier, so
+ * the same hero can appear more than once under different labels. Entries are grouped
+ * by tier (most-central first) and show their label + notes. Any team member may edit
+ * the board (a shared team board); the whole subject (label, hero, tier, notes) is
+ * editable in place.
  */
 export function MetaDeckEntryBuilder({
   teamId,
@@ -42,16 +40,16 @@ export function MetaDeckEntryBuilder({
   entries: MetaDeckEntry[];
   canEdit: boolean;
 }) {
-  const [targetKind, setTargetKind] = useState<TargetKind>("hero");
   const [heroId, setHeroId] = useState("");
-  const [referenceDeckId, setReferenceDeckId] = useState("");
-  const [archetypeLabel, setArchetypeLabel] = useState("");
+  const [label, setLabel] = useState("");
   const [tier, setTier] = useState<MetaTier>("contender");
   const [notes, setNotes] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editTier, setEditTier] = useState<MetaTier>("contender");
+  const [editLabel, setEditLabel] = useState("");
+  const [editHeroId, setEditHeroId] = useState("");
   const [editNotes, setEditNotes] = useState("");
 
   const addEntry = useAddMetaDeckEntry(teamId, metaId);
@@ -59,51 +57,51 @@ export function MetaDeckEntryBuilder({
   const updateEntry = useUpdateMetaDeckEntry(teamId, metaId);
 
   const identityLabel = useIdentityLabel(teamId);
-  const { data: referenceDeckData } = useDecks(teamId, { isReference: true });
-  const referenceDecks = referenceDeckData?.data ?? [];
 
   function startEditing(entry: MetaDeckEntry) {
     setEditingEntryId(entry.id);
     setEditTier(entry.tier);
+    setEditLabel(entry.label);
+    setEditHeroId(entry.heroId ?? "");
     setEditNotes(entry.notes);
   }
 
   function saveEdit(entry: MetaDeckEntry) {
+    if (!editLabel.trim()) {
+      return;
+    }
     updateEntry.mutate(
-      { entryId: entry.id, body: { tier: editTier, notes: editNotes } },
+      {
+        entryId: entry.id,
+        body: {
+          tier: editTier,
+          label: editLabel.trim(),
+          heroId: editHeroId ? editHeroId : null,
+          notes: editNotes,
+        },
+      },
       { onSuccess: () => setEditingEntryId(null) },
     );
   }
 
   function submit() {
     setValidationError(null);
-
-    let input: CreateMetaDeckEntryInput;
-    if (targetKind === "hero") {
-      if (!heroId) {
-        setValidationError(`Pick a ${identityLabel.toLowerCase()} for this target.`);
-        return;
-      }
-      input = { tier, heroId, notes };
-    } else if (targetKind === "deck") {
-      if (!referenceDeckId) {
-        setValidationError("Pick a reference deck for this target.");
-        return;
-      }
-      input = { tier, referenceDeckId, notes };
-    } else {
-      if (!archetypeLabel.trim()) {
-        setValidationError("Enter an archetype label for this target.");
-        return;
-      }
-      input = { tier, archetypeLabel: archetypeLabel.trim(), notes };
+    if (!label.trim()) {
+      setValidationError("Enter an archetype label for this deck.");
+      return;
     }
+
+    const input: CreateMetaDeckEntryInput = {
+      tier,
+      label: label.trim(),
+      notes,
+      ...(heroId ? { heroId } : {}),
+    };
 
     addEntry.mutate(input, {
       onSuccess: () => {
         setHeroId("");
-        setReferenceDeckId("");
-        setArchetypeLabel("");
+        setLabel("");
         setNotes("");
       },
     });
@@ -132,7 +130,26 @@ export function MetaDeckEntryBuilder({
                     <li key={entry.id} className="rounded-md border border-border p-3">
                       {editingEntryId === entry.id ? (
                         <div className="flex flex-col gap-2">
-                          <span className="text-sm font-medium">{entry.opponentSnapshotLabel}</span>
+                          <div className="flex flex-col gap-1">
+                            <Label htmlFor={`edit-label-${entry.id}`}>Archetype</Label>
+                            <Input
+                              id={`edit-label-${entry.id}`}
+                              value={editLabel}
+                              onChange={(event) => setEditLabel(event.target.value)}
+                              placeholder="e.g. Aggro Red"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <Label htmlFor={`edit-hero-${entry.id}`}>
+                              {identityLabel} (optional)
+                            </Label>
+                            <HeroPicker
+                              id={`edit-hero-${entry.id}`}
+                              teamId={teamId}
+                              value={editHeroId}
+                              onChange={setEditHeroId}
+                            />
+                          </div>
                           <div className="flex flex-col gap-1">
                             <Label htmlFor={`edit-tier-${entry.id}`}>Tier</Label>
                             <select
@@ -223,59 +240,24 @@ export function MetaDeckEntryBuilder({
         <div className="flex flex-col gap-2 rounded-md border border-border p-3">
           <div className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
-              <Label htmlFor="meta-entry-kind">Target</Label>
-              <select
-                id="meta-entry-kind"
-                className={SELECT_CLASS}
-                value={targetKind}
-                onChange={(event) => setTargetKind(event.target.value as TargetKind)}
-                aria-label="Target kind"
-              >
-                <option value="hero">{identityLabel}</option>
-                <option value="deck">Reference deck</option>
-                <option value="archetype">Archetype label</option>
-              </select>
+              <Label htmlFor="meta-entry-archetype">Archetype</Label>
+              <Input
+                id="meta-entry-archetype"
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder="e.g. Aggro Red"
+              />
             </div>
 
-            {targetKind === "hero" ? (
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="meta-entry-hero">{identityLabel}</Label>
-                <HeroPicker
-                  id="meta-entry-hero"
-                  teamId={teamId}
-                  value={heroId}
-                  onChange={setHeroId}
-                />
-              </div>
-            ) : targetKind === "deck" ? (
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="meta-entry-deck">Reference deck</Label>
-                <select
-                  id="meta-entry-deck"
-                  className={SELECT_CLASS}
-                  value={referenceDeckId}
-                  onChange={(event) => setReferenceDeckId(event.target.value)}
-                  aria-label="Reference deck"
-                >
-                  <option value="">Select a reference deck…</option>
-                  {referenceDecks.map((deck) => (
-                    <option key={deck.id} value={deck.id}>
-                      {deck.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="meta-entry-archetype">Archetype</Label>
-                <Input
-                  id="meta-entry-archetype"
-                  value={archetypeLabel}
-                  onChange={(event) => setArchetypeLabel(event.target.value)}
-                  placeholder="e.g. Aggro Red"
-                />
-              </div>
-            )}
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="meta-entry-hero">{identityLabel} (optional)</Label>
+              <HeroPicker
+                id="meta-entry-hero"
+                teamId={teamId}
+                value={heroId}
+                onChange={setHeroId}
+              />
+            </div>
 
             <div className="flex flex-col gap-1">
               <Label htmlFor="meta-entry-tier">Tier</Label>

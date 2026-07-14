@@ -323,6 +323,8 @@ export {
 
 export {
   gamePlanBodySchema,
+  gamePlanMetaDeckEntryIdsSchema,
+  deriveMatchupSubjectRef,
   createMatchupGamePlanSchema,
   updateMatchupGamePlanSchema,
   matchupGamePlanListQuerySchema,
@@ -368,6 +370,7 @@ export {
   metaTierSchema,
   META_TIERS,
   META_TIER_LABELS,
+  metaDeckEntryLabelSchema,
   metaDeckEntryNotesSchema,
   createMetaDeckEntrySchema,
   updateMetaDeckEntrySchema,

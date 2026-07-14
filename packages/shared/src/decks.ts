@@ -100,7 +100,6 @@ export const createDeckSchema = z.object({
   heroId: z.string().min(1).optional(),
   externalUrl: deckExternalUrlSchema,
   visibility: deckVisibilitySchema.default("team"),
-  isReference: z.boolean().default(false),
   tags: deckTagsSchema.default([]),
   notes: deckNotesSchema.default(""),
   // Omitted → link the current meta by default; provided (even []) → override.
@@ -120,7 +119,6 @@ export const updateDeckSchema = z
     heroId: z.string().min(1).nullable().optional(),
     externalUrl: deckExternalUrlSchema.optional(),
     visibility: deckVisibilitySchema.optional(),
-    isReference: z.boolean().optional(),
     tags: deckTagsSchema.optional(),
     notes: deckNotesSchema.optional(),
     // Provided → replaces the deck's whole linked-meta set (validated same-team).
@@ -141,19 +139,13 @@ export const createIterationEntrySchema = z.object({ body: iterationEntryBodySch
 export type CreateIterationEntryInput = z.infer<typeof createIterationEntrySchema>;
 
 /**
- * Query parameters for `GET /api/decks`. Values arrive as strings, so numeric and
- * boolean params are coerced. `isReference` is decoded from the exact strings
- * `"true"`/`"false"` (not `z.coerce.boolean`, which would treat `"false"` as
- * truthy). Other users' `private` drafts are excluded server-side regardless.
+ * Query parameters for `GET /api/decks`. Values arrive as strings, so numeric params
+ * are coerced. Other users' `private` drafts are excluded server-side regardless.
  */
 export const deckListQuerySchema = z.object({
   heroId: z.string().optional(),
   formatId: z.string().optional(),
   status: deckStatusSchema.optional(),
-  isReference: z
-    .union([z.literal("true"), z.literal("false")])
-    .transform((value) => value === "true")
-    .optional(),
   tag: z.string().optional(),
   visibility: deckVisibilitySchema.optional(),
   ownerId: z.string().optional(),
@@ -174,7 +166,6 @@ export const deckSummarySchema = z.object({
   ownerId: z.string(),
   status: deckStatusSchema,
   visibility: deckVisibilitySchema,
-  isReference: z.boolean(),
   tags: z.array(z.string()),
   archivedAt: z.string().nullable(),
   createdAt: z.string(),

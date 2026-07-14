@@ -38,20 +38,18 @@ interface MetaDeckEntryRow {
   id: string;
   metaId: string;
   tier: MetaTier;
-  referenceDeckId: string | null;
   heroId: string | null;
-  archetypeLabel: string | null;
+  label: string;
   opponentSnapshotLabel: string;
   notes: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-/** The normalized single target form of a meta deck entry, plus its derived label. */
+/** The normalized matchup subject of a meta deck entry, plus its derived label. */
 interface ResolvedDeckEntryTarget {
-  referenceDeckId: string | null;
   heroId: string | null;
-  archetypeLabel: string | null;
+  label: string;
   opponentSnapshotLabel: string;
 }
 
@@ -200,14 +198,18 @@ export class MetasService {
     return { data: sortByTier(entries).map(toMetaDeckEntry) };
   }
 
-  /** Add a deck entry (exactly one target form; target must be valid + unique in the meta). */
+  /** Add a deck entry (a label + optional hero matchup subject; no exact duplicate in the meta). */
   async addDeckEntry(
     team: TeamContext,
     metaId: string,
     input: CreateMetaDeckEntryInput,
   ): Promise<MetaDeckEntry> {
     await this.requireMeta(metaId);
-    const target = await this.resolveDeckEntryTarget(metaId, input, team.gameId);
+    const target = await this.resolveDeckEntryTarget(metaId, {
+      heroId: input.heroId ?? null,
+      label: input.label,
+      gameId: team.gameId,
+    });
 
     const created = (await this.scoped.db.metaDeckEntry.create({
       data: {
@@ -215,9 +217,8 @@ export class MetasService {
         // Stamped from context; the same teamId TeamScopedPrisma re-stamps.
         teamId: team.teamId,
         tier: input.tier,
-        referenceDeckId: target.referenceDeckId,
         heroId: target.heroId,
-        archetypeLabel: target.archetypeLabel,
+        label: target.label,
         opponentSnapshotLabel: target.opponentSnapshotLabel,
         notes: input.notes,
       },
@@ -225,18 +226,38 @@ export class MetasService {
     return toMetaDeckEntry(created);
   }
 
-  /** Update a deck entry's tier/notes (the target form is immutable). */
+  /**
+   * Update a deck entry's matchup subject (tier, label, hero qualifier) and notes.
+   * Re-validates the hero and re-derives the snapshot label; a change that would
+   * exactly duplicate another entry in the meta (same hero + same label) is rejected.
+   */
   async updateDeckEntry(
+    team: TeamContext,
     metaId: string,
     entryId: string,
     input: UpdateMetaDeckEntryInput,
   ): Promise<MetaDeckEntry> {
     await this.requireMeta(metaId);
-    await this.requireDeckEntry(metaId, entryId);
+    const current = await this.requireDeckEntry(metaId, entryId);
 
     const data: Record<string, unknown> = {};
     if (input.tier !== undefined) data["tier"] = input.tier;
     if (input.notes !== undefined) data["notes"] = input.notes;
+
+    // Re-resolve the matchup subject when the label or hero changes (heroId: null clears it).
+    if (input.label !== undefined || input.heroId !== undefined) {
+      const mergedHeroId = input.heroId !== undefined ? input.heroId : current.heroId;
+      const mergedLabel = input.label ?? current.label;
+      const target = await this.resolveDeckEntryTarget(metaId, {
+        heroId: mergedHeroId,
+        label: mergedLabel,
+        gameId: team.gameId,
+        excludeEntryId: entryId,
+      });
+      data["heroId"] = target.heroId;
+      data["label"] = target.label;
+      data["opponentSnapshotLabel"] = target.opponentSnapshotLabel;
+    }
 
     await this.scoped.db.metaDeckEntry.updateMany({ where: { id: entryId }, data });
     const updated = (await this.scoped.db.metaDeckEntry.findFirst({
@@ -283,66 +304,36 @@ export class MetasService {
   }
 
   /** Load a deck entry that belongs to the meta, or throw 404. */
-  private async requireDeckEntry(metaId: string, entryId: string): Promise<void> {
-    const row = await this.scoped.db.metaDeckEntry.findFirst({
+  private async requireDeckEntry(metaId: string, entryId: string): Promise<MetaDeckEntryRow> {
+    const row = (await this.scoped.db.metaDeckEntry.findFirst({
       where: { id: entryId, metaId },
-      select: { id: true },
-    });
+    })) as MetaDeckEntryRow | null;
     if (!row) {
       throw new NotFoundException({
         error: { code: errorCode.notFound, message: "Meta deck entry not found." },
       });
     }
+    return row;
   }
 
   /**
-   * Validate and normalize a deck entry's single target form and derive its
-   * durable snapshot label. A reference deck of another team (or a missing id)
-   * yields 404 (cross-tenant, no enumeration); a same-team deck that is not a
-   * reference deck, and a hero outside the team's game, are domain-rule 422s; and
-   * no matching target may already exist in the meta (→ 422).
+   * Validate and normalize a deck entry's matchup subject (a required label + an
+   * optional hero qualifier) and derive its durable snapshot label. A hero outside
+   * the team's game is a domain-rule 422 (heroes are global, per-game reference data;
+   * a wrong-game id is not a tenancy leak). An entry that would exactly duplicate
+   * another in the meta — same hero (or both hero-less) and the same label,
+   * case-insensitively — is rejected (→ 422).
    */
   private async resolveDeckEntryTarget(
     metaId: string,
-    input: CreateMetaDeckEntryInput,
-    gameId: string,
+    input: { heroId: string | null; label: string; gameId: string; excludeEntryId?: string },
   ): Promise<ResolvedDeckEntryTarget> {
-    if (input.referenceDeckId !== undefined) {
-      const deck = (await this.scoped.db.deck.findFirst({
-        where: { id: input.referenceDeckId, archivedAt: null },
-        select: { id: true, name: true, isReference: true },
-      })) as { id: string; name: string; isReference: boolean } | null;
-      if (!deck) {
-        // Missing or another team's deck (team-scoped read) → 404, no enumeration.
-        throw new NotFoundException({
-          error: { code: errorCode.notFound, message: "Reference deck not found for this team." },
-        });
-      }
-      if (!deck.isReference) {
-        throw new UnprocessableEntityException({
-          error: {
-            code: errorCode.domainRuleViolation,
-            message: "The referenced deck is not a reference deck for this team.",
-          },
-        });
-      }
-      await this.assertNoDuplicateTarget(metaId, { referenceDeckId: input.referenceDeckId });
-      return {
-        referenceDeckId: input.referenceDeckId,
-        heroId: null,
-        archetypeLabel: null,
-        opponentSnapshotLabel: deck.name,
-      };
-    }
-
-    if (input.heroId !== undefined) {
+    if (input.heroId !== null) {
       const hero = (await this.scoped.db.hero.findFirst({
-        where: { id: input.heroId, gameId, archivedAt: null },
-        select: { id: true, name: true },
-      })) as { id: string; name: string } | null;
+        where: { id: input.heroId, gameId: input.gameId, archivedAt: null },
+        select: { id: true },
+      })) as { id: string } | null;
       if (!hero) {
-        // Missing or another game's hero → domain-rule 422 (heroes are global,
-        // per-game reference data; a wrong-game id is not a tenancy leak).
         throw new UnprocessableEntityException({
           error: {
             code: errorCode.domainRuleViolation,
@@ -350,41 +341,40 @@ export class MetasService {
           },
         });
       }
-      await this.assertNoDuplicateTarget(metaId, { heroId: input.heroId });
-      return {
-        referenceDeckId: null,
-        heroId: input.heroId,
-        archetypeLabel: null,
-        opponentSnapshotLabel: hero.name,
-      };
     }
-
-    const archetypeLabel = input.archetypeLabel as string;
-    await this.assertNoDuplicateTarget(metaId, {
-      archetypeLabel: { equals: archetypeLabel, mode: "insensitive" },
-    });
+    await this.assertNoDuplicateTarget(metaId, input.heroId, input.label, input.excludeEntryId);
     return {
-      referenceDeckId: null,
-      heroId: null,
-      archetypeLabel,
-      opponentSnapshotLabel: archetypeLabel,
+      heroId: input.heroId,
+      label: input.label,
+      opponentSnapshotLabel: input.label,
     };
   }
 
-  /** Reject a target already present in the meta's deck list (→ 422). */
+  /**
+   * Reject a matchup subject that already exists in the meta's deck list — the same
+   * hero (or both hero-less) paired with the same label (case-insensitively). On an
+   * edit, the entry being changed is excluded so a no-op re-save is allowed (→ 422).
+   */
   private async assertNoDuplicateTarget(
     metaId: string,
-    targetWhere: Record<string, unknown>,
+    heroId: string | null,
+    label: string,
+    excludeEntryId?: string,
   ): Promise<void> {
     const existing = await this.scoped.db.metaDeckEntry.findFirst({
-      where: { metaId, ...targetWhere },
+      where: {
+        metaId,
+        heroId,
+        label: { equals: label, mode: "insensitive" },
+        ...(excludeEntryId ? { id: { not: excludeEntryId } } : {}),
+      },
       select: { id: true },
     });
     if (existing) {
       throw new UnprocessableEntityException({
         error: {
           code: errorCode.domainRuleViolation,
-          message: "This target is already in the meta's deck list.",
+          message: "This archetype is already in the meta's deck list.",
         },
       });
     }
@@ -432,9 +422,8 @@ function toMetaDeckEntry(entry: MetaDeckEntryRow): MetaDeckEntry {
     id: entry.id,
     metaId: entry.metaId,
     tier: entry.tier,
-    referenceDeckId: entry.referenceDeckId,
     heroId: entry.heroId,
-    archetypeLabel: entry.archetypeLabel,
+    label: entry.label,
     opponentSnapshotLabel: entry.opponentSnapshotLabel,
     notes: entry.notes,
     createdAt: entry.createdAt.toISOString(),
