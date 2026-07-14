@@ -88,8 +88,8 @@ export function DeckList({ teamId }: { teamId: string | undefined }) {
                   params={{ deckId: deck.id }}
                   className="flex h-full gap-2.5 rounded-lg border border-border bg-card p-2.5 shadow-sm transition-colors hover:border-primary/50 hover:bg-accent/40"
                 >
-                  {/* Hero card art (top-cropped); a name fallback only when there's no image. */}
-                  <div className="grid h-[68px] w-12 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-muted">
+                  {/* Hero card art as a portrait (top-cropped); name fallback when imageless. */}
+                  <div className="grid h-28 w-20 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-muted">
                     {hero?.imageUrl ? (
                       <img
                         src={hero.imageUrl}
@@ -97,7 +97,7 @@ export function DeckList({ teamId }: { teamId: string | undefined }) {
                         className="h-full w-full object-cover object-top"
                       />
                     ) : (
-                      <span className="line-clamp-3 px-1 text-center text-[0.65rem] font-medium text-muted-foreground">
+                      <span className="line-clamp-4 px-1 text-center text-[0.7rem] font-medium text-muted-foreground">
                         {hero?.name ?? "No hero"}
                       </span>
                     )}
