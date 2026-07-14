@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import type { Notification } from "@teambrewer/shared";
+import { Bell } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -48,18 +49,18 @@ export function NotificationCenter() {
   }
 
   return (
-    <div className="relative">
+    <div className="fixed right-4 top-4 z-40">
       <button
         type="button"
-        className="relative rounded-md px-2 py-1 hover:bg-muted"
+        className="relative grid size-10 place-items-center rounded-xl border border-border bg-card text-foreground shadow-md transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <span aria-hidden>🔔</span>
+        <Bell className="size-[18px]" aria-hidden="true" />
         {unreadCount > 0 ? (
           <span
-            className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] font-semibold text-primary-foreground"
+            className="absolute -right-1.5 -top-1.5 grid min-w-5 place-items-center rounded-full border-2 border-card bg-danger-foreground px-1 text-[10px] font-bold text-card"
             data-testid="notification-badge"
           >
             {unreadCount}
@@ -68,7 +69,7 @@ export function NotificationCenter() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-20 mt-1 w-72 rounded-md border border-border bg-popover p-2 text-sm shadow">
+        <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-lg border border-border bg-popover p-2 text-sm shadow-lg">
           <div className="mb-2 flex items-center justify-between">
             <span className="font-semibold">Notifications</span>
             <Button

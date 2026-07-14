@@ -151,6 +151,28 @@ describe("AppChrome navigation", () => {
     );
   });
 
+  it("shows the connected account and a sign-out control in the sidebar footer", async () => {
+    mockApi(ADMIN_USER);
+    renderChrome("/decks");
+
+    expect(await screen.findByText("Local Admin")).toBeInTheDocument();
+    expect(screen.getByText("@admin")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+  });
+
+  it("collapses and expands the sidebar", async () => {
+    const user = userEvent.setup();
+    mockApi(MEMBER_USER);
+    renderChrome("/decks");
+
+    await user.click(await screen.findByRole("button", { name: "Collapse sidebar" }));
+    expect(await screen.findByRole("button", { name: "Expand sidebar" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Collapse sidebar" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Expand sidebar" }));
+    expect(await screen.findByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument();
+  });
+
   it("opens the mobile drawer from the hamburger and closes it with Close", async () => {
     const user = userEvent.setup();
     mockApi(MEMBER_USER);
