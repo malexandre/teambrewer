@@ -5,17 +5,21 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/ui/section";
+import { CommentThread } from "@/features/collaboration/CommentThread";
 import { TASK_STATUS_LABELS, TASK_STATUS_TONE } from "@/features/tasks/task-display";
 import { TaskForm } from "@/features/tasks/TaskForm";
 import { useTasks } from "@/features/tasks/use-tasks";
 
 /**
  * One task row in the deck's card-ideas list: title + status badge, with a finished
- * task's report revealed behind a Report toggle (mirroring the tasks board detail, so a
- * teammate sees the conclusion without leaving the deck). Own toggle state per row.
+ * task's report revealed behind a Report toggle and the task's discussion (an
+ * `@`/`+card` comment composer) behind a Discussion toggle — mirroring the tasks board
+ * detail, so a teammate reads the conclusion and chimes in without leaving the deck.
+ * Own toggle state per row.
  */
-function DeckTaskRow({ task }: { task: Task }) {
+function DeckTaskRow({ teamId, task }: { teamId: string | undefined; task: Task }) {
   const [showReport, setShowReport] = useState(false);
+  const [showDiscussion, setShowDiscussion] = useState(false);
   const hasReport = task.report.trim().length > 0;
 
   return (
@@ -35,6 +39,16 @@ function DeckTaskRow({ task }: { task: Task }) {
               {showReport ? "Hide report" : "Report"}
             </Button>
           ) : null}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs"
+            aria-expanded={showDiscussion}
+            onClick={() => setShowDiscussion((open) => !open)}
+          >
+            {showDiscussion ? "Hide discussion" : "Discussion"}
+          </Button>
           <Badge tone={TASK_STATUS_TONE[task.status]} size="sm">
             {TASK_STATUS_LABELS[task.status]}
           </Badge>
@@ -43,6 +57,12 @@ function DeckTaskRow({ task }: { task: Task }) {
 
       {hasReport && showReport ? (
         <p className="rounded-md bg-muted p-2 text-xs whitespace-pre-wrap">{task.report}</p>
+      ) : null}
+
+      {showDiscussion ? (
+        <div className="border-t border-input pt-2">
+          <CommentThread teamId={teamId} subjectType="task" subjectId={task.id} canComment />
+        </div>
       ) : null}
     </li>
   );
@@ -101,7 +121,7 @@ export function DeckCardIdeasSection({
       ) : (
         <ul className="flex flex-col gap-1">
           {tasks.map((task) => (
-            <DeckTaskRow key={task.id} task={task} />
+            <DeckTaskRow key={task.id} teamId={teamId} task={task} />
           ))}
         </ul>
       )}

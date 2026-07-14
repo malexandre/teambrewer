@@ -41,6 +41,10 @@ function mockApi(tasks: Array<Record<string, unknown>> = [taskFixture()]): void 
     }
     if (url.includes("/api/members")) return json({ data: [] });
     if (url.includes("/api/decks")) return json({ data: [], nextCursor: null });
+    if (url.includes("/api/comments")) return json({ data: [], nextCursor: null });
+    if (url.includes("/api/me")) {
+      return json({ userId: "u1", username: "alice", displayName: "Alice" });
+    }
     throw new Error(`Unexpected request: ${url}`);
   });
 }
@@ -98,6 +102,20 @@ describe("DeckCardIdeasSection", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Report" }));
     expect(screen.getByText("Went 7-3 into the field; worth keeping.")).toBeInTheDocument();
+  });
+
+  it("reveals the task discussion with a comment composer from its row", async () => {
+    mockApi();
+    renderWithClient(
+      <DeckCardIdeasSection teamId="team-1" deckId="deck-1" deckName="Aggro Dori" />,
+    );
+
+    await screen.findByText("Test Bravado");
+    // The discussion (and its composer) is hidden until the toggle is clicked.
+    expect(screen.queryByRole("button", { name: "Comment" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Discussion" }));
+    expect(await screen.findByRole("button", { name: "Comment" })).toBeInTheDocument();
   });
 
   it("shows no report toggle for a task without a report", async () => {
