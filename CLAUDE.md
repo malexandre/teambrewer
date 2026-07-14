@@ -52,7 +52,7 @@ The primary loop is now **decks ↔ the current meta ↔ tasks**:
   matchups tab, the top-level activity tab, the team roster tab (Discord covers it; `@`-autocomplete
   still uses `/members`), and the standalone cards page (the card DB + `CardPicker` remain).
 
-Everything is **local-green** on the meta-pivot branch: **406 API + 252 shared + 77 web**
+Everything is **local-green** on the meta-pivot branch: **407 API + 257 shared + 121 web**
 unit/integration tests and **9 Playwright e2e journeys** (8 desktop + the phone-viewport game-logging
 flow), plus `pnpm lint`, `pnpm typecheck`, and `pnpm build`.
 
