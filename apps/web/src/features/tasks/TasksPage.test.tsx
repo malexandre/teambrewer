@@ -115,15 +115,16 @@ afterEach(() => {
 });
 
 describe("TasksPage", () => {
-  it("groups tasks by status with counts and resolves +card tokens to chips", async () => {
+  it("renders tasks in status columns", async () => {
     mockApi();
     renderPage(<TasksPage />);
 
-    expect(await screen.findByText("Proposed (1)")).toBeInTheDocument();
-    expect(screen.getByText("Finished (1)")).toBeInTheDocument();
+    // The board has a column per status label…
+    expect(await screen.findByText("Proposed")).toBeInTheDocument();
+    expect(screen.getByText("Finished")).toBeInTheDocument();
+    // …and each task's title shows on its compact board card.
     expect(screen.getByText("Test Bravado over Sink Below")).toBeInTheDocument();
-    // The +[[card-x]] token renders as the card chip "+Bravado".
-    expect(await screen.findByText("+Bravado")).toBeInTheDocument();
+    expect(screen.getByText("Finished tuning")).toBeInTheDocument();
   });
 
   it("reflects the viewer's vote on the vote control", async () => {
@@ -136,22 +137,35 @@ describe("TasksPage", () => {
     expect(upvote).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("opens a task's detail dialog with its description and +card chips", async () => {
+    const user = userEvent.setup();
+    mockApi();
+    renderPage(<TasksPage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Open task: Test Bravado over Sink Below" }),
+    );
+    // The +[[card-x]] token resolves to the "+Bravado" chip in the detail dialog.
+    expect(await screen.findByText("+Bravado")).toBeInTheDocument();
+  });
+
   it("narrows to the viewer's tasks when the 'Assigned to me' scope is chosen", async () => {
     const { assigneeQueries } = mockApi();
     renderPage(<TasksPage />);
 
-    await screen.findByText("Proposed (1)");
+    await screen.findByText("Test Bravado over Sink Below");
     await userEvent.click(screen.getByRole("button", { name: "Assigned to me" }));
     await waitFor(() => expect(assigneeQueries).toContain("user-1"));
   });
 
-  it("reveals a finished task's report behind the Report toggle", async () => {
+  it("reveals a finished task's report from its detail dialog", async () => {
+    const user = userEvent.setup();
     mockApi();
     renderPage(<TasksPage />);
 
-    await screen.findByText("Finished (1)");
+    await user.click(await screen.findByRole("button", { name: "Open task: Finished tuning" }));
     expect(screen.queryByText("Went 8-2; adopting.")).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Report" }));
+    await user.click(screen.getByRole("button", { name: "Report" }));
     expect(screen.getByText("Went 8-2; adopting.")).toBeInTheDocument();
   });
 
@@ -159,7 +173,7 @@ describe("TasksPage", () => {
     mockApi();
     renderPage(<TasksPage />);
 
-    await screen.findByText("Proposed (1)");
+    await screen.findByText("Test Bravado over Sink Below");
     await userEvent.click(screen.getByRole("button", { name: "New task" }));
     expect(screen.getByLabelText("Task title")).toBeInTheDocument();
     expect(screen.getByLabelText("Task description")).toBeInTheDocument();

@@ -12,11 +12,12 @@ import { useArchiveTask, useUpdateTask } from "./use-task-mutations";
 import { VoteControl } from "./VoteControl";
 
 /**
- * One task on the board: its title, the `+card`-rich description (tokens resolved to
- * card chips), the author/assignee, and the upvote control. Any member may self-assign
- * a still-open task; the author, the assignee, or a team-admin gets the status control
- * (with the required report on finish), inline edit, and archive. A finished task's
- * report is revealed behind a Report toggle; discussion loads on demand.
+ * A task's detail body, shown inside the board's detail dialog (the dialog supplies the
+ * title + close): the `+card`-rich description (tokens resolved to card chips), the
+ * author/assignee, and the upvote control. Any member may self-assign a still-open task;
+ * the author, the assignee, or a team-admin gets the status control (with the required
+ * report on finish), inline edit, and archive. A finished task's report is revealed
+ * behind a Report toggle; discussion loads on demand.
  */
 export function TaskCard({
   teamId,
@@ -48,18 +49,17 @@ export function TaskCard({
   }
 
   return (
-    <article className="flex flex-col gap-2 rounded-md border border-input p-3">
+    <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <p className="text-sm font-semibold">{task.title}</p>
-          {task.description ? (
-            <CardRichText
-              teamId={teamId}
-              body={task.description}
-              className="whitespace-pre-wrap text-sm text-muted-foreground"
-            />
-          ) : null}
-        </div>
+        {task.description ? (
+          <CardRichText
+            teamId={teamId}
+            body={task.description}
+            className="min-w-0 whitespace-pre-wrap text-sm text-muted-foreground"
+          />
+        ) : (
+          <span className="text-sm text-muted-foreground">No description.</span>
+        )}
         <VoteControl teamId={teamId} task={task} />
       </div>
 
@@ -155,6 +155,6 @@ export function TaskCard({
           />
         </div>
       ) : null}
-    </article>
+    </div>
   );
 }
