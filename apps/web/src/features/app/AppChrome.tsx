@@ -195,7 +195,14 @@ function SidebarFooter({
 }) {
   return (
     <div className="mt-auto flex flex-col gap-2 border-t border-border p-2">
-      {collapsed ? null : <TeamSelector />}
+      {collapsed ? null : (
+        <div className="flex items-center gap-2">
+          <TeamSelector />
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
+        </div>
+      )}
       <div className={cn("flex items-center gap-2", collapsed && "flex-col")}>
         <span
           className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
@@ -210,19 +217,17 @@ function SidebarFooter({
             <span className="truncate text-xs text-muted-foreground">{accountSub}</span>
           </div>
         )}
-        <div className={cn("flex items-center gap-1", !collapsed && "ml-auto")}>
-          {collapsed ? null : <ThemeToggle />}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Sign out"
-            title="Sign out"
-            onClick={onSignOut}
-          >
-            <LogOut className="size-[18px]" aria-hidden="true" />
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={cn(!collapsed && "ml-auto")}
+          aria-label="Sign out"
+          title="Sign out"
+          onClick={onSignOut}
+        >
+          <LogOut className="size-[18px]" aria-hidden="true" />
+        </Button>
       </div>
     </div>
   );
