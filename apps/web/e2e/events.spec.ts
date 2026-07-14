@@ -36,7 +36,8 @@ test("create a lightweight event, RSVP, and confirm team isolation", async ({ pa
     "aria-pressed",
     "true",
   );
-  await expect(page.getByText(E2E_EVENTS_USER.displayName)).toBeVisible();
+  // Scope to the roster: the account name now also appears in the sidebar footer.
+  await expect(page.getByLabel("Attendance").getByText(E2E_EVENTS_USER.displayName)).toBeVisible();
 
   // 5. Switch to the other team: the event must not be visible (tenant isolation).
   await page

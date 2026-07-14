@@ -25,7 +25,8 @@ export async function completeOnboarding(
   await expect(page.getByTestId("backup-codes")).toBeVisible();
   await page.getByRole("button", { name: "Continue to app" }).click();
 
-  // Landed in the app: the shared header (with Sign out) is present on every
-  // viewport, unlike the sidebar nav which collapses to a drawer on mobile.
-  await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+  // Landed in the app: the floating notification bell is present on every
+  // viewport, unlike the sidebar nav (which collapses to a drawer on mobile) and
+  // the sidebar-footer Sign out (hidden on mobile).
+  await expect(page.getByRole("button", { name: /Notifications/ })).toBeVisible();
 }

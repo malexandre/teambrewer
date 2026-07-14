@@ -79,6 +79,9 @@ test("log a game on a phone with default factors, see the weight, confirm isolat
   ).toBeVisible();
 
   // 5. Switch to the other team: the game must not be visible (tenant isolation).
+  //    On the phone viewport the team switcher lives in the drawer (the sidebar is
+  //    hidden), so open the menu first.
+  await page.getByRole("button", { name: "Open menu" }).click();
   await page
     .getByRole("combobox", { name: /active team/i })
     .selectOption({ label: E2E_TEAMS.bravo.name });
