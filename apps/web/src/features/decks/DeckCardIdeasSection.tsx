@@ -24,34 +24,44 @@ function DeckTaskRow({ teamId, task }: { teamId: string | undefined; task: Task 
 
   return (
     <li className="flex flex-col gap-1 rounded-md border border-border p-2 text-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-medium">{task.title}</span>
-        <div className="flex items-center gap-2">
-          {hasReport ? (
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate font-medium" title={task.title}>
+          {task.title}
+        </span>
+        {/* Fixed-width, right-aligned slots so Report / Discussion / status line up as
+            columns across every row — the Report slot is reserved even when absent. */}
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="flex w-24 justify-end">
+            {hasReport ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs"
+                aria-expanded={showReport}
+                onClick={() => setShowReport((open) => !open)}
+              >
+                {showReport ? "Hide report" : "Report"}
+              </Button>
+            ) : null}
+          </span>
+          <span className="flex w-28 justify-end">
             <Button
               type="button"
               size="sm"
               variant="ghost"
               className="h-6 px-2 text-xs"
-              aria-expanded={showReport}
-              onClick={() => setShowReport((open) => !open)}
+              aria-expanded={showDiscussion}
+              onClick={() => setShowDiscussion((open) => !open)}
             >
-              {showReport ? "Hide report" : "Report"}
+              {showDiscussion ? "Hide discussion" : "Discussion"}
             </Button>
-          ) : null}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-6 px-2 text-xs"
-            aria-expanded={showDiscussion}
-            onClick={() => setShowDiscussion((open) => !open)}
-          >
-            {showDiscussion ? "Hide discussion" : "Discussion"}
-          </Button>
-          <Badge tone={TASK_STATUS_TONE[task.status]} size="sm">
-            {TASK_STATUS_LABELS[task.status]}
-          </Badge>
+          </span>
+          <span className="flex w-24 justify-end">
+            <Badge tone={TASK_STATUS_TONE[task.status]} size="sm">
+              {TASK_STATUS_LABELS[task.status]}
+            </Badge>
+          </span>
         </div>
       </div>
 
