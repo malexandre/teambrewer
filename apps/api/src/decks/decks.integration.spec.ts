@@ -621,6 +621,9 @@ describe("Decks endpoints (integration)", () => {
       // Rows are tier-ordered: meta_defining (hero) before contender (archetype).
       const [heroRow, archetypeRow] = response.body.rows;
       expect(heroRow.metaDeckEntryId).toBe(heroEntry.id);
+      // The row carries the entry's hero id + label so the client can format the subject name.
+      expect(heroRow.heroId).toBe(fabHeroId);
+      expect(heroRow.label).toBe("Dorinthea");
       expect(heroRow.weightedWinRate).toBeCloseTo(0.6667, 4);
       expect(heroRow.rawSampleCount).toBe(4);
       expect(heroRow.effectiveSample).toBe(3);
@@ -628,6 +631,9 @@ describe("Decks endpoints (integration)", () => {
       expect(heroRow.hasGamePlan).toBe(true);
 
       expect(archetypeRow.metaDeckEntryId).toBe(archetypeEntry.id);
+      // A label-only (hero-less) entry reports a null heroId and its archetype label.
+      expect(archetypeRow.heroId).toBeNull();
+      expect(archetypeRow.label).toBe("Aggro Red");
       expect(archetypeRow.weightedWinRate).toBe(1);
       expect(archetypeRow.rawSampleCount).toBe(1);
       expect(archetypeRow.hasGamePlan).toBe(false);

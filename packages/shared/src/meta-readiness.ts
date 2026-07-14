@@ -29,6 +29,10 @@ export type DeckMetaReadinessQuery = z.infer<typeof deckMetaReadinessQuerySchema
 export const deckMetaReadinessRowSchema = z.object({
   metaDeckEntryId: z.string(),
   tier: metaTierSchema,
+  /** The meta deck entry's optional hero/identity id, so the client can show the hero name. */
+  heroId: z.string().nullable(),
+  /** The entry's free-text archetype label (may be empty when the entry is hero-only). */
+  label: z.string(),
   opponentSnapshotLabel: z.string(),
   weightedWinRate: z.number().nullable(),
   rawSampleCount: z.number().int(),

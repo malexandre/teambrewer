@@ -328,6 +328,8 @@ export class DecksService {
       return {
         metaDeckEntryId: entry.id,
         tier: entry.tier,
+        heroId: entry.heroId,
+        label: entry.label,
         opponentSnapshotLabel: entry.opponentSnapshotLabel,
         weightedWinRate: aggregate.weightedWinRate,
         rawSampleCount: aggregate.rawSampleCount,
