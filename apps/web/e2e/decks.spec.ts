@@ -34,9 +34,13 @@ test("create a deck, set its status, log an iteration, and confirm team isolatio
   await expect(page.getByRole("heading", { name: deckName })).toBeVisible();
   await expect(page.getByRole("link", { name: /open deck list/i })).toBeVisible();
 
-  // 4. Move it through the status lifecycle: exploratory -> testing.
+  // 4. Move it through the status lifecycle: exploratory -> testing. The status label
+  //    appears both in the page header and the Overview section, so scope the check to
+  //    the Overview status chip.
   await page.getByRole("combobox", { name: /change status/i }).selectOption("testing");
-  await expect(page.getByText("Testing", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Overview" }).getByText("Testing", { exact: true }),
+  ).toBeVisible();
 
   // 5. Add an iteration-log entry and see it appear.
   const iteration = "Splashed extra reds after the last event.";

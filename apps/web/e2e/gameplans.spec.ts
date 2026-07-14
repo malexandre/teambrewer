@@ -26,8 +26,10 @@ test("write a matchup game-plan on a deck with an inline +card reference", async
   await page.getByRole("link", { name: new RegExp(E2E_GAMEPLAN_DECK_NAME) }).click();
   await expect(page.getByRole("heading", { name: E2E_GAMEPLAN_DECK_NAME })).toBeVisible();
 
+  // Game-plans live under the deck's "Plan" tab. The opponent is named by a free-text
+  // archetype label (with an optional hero qualifier).
+  await page.getByRole("tab", { name: "Plan" }).click();
   await page.getByRole("button", { name: "Write a game-plan" }).click();
-  await page.getByRole("button", { name: "Archetype label" }).click();
   await page.getByLabel("Archetype label").fill("Aggro Fai");
 
   // The plan body carries key cards inline via the +card composer (no structured

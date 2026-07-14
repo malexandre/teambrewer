@@ -39,6 +39,8 @@ test("a comment mention notifies a teammate and deep-links to the thread", async
   await authorPage.getByRole("button", { name: "Create deck" }).click();
   await expect(authorPage.getByRole("heading", { name: deckName })).toBeVisible();
 
+  // Comments and the activity feed live under the deck's "Activity" tab.
+  await authorPage.getByRole("tab", { name: "Activity" }).click();
   await authorPage.getByLabel("New comment").fill(commentBody);
   await authorPage.getByRole("button", { name: "Comment", exact: true }).click();
   await expect(authorPage.getByText(commentBody)).toBeVisible();
@@ -55,8 +57,9 @@ test("a comment mention notifies a teammate and deep-links to the thread", async
   await mentionedPage.getByRole("button", { name: /notifications/i }).click();
   await mentionedPage.getByRole("button", { name: /mentioned you/i }).click();
 
-  // 4. Clicking it opens the deck detail with the comment thread.
+  // 4. Clicking it opens the deck detail; the comment thread is under the Activity tab.
   await expect(mentionedPage.getByRole("heading", { name: deckName })).toBeVisible();
+  await mentionedPage.getByRole("tab", { name: "Activity" }).click();
   await expect(mentionedPage.getByText(commentBody)).toBeVisible();
 
   await authorContext.close();

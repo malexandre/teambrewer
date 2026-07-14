@@ -37,6 +37,8 @@ test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) 
   await page.getByRole("button", { name: "Create meta" }).click();
 
   await expect(page.getByRole("heading", { name: metaName })).toBeVisible();
+  // A meta deck entry needs a free-text archetype label; the hero is an optional qualifier.
+  await page.locator("#meta-entry-archetype").fill(`${E2E_REFERENCE.heroName} Aggro`);
   await page.locator("#meta-entry-hero").selectOption({ label: E2E_REFERENCE.heroName });
   await page.locator("#meta-entry-tier").selectOption({ label: "Meta-defining" });
   await page.getByRole("button", { name: "Add deck" }).click();
@@ -53,13 +55,16 @@ test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) 
   await page.getByRole("button", { name: "Create deck" }).click();
   await expect(page.getByRole("heading", { name: deckName })).toBeVisible();
 
-  // 4. Readiness lists the meta's decks; the untested Tier-1 hero has no plan yet.
+  // 4. Readiness lists the meta's decks; the untested Tier-1 hero has no plan yet. It
+  //    lives under the deck's "Matchup Matrix" tab.
+  await page.getByRole("tab", { name: "Matchup Matrix" }).click();
   const readiness = page.getByRole("region", { name: "Meta readiness" });
   await expect(readiness.getByText(E2E_REFERENCE.heroName)).toBeVisible();
   await expect(readiness.getByText("plan ✗")).toBeVisible();
 
-  // 5. "Add card idea" opens a task pre-linked to this deck; add an inline +card and
-  //    create it.
+  // 5. "Add card idea" (under the "Card ideas & Tasks" tab) opens a task pre-linked to
+  //    this deck; add an inline +card and create it.
+  await page.getByRole("tab", { name: "Card ideas & Tasks" }).click();
   await page.getByRole("button", { name: "Add card idea" }).click();
   const description = page.getByRole("textbox", { name: "Task description" });
   await description.click();
