@@ -89,6 +89,39 @@ describe("MentionComposer", () => {
     expect(onSubmit).toHaveBeenCalledWith("ping @alice");
   });
 
+  it("shows a hint row when a non-empty +card query matches no cards", async () => {
+    // The card database returns nothing (e.g. unsynced/empty).
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/members")) return json(members);
+      if (url.includes("/api/cards")) return json({ data: [], nextCursor: null });
+      return json({}, 404);
+    });
+    const user = userEvent.setup();
+    renderComposer({ enableCardMentions: true });
+
+    const textarea = screen.getByLabelText("Task description");
+    await user.type(textarea, "need +nope");
+
+    expect(await screen.findByText(/no matching cards/i)).toBeInTheDocument();
+    // It is a non-actionable hint, not a selectable suggestion list.
+    expect(screen.queryByRole("list", { name: /card suggestions/i })).not.toBeInTheDocument();
+  });
+
+  it("shows no dropdown or hint while the +card query is still empty", async () => {
+    mockApi();
+    const user = userEvent.setup();
+    renderComposer({ enableCardMentions: true });
+
+    const textarea = screen.getByLabelText("Task description");
+    // A bare `+` with no query text: no search runs, so neither suggestions nor a hint.
+    await user.type(textarea, "start +");
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(screen.queryByText(/no matching cards/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: /card suggestions/i })).not.toBeInTheDocument();
+  });
+
   it("does not autocomplete cards when card mentions are disabled (the default)", async () => {
     mockApi();
     const user = userEvent.setup();

@@ -125,13 +125,18 @@ export function MentionComposer({
 
   const cardQuery = activeTrigger?.kind === "card" ? activeTrigger.token.trim() : "";
   const debouncedCardQuery = useDebouncedValue(cardQuery).trim();
-  const { data: cardData } = useCardSearch(
+  const { data: cardData, isFetching: isCardSearchFetching } = useCardSearch(
     teamId,
     { query: debouncedCardQuery },
     { enabled: enableCardMentions && debouncedCardQuery.length > 0 },
   );
-  const cardSuggestions =
-    activeTrigger?.kind === "card" && debouncedCardQuery.length > 0 ? (cardData?.data ?? []) : [];
+  const hasActiveCardQuery = activeTrigger?.kind === "card" && debouncedCardQuery.length > 0;
+  const cardSuggestions = hasActiveCardQuery ? (cardData?.data ?? []) : [];
+  // A settled card search that matched nothing: surface a hint row (rather than an
+  // empty void) so a non-obvious cause — e.g. an unsynced/empty card database — is
+  // explained. Suppressed while the search is still in flight to avoid a flash.
+  const showNoCardMatchesHint =
+    hasActiveCardQuery && !isCardSearchFetching && cardSuggestions.length === 0;
 
   function refreshTrigger(target: HTMLTextAreaElement): void {
     setActiveTrigger(
@@ -215,6 +220,14 @@ export function MentionComposer({
               </li>
             ))}
           </ul>
+        ) : null}
+        {showNoCardMatchesHint ? (
+          <div
+            className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover px-2 py-1 text-xs text-muted-foreground shadow"
+            role="status"
+          >
+            No matching cards — the card database may be empty.
+          </div>
         ) : null}
         {activeTrigger?.kind === "card" && cardSuggestions.length > 0 ? (
           <ul
