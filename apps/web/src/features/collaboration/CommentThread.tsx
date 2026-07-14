@@ -2,6 +2,7 @@ import type { Comment, SubjectType } from "@teambrewer/shared";
 import { useState } from "react";
 
 import { useCurrentUser } from "@/features/auth/use-current-user";
+import { CardRichText } from "@/features/cards/CardRichText";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
 
@@ -38,9 +39,10 @@ export function CommentThread({
         <MentionComposer
           teamId={teamId}
           submitLabel="Comment"
-          placeholder="Add a comment… use @ to mention a teammate"
+          placeholder="Add a comment… use @ to mention a teammate, + to link a card"
           ariaLabel="New comment"
           isPending={postComment.isPending}
+          enableCardMentions
           onSubmit={(body) => postComment.mutate({ body })}
         />
       ) : null}
@@ -138,6 +140,7 @@ function CommentItem({
           placeholder="Edit your comment…"
           ariaLabel="Edit comment"
           isPending={editComment.isPending}
+          enableCardMentions
           onSubmit={(body) =>
             editComment.mutate(
               { commentId: comment.id, body },
@@ -147,7 +150,13 @@ function CommentItem({
           onCancel={() => setEditing(false)}
         />
       ) : (
-        <p className="mt-1 whitespace-pre-wrap text-sm">{comment.body}</p>
+        <div className="mt-1">
+          <CardRichText
+            teamId={teamId}
+            body={comment.body}
+            className="whitespace-pre-wrap text-sm"
+          />
+        </div>
       )}
 
       {!editing ? (
@@ -187,9 +196,10 @@ function CommentItem({
           <MentionComposer
             teamId={teamId}
             submitLabel="Reply"
-            placeholder="Write a reply… use @ to mention a teammate"
+            placeholder="Write a reply… use @ to mention a teammate, + to link a card"
             ariaLabel="Reply"
             isPending={postComment.isPending}
+            enableCardMentions
             onSubmit={(body) =>
               postComment.mutate(
                 { body, parentCommentId: comment.id },

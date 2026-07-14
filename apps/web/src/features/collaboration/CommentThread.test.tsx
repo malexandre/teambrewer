@@ -36,7 +36,7 @@ const thread = {
       subjectType: "deck",
       subjectId: "deck-1",
       author: { userId: "user-2", username: "bob", displayName: "Bob" },
-      body: "top-level comment",
+      body: "top-level comment about +[[card-1]]",
       parentCommentId: null,
       archivedAt: null,
       createdAt: "2026-07-12T00:00:00.000Z",
@@ -77,6 +77,9 @@ function mockApi(): void {
     if (url.endsWith("/api/me/teams")) return json({ data: [TEAM] });
     if (url.endsWith("/api/me")) return json(currentUser);
     if (url.includes("/api/members")) return json(members);
+    if (url.includes("/api/cards/card-1")) {
+      return json({ id: "card-1", name: "Command and Conquer", pitch: 1, imageUrl: null });
+    }
     if (url.includes("/api/comments") && method === "GET") return json(thread);
     if (url.includes("/api/comments") && method === "POST") {
       return json({
@@ -119,8 +122,14 @@ describe("CommentThread", () => {
 
   it("renders a comment and its nested reply", async () => {
     renderThread();
-    expect(await screen.findByText("top-level comment")).toBeInTheDocument();
+    expect(await screen.findByText(/top-level comment about/)).toBeInTheDocument();
     expect(await screen.findByText("a nested reply")).toBeInTheDocument();
+  });
+
+  it("renders +card tokens in a comment body as inline card chips", async () => {
+    renderThread();
+    // The +[[card-1]] token in the comment body resolves to a "+Command and Conquer" chip.
+    expect(await screen.findByText("+Command and Conquer")).toBeInTheDocument();
   });
 
   it("lists only in-team members in the mention autocomplete", async () => {
