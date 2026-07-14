@@ -34,14 +34,15 @@ non-null `teamId` (except the `DeckMeta` join, scoped through its parents).
   - **Current meta** = the meta whose `[startDate, endDate]` contains today; on overlap, the one with the
     latest `startDate`. Resolved server-side (no stored "is current" flag).
   - `endDate` must be on or after `startDate`.
-- **MetaDeckEntry** `{ id, metaId, teamId, tier, referenceDeckId? | heroId? | archetypeLabel?,
-  opponentSnapshotLabel, notes }` — one tiered entry in a meta's deck list (the reshaped gauntlet).
-  - Names **exactly one** target form (a reference `Deck` where `isReference`, a bare `heroId`, or a
-    free-text `archetypeLabel`), enforced server-side.
+- **MetaDeckEntry** `{ id, metaId, teamId, tier, label, heroId?, opponentSnapshotLabel, notes }` — one
+  tiered entry in a meta's deck list (the reshaped gauntlet), modelled as a **matchup subject**: a
+  **required free-text `label`** (the human archetype name) plus an **optional `heroId`** qualifier.
+  - The same hero may appear under multiple labels; only an **exact duplicate** — same hero + same `label`
+    (case-insensitive), or the same `label` when hero-less — is rejected.
   - `tier` ∈ `meta_defining | contender | counter_meta | fringe` (labels: "Meta-defining" / "Contender" /
     "Counter-meta" / "Fringe — know it exists").
-  - `opponentSnapshotLabel` is a server-derived human label resolved at write time that survives deletion of
-    the referenced deck/hero.
+  - `opponentSnapshotLabel` is a server-derived human label derived from `label` at write time that survives
+    deletion of the referenced hero.
 - **DeckMeta** `{ id, deckId, metaId }` — explicit deck↔meta join (`@@unique(deckId, metaId)`); no `teamId`
   (reached through its parents). Deck-create defaults to linking the current meta.
 
@@ -49,10 +50,10 @@ non-null `teamId` (except the `DeckMeta` join, scoped through its parents).
 
 - **Shared team board** (the events precedent): any member creates/edits/deletes any meta or meta deck
   entry; there is no per-row owner.
-- A meta deck entry's **target form is immutable** once set (to change it, delete and re-add); only `tier`
-  and `notes` are editable.
-- Cross-game / cross-team foreign keys are rejected (a reference deck / hero must belong to the team's game
-  and team). Cross-tenant reads return `404`.
+- A meta deck entry is **fully editable** — `tier`, `label`, `heroId`, and `notes` may all be changed in
+  place.
+- Cross-game / cross-team foreign keys are rejected (a hero, when set, must belong to the team's game and
+  team). Cross-tenant reads return `404`.
 - `DELETE` on a meta archives it (`archivedAt`); archived metas are excluded from default lists.
 
 ## API surface
@@ -70,7 +71,7 @@ verified team context, never the body. (Endpoints land in WS-2 — `MetasModule`
 | `DELETE` | `/api/metas/:metaId` | Archive (soft-delete) |
 | `GET` | `/api/metas/:metaId/deck-entries` | List the tiered deck list |
 | `POST` | `/api/metas/:metaId/deck-entries` | Add a deck entry |
-| `PATCH` | `/api/metas/:metaId/deck-entries/:entryId` | Update tier/notes |
+| `PATCH` | `/api/metas/:metaId/deck-entries/:entryId` | Update tier/label/hero/notes |
 | `DELETE` | `/api/metas/:metaId/deck-entries/:entryId` | Remove an entry |
 
 Request/response bodies validate against the Zod schemas in `packages/shared` (`metas.ts`,
@@ -80,14 +81,15 @@ Request/response bodies validate against the Zod schemas in `packages/shared` (`
 
 All meta and meta-deck-entry rows carry `teamId` and are filtered server-side by the verified active team
 (`meta`, `metaDeckEntry` in `TEAM_OWNED_MODELS`); `DeckMeta` is scoped through its parents. A referenced
-deck/hero must belong to the same team/game. See [multi-tenancy.md](../architecture/multi-tenancy.md).
+hero must belong to the same team/game. See [multi-tenancy.md](../architecture/multi-tenancy.md).
 
 ## Testing notes
 
 - **Tenant isolation:** a user in team A cannot read/write team B's metas or deck entries even with a forged
-  `teamId` (`404`/`403`); a deck entry cannot reference another team's deck/hero.
-- **Validation:** `endDate` before `startDate` rejected; a deck entry with zero or more than one target form
-  rejected; an unknown `tier` rejected.
+  `teamId` (`404`/`403`); a deck entry cannot reference another team's hero.
+- **Validation:** `endDate` before `startDate` rejected; a deck entry with a missing `label`, or an exact
+  duplicate (same hero + `label`, case-insensitive; or same `label` when hero-less), rejected; an unknown
+  `tier` rejected.
 - **Current-meta resolution:** with overlapping windows, the latest `startDate` wins; with none containing
   today, "current" is empty.
 

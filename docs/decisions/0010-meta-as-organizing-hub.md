@@ -17,8 +17,8 @@ The **Meta** (a dated metagame window with a tiered opponent-deck list) is the c
 - **Meta** is **team-scoped** (like every other domain row): `{ name, startDate, endDate, description }`.
   The **current meta** is the one whose `[startDate, endDate]` contains today (latest `startDate` wins on
   overlap), resolved server-side.
-- The gauntlet moves onto the Meta as a **tiered opponent-deck list** (`MetaDeckEntry`): each entry names
-  exactly one target (a reference deck, a bare hero, or an archetype label) and a **`tier`**
+- The gauntlet moves onto the Meta as a **tiered opponent-deck list** (`MetaDeckEntry`): each entry is a
+  matchup subject — a **required label** with an **optional hero qualifier** — and a **`tier`**
   (`meta_defining | contender | counter_meta | fringe`) instead of a raw `expectedMetaShare %`.
 - **Matchup coverage is shown per-deck** (a "readiness vs the current meta" section on the deck page),
   reusing the confidence-weighted aggregation math ([ADR-0005](0005-confidence-weight-model.md)) — the

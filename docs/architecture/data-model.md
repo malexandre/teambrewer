@@ -67,13 +67,13 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
 ### Decks (link-only — see ADR-0002)
 - **Deck** `{ id, teamId, name, gameId, formatId, heroId?, externalUrl, source, ownerId,
   status: 'exploratory' | 'testing' | 'tournament_ready' | 'retired', visibility: 'team' | 'private',
-  isReference (gauntlet/opponent archetype vs our deck), tags[], notes, archivedAt? }`
+  tags[], notes, archivedAt? }`
 - **DeckIterationEntry** `{ id, deckId, authorId, body (e.g. "-2 X, +2 Y after event"), createdAt }`
   — manual changelog; there is **no stored card list**.
 
 ### Events & gauntlets
 - **Event** `{ id, teamId, name, formatId, date, location?, importance, description, status }`
-- **GauntletEntry** `{ id, eventId, teamId, referenceDeckId (→ Deck isReference) or heroId/archetypeLabel,
+- **GauntletEntry** `{ id, eventId, teamId, referenceDeckId (→ Deck) or heroId/archetypeLabel,
   expectedMetaShare (0–100), notes }`
 - **Attendance** `{ id, eventId, userId, status: 'going' | 'maybe' | 'not_going' }`
 - **DeckSelection** `{ id, eventId, userId, deckId, locked, lockedAt?, reasoning }` — one per
@@ -84,8 +84,8 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
 
 ### Game logging & matchups
 - **GameLog** `{ id, teamId, loggedById, formatId, eventId?, playedAt,
-  sideA: { pilotUserId, deckId },
-  sideB: { pilotUserId? | externalOpponentName?, deckId? | heroId? | archetypeLabel? },
+  sideA (self): { pilotUserId?, deckId | selfMetaDeckEntryId | (selfHeroId + selfArchetypeLabel) },
+  sideB (opponent): { opponentPilotUserId? | externalOpponentName?, opponentDeckId | opponentMetaDeckEntryId | (opponentHeroId + opponentArchetypeLabel) },
   firstPlayerSide (which side took the first turn: 'A' | 'B'), bestOf, result (games won A / B or single-game win/loss/draw),
   winType?, lossReason?, learnings,
   confidenceFactors: { skillParity, seriousness, deckMaturity, pilotFamiliarity } (each an enum),
@@ -112,18 +112,23 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
   still reads meaningfully.
 
 ### Game-plans
-- **MatchupGamePlan** `{ id, teamId, ourDeckId, opponentRef (gauntletEntryId | heroId | archetypeLabel),
-  formatId, body, updatedBy, archivedAt? }` — one canonical plan per
-  `(teamId, ourDeckId, opponentRef, formatId)`. **Implementation note (phase-09):** `opponentRef` is
-  persisted as three nullable columns **plus a derived, normalized `opponentRef` key string**
-  (`gauntlet:<id>` | `hero:<id>` | `label:<lowercased>`) so the uniqueness constraint holds across the
-  polymorphic target (Postgres treats NULLs as distinct); a derived `opponentSnapshotLabel` (like
-  `TestAssignment`) survives deletion of the referenced gauntlet entry/hero. A duplicate create → `409`;
+- **MatchupGamePlan** `{ id, teamId, ourDeckId, opponentArchetypeLabel, opponentHeroId?,
+  opponentRef (derived), formatId, body, updatedBy, archivedAt? }` — one canonical plan per
+  `(teamId, ourDeckId, opponentRef, formatId)`. The opponent is a **matchup subject** mirroring
+  `MetaDeckEntry`: a **required `opponentArchetypeLabel`** with an **optional `opponentHeroId`** qualifier.
+  **Implementation note:** `opponentRef` is a derived, normalized key string
+  (`hero:<id>|label:<lowercased>` when hero-qualified, else `label:<lowercased>`) — produced by the shared
+  `deriveMatchupSubjectRef` (single source of truth) — so the uniqueness constraint holds across the
+  polymorphic target (Postgres treats NULLs as distinct); a derived `opponentSnapshotLabel` survives
+  deletion of the referenced hero. A duplicate create → `409`;
   editing updates in place and re-stamps `updatedBy`. Shared team knowledge (no owner): any member
   creates/edits; **archive is team-admin only**. **Key cards (meta-pivot redesign, WS-4):** the structured
   `MatchupGamePlanCard` child table was dropped — key cards now live inline in `body` as `+[[cardId]]`
   tokens (the shared `+card` mention model; see `packages/shared/src/card-tokens.ts`), resolved to card
   chips at render time. A collaboration subject (`subjectType: 'matchup_game_plan'`).
+- **GamePlanMetaDeckEntry** `{ id, gamePlanId, metaDeckEntryId }` — join attaching a `MatchupGamePlan` to
+  specific meta deck entries; create/update on a game-plan accept `metaDeckEntryIds`. Scoped transitively
+  through its parents (no `teamId` of its own).
 
 ### Collaboration (polymorphic — see collaboration-core spec)
 - **Comment** `{ id, teamId, authorId, subjectType, subjectId, body, parentCommentId?, archivedAt? }`

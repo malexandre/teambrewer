@@ -30,8 +30,8 @@ theirs — see [UI / UX](#ui--ux) and [Data](#data) below.
 
 - As a **member**, right after a testing game I open a quick form, pick my deck, pick the opponent hero,
   tap the result, adjust confidence factors (pre-filled with defaults), and save — in under a minute.
-- As a **member**, I log a game against a teammate, selecting both pilots and both decks so it counts for
-  both sides.
+- As a **member**, I log a game against a teammate by picking the opponent subject and setting the teammate
+  as the opponent pilot, so the game is attributed to them.
 - As a **member**, I log a game from a tournament by attaching the `eventId`, so it feeds that event's
   matchup view.
 - As a **member**, I add a short `learnings` note and a `lossReason` tag so the team learns from the game,
@@ -44,16 +44,20 @@ Uses **GameLog** from [data-model.md](../architecture/data-model.md#game-logging
 (`teamId`).
 
 **GameLog** `{ id, teamId, loggedById, formatId, eventId?, playedAt,`
-`sideA: { pilotUserId, deckId },`
-`sideB: { pilotUserId? | externalOpponentName?, deckId? | heroId? | archetypeLabel? },`
+`sideA (self): { pilotUserId?, deckId | selfMetaDeckEntryId | (selfHeroId + selfArchetypeLabel) },`
+`sideB (opponent): { opponentPilotUserId? | externalOpponentName?,`
+`  opponentDeckId | opponentMetaDeckEntryId | (opponentHeroId + opponentArchetypeLabel) },`
 `firstPlayerSide, bestOf, result, winType?, lossReason?, learnings,`
 `confidenceFactors: { skillParity, seriousness, deckMaturity, pilotFamiliarity },`
 `confidenceWeight (0–1, derived) }`
 
-- **sideA** is always "our" side: a team member pilot (`pilotUserId`) on one of the team's decks (`deckId`).
-- **sideB** is the opponent: **either** a teammate (`pilotUserId`) on a team deck, **or** an external
-  opponent (`externalOpponentName?`) identified by `deckId` (a reference deck), `heroId`, or free-text
-  `archetypeLabel`. At least one opponent identifier must be present.
+- **Both sides are matchup subjects.** **sideA** ("our" side) is exactly one of a team `deckId`, a
+  `selfMetaDeckEntryId`, or a hero+label pair (`selfHeroId` + `selfArchetypeLabel`, the label required when a
+  hero is used); `pilotUserId` is **optional**.
+- **sideB** (opponent) is exactly one of an `opponentDeckId` (**any** team deck), an `opponentMetaDeckEntryId`,
+  or a hero+label pair (`opponentHeroId` + `opponentArchetypeLabel`). `opponentPilotUserId` is **optional** and
+  **independent of the subject** — a teammate opponent is just an opponent subject with a pilot set — and
+  `externalOpponentName?` stays optional.
 - **firstPlayerSide** — which side took the first turn (going first vs second matters for FaB matchups).
 - **bestOf** — `1` (single game) or `3`/`5` (match); `result` records games won A / B, or single-game
   win/loss/draw.
@@ -79,8 +83,9 @@ here and belongs to phase-09's `MatchupGamePlan.keyCards[]`.
   matched, familiar) so a fast save still yields a meaningful weight; the logger adjusts only what differs.
 - **Result consistency:** `result` must be consistent with `bestOf` (e.g. a best-of-3 cannot record 3
   games won by one side and 3 by the other); draws allowed only where the format permits.
-- **Opponent identity:** exactly one of {teammate pilot, external opponent} for sideB; the opponent deck
-  identity is one of {reference `deckId`, `heroId`, `archetypeLabel`} (a teammate normally has a `deckId`).
+- **Subject identity:** each side names **exactly one** matchup subject (team deck / meta deck entry /
+  hero+label); a hero subject always carries its label. `opponentPilotUserId` and `externalOpponentName?`
+  are optional and independent of the opponent subject.
 - **Format & event coherence:** if `eventId` is set, the game's `formatId` should match the event's format;
   mismatch warns but is allowed (people test off-format).
 - **Ownership / permissions:** the logger owns the row; the logger and team-admins may edit or archive it.
@@ -123,8 +128,8 @@ in responses.
   **Next** validates the current step before advancing. Only the three core steps count toward the
   indicator — step 4 is an optional appendix, so a fast log always reads "of 3". Edit mode reuses the same
   wizard, seeded from the existing log; step 4 opens by default on edit if the log already has notes/cards.
-  - **Step 1 · Matchup** — format; my deck; opponent (kind switcher → hero / teammate / archetype /
-    reference deck, revealing the matching control). Validates format + deck + opponent identified.
+  - **Step 1 · Matchup** — format; my deck; opponent (kind switcher → Archetype [label + optional hero] /
+    Team deck / Teammate, revealing the matching control). Validates format + deck + opponent identified.
   - **Step 2 · Result** — best-of (pre-selected from the team's game via `GET /api/game-config`); who went
     first; Win/Loss/Draw for a single game, or games-won steppers for a match. Validates result-vs-best-of
     consistency.
@@ -148,8 +153,8 @@ the service layer. See [multi-tenancy.md](../architecture/multi-tenancy.md). Cro
 
 ## Edge cases
 
-- **External opponent with only an archetype label:** allowed — the game still aggregates by archetype even
-  without a hero or reference deck.
+- **Opponent identified by only an archetype label:** allowed — the game still aggregates by archetype even
+  without a hero or a team deck.
 - **Same game logged by both teammates:** two-player games should be logged once; the UI warns if a very
   similar recent game exists. Aggregation dedup is out of scope for v1 (documented, not enforced).
 - **Deck archived after games logged:** logs persist and still aggregate; the deck renders as archived.
@@ -166,8 +171,8 @@ Follow [testing-strategy.md](../architecture/testing-strategy.md).
 - **Confidence weight derivation:** table-driven unit tests mapping factor combinations →
   `confidenceWeight` exactly per [ADR-0005](../decisions/0005-confidence-weight-model.md); assert the
   result is always within `[0,1]` and that a client-supplied weight is ignored.
-- **Validation:** `result` inconsistent with `bestOf` rejected; sideB with zero or conflicting opponent
-  identifiers rejected; missing sideA pilot/deck rejected.
+- **Validation:** `result` inconsistent with `bestOf` rejected; a side with zero or conflicting matchup
+  subjects rejected; a hero subject missing its label rejected.
 - **Tenant isolation:** a user in team A cannot read/write team B's game logs; a log cannot reference a
   deck or event from another team; a cross-tenant log's captured cards are never reachable (the
   `GameLogCard` parent-scoping pattern is explicitly proven, not assumed).

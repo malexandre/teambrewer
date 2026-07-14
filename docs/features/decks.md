@@ -6,7 +6,6 @@ A **Deck** is a **link-only** entity — `{ hero/identity, format, external link
 stored card list, no deck builder, and no scraping** of the linked tool's contents
 ([ADR-0002](../decisions/0002-decks-as-links.md)). Decks are the collaboration anchor for the whole app:
 they hang off events, carry a status lifecycle and visibility, and keep a manual **iteration log**.
-Reference decks represent opponent/meta archetypes for gauntlets.
 
 ## Goals & value
 
@@ -15,7 +14,6 @@ Reference decks represent opponent/meta archetypes for gauntlets.
   ([ADR-0002](../decisions/0002-decks-as-links.md)).
 - Provide structured, aggregable fields (**hero, format, status**) so matchups and meta can be tracked by
   hero/deck even without card lists ([flesh-and-blood](../domain/flesh-and-blood.md)).
-- Support both **our decks** and link-only **reference/gauntlet decks** (opponent archetypes).
 - Preserve iteration history in prose since automatic diffs are impossible.
 
 ## User stories
@@ -25,8 +23,7 @@ Reference decks represent opponent/meta archetypes for gauntlets.
 - As a **member**, I can keep a deck a **private draft** until it's ready to share with the team.
 - As a **member**, I can move a deck through its **status** lifecycle as testing progresses.
 - As a **member**, I can add **iteration log** entries describing changes ("-2 X, +2 Y after event").
-- As a **team-admin**, I can create **reference decks** (opponent archetypes) for the gauntlet and moderate
-  others' decks.
+- As a **team-admin**, I can moderate others' decks (edit / retire / archive).
 - As a **member**, I can browse/filter the team's decks by hero, format, status, and tags.
 - As a **member**, I can **link a deck to metas** (a multi-select on the deck form). Creating a deck
   **defaults to linking the current meta** (editable); the deck detail lists its linked metas. The join is
@@ -37,8 +34,9 @@ Reference decks represent opponent/meta archetypes for gauntlets.
   game-plan exists (Tier-1 archetypes with no plan are flagged). This is a read-only derivation from
   `GameLog` (reusing the kept matchup math — see [confidence-and-matchups.md](confidence-and-matchups.md)),
   served by `GET /api/decks/:deckId/meta-readiness?metaId=` (defaults to the current meta). Game logs match
-  an entry when side A is this deck and side B matches the entry's target (reference deck / hero /
-  archetype label); a game log's optional `metaId` is not required (a later narrowing).
+  an entry when side A is this deck and side B either links the entry directly (`opponentMetaDeckEntryId`)
+  or matches the entry's matchup-subject ref (shared hero + label), so repeated heroes under different
+  labels aggregate distinctly; a game log's optional `metaId` is not required (a later narrowing).
 - As a **member**, I can **"Add card idea"** from the deck page: it opens the shared **Task** form
   (see [tasks.md](tasks.md)) pre-linked to this deck with a card-test title/description scaffold ready for
   `+card` mentions — the same `POST /api/tasks` path as the tasks board, not a parallel one. The deck page
@@ -50,7 +48,7 @@ From [data-model](../architecture/data-model.md#decks-link-only--see-adr-0002):
 
 - **Deck** `{ id, teamId, name, gameId, formatId, heroId?, externalUrl, source, ownerId,
   status: 'exploratory' | 'testing' | 'tournament_ready' | 'retired', visibility: 'team' | 'private',
-  isReference (gauntlet/opponent archetype vs our deck), tags[], notes, archivedAt? }`
+  tags[], notes, archivedAt? }`
 - **DeckIterationEntry** `{ id, deckId, authorId, body, createdAt }` — manual changelog; **there is no
   stored card list**.
 
@@ -85,10 +83,10 @@ flowchart LR
 - `private` = a personal draft visible only to the **owner** (and moderating team-admins). `team` = visible
   to all team members. Owners flip visibility when ready.
 
-### Reference decks
+### Decks as game-log opponents
 
-- `isReference = true` marks a deck as an **opponent/meta archetype** (link-only) used by gauntlets and as a
-  side in game logs — it is still just a link + metadata, never a stored list.
+- There is no separate "reference deck" concept: **any** team deck may be referenced as a game-log opponent
+  (side B). A deck is always just a link + metadata, never a stored list.
 
 ### Deck-link recognition (best-effort, ToS-safe)
 
@@ -110,7 +108,6 @@ flowchart LR
 | Create own deck | ✅ | ✅ | ✅ |
 | Edit / retire / archive | ✅ | ✅ (moderation) | ❌ |
 | Add iteration entry | ✅ | ✅ | ❌ (comments instead) |
-| Create reference deck | ✅ | ✅ | ✅ |
 | View `private` draft | ✅ | ✅ | ❌ |
 | View `team` deck | ✅ | ✅ | ✅ |
 
@@ -118,7 +115,7 @@ flowchart LR
 
 Per [api-conventions](../architecture/api-conventions.md); `teamId` from verified context, never the body:
 
-- `GET /api/decks?heroId=&formatId=&status=&isReference=&tag=&visibility=&limit=&cursor=` — list (cursor
+- `GET /api/decks?heroId=&formatId=&status=&tag=&visibility=&limit=&cursor=` — list (cursor
   pagination); `private` drafts of other users are excluded.
 - `POST /api/decks` — create (server stamps `teamId`, `gameId`, `ownerId`; runs URL recognition).
 - `GET /api/decks/:deckId` — detail.
@@ -153,9 +150,6 @@ team's **game** data. Cross-team foreign keys (e.g. a deck referencing another t
   and aggregates survive; hide from active pickers.
 - A `private` deck referenced in a `team`-visible context -> guard so drafts don't leak metadata to
   non-owners.
-- Reference deck without a `heroId` -> allowed via an `archetypeLabel` on the referencing side
-  ([data-model](../architecture/data-model.md#events--gauntlets)); the deck itself still needs a valid link
-  or label.
 
 ## Testing notes
 

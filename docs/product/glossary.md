@@ -19,7 +19,7 @@ these exact names in code and UI (see the no-abbreviations rule in
 | **Active team** | The team a multi-team user is currently viewing. The UI shows one team at a time. |
 | **Tenant isolation** | The guarantee that one team never sees another team's data. Enforced server-side. |
 | **Deck** | A **link-only** entry: `{ game, format, hero, external link, metadata }`. No stored card list. |
-| **Reference deck** | A deck representing an opponent/meta archetype (gauntlet target), also link-only. |
+| **Matchup subject** | The unified way TeamBrewer identifies an opponent/archetype everywhere (meta deck entries, game logs, game-plans): a team deck, a meta deck entry, or a hero + free-text label. Replaces the old "reference deck" concept. |
 | **Event** | A target tournament (format + date) that testing is organized around. |
 | **Gauntlet** | The "field to beat" for an event: the set of reference decks/archetypes to test against. |
 | **Expected metagame** | Field-share percentages assigned to gauntlet archetypes, used to prioritize testing. |

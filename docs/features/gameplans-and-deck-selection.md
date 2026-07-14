@@ -30,14 +30,18 @@ ends in a confident deck choice and a durable review.
 Exact entities from [data-model.md](../architecture/data-model.md) (all team-scoped, non-null `teamId`).
 
 ### `MatchupGamePlan`
-`{ id, teamId, ourDeckId (→ Deck), opponentRef (gauntletEntryId | heroId | archetypeLabel), formatId,
-body, updatedBy }`
+`{ id, teamId, ourDeckId (→ Deck), opponentArchetypeLabel, opponentHeroId?, opponentRef (derived),
+formatId, body, updatedBy }`
 
 - A written, living guide for **one matchup**. FaB has **no MTG-style sideboards**; a game-plan captures
   the equipment/weapon/card choices, mulligan priorities, sequencing, and lines for that pairing (see
   [flesh-and-blood.md](../domain/flesh-and-blood.md)).
-- `opponentRef` is polymorphic, mirroring how the gauntlet and game logs identify the field: a specific
-  `GauntletEntry`, a `Hero`, or a free-text `archetypeLabel`.
+- The opponent is a **matchup subject** mirroring `MetaDeckEntry`: a **required `opponentArchetypeLabel`**
+  (the human archetype name) with an **optional `opponentHeroId`** qualifier. The normalized `opponentRef`
+  key is `hero:<id>|label:<lowercased>` when hero-qualified, or `label:<lowercased>` otherwise — derived by
+  the shared `deriveMatchupSubjectRef` (the single source of truth for matchup-subject refs).
+- A game-plan may also **attach to specific meta deck entries** via the `GamePlanMetaDeckEntry` join;
+  create/update accept `metaDeckEntryIds`.
 - **Key cards (meta-pivot redesign, WS-4):** referenced **inline in `body`** as `+[[cardId]]` tokens (the
   shared `+card` mention model — see `packages/shared/src/card-tokens.ts`), not a structured chip list. They
   resolve against the global card database (link-only decks mean we reference cards, never a stored list —
@@ -128,8 +132,8 @@ team-admin only; members edit only their own selection.
 
 - **Deck retired/archived after selection or in a game-plan:** keep the reference (soft-delete preserves
   history); flag it visually as retired.
-- **`opponentRef` archetype later formalized into a `GauntletEntry`:** allow migrating a plan's
-  `opponentRef` from `archetypeLabel`/`heroId` to `gauntletEntryId` without losing the body.
+- **Plan later tied to a formalized meta deck entry:** attach the plan to the matching `MetaDeckEntry` via
+  `metaDeckEntryIds` (the `GamePlanMetaDeckEntry` join) without losing the body.
 - **Member changes deck after lock:** blocked with 422; message explains a team-admin must unlock.
 - **Duplicate game-plan** for the same `(ourDeckId, opponentRef, formatId)`: treated as an edit of the
   existing one (409 on a create attempt), not a second row.
