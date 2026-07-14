@@ -208,7 +208,9 @@ describe("Decks endpoints (integration)", () => {
 
       const response = await asMemberA(http().post("/api/decks")).send(validBody());
       expect(response.status).toBe(201);
-      expect(response.body.linkedMetas).toEqual([{ id: newer.id, name: "Now" }]);
+      expect(response.body.linkedMetas).toEqual([
+        { id: newer.id, name: "Now", metaDeckEntryId: null, metaDeckEntryLabel: null },
+      ]);
     });
 
     it("links nothing when the deck's format has no meta and metaIds is omitted", async () => {
@@ -238,7 +240,9 @@ describe("Decks endpoints (integration)", () => {
         metaIds: [other.id],
       });
       expect(response.status).toBe(201);
-      expect(response.body.linkedMetas).toEqual([{ id: other.id, name: "Other" }]);
+      expect(response.body.linkedMetas).toEqual([
+        { id: other.id, name: "Other", metaDeckEntryId: null, metaDeckEntryLabel: null },
+      ]);
     });
 
     it("links nothing when metaIds is an explicit empty array", async () => {
@@ -277,7 +281,9 @@ describe("Decks endpoints (integration)", () => {
         metaIds: [second.id],
       });
       expect(updated.status).toBe(200);
-      expect(updated.body.linkedMetas).toEqual([{ id: second.id, name: "Second" }]);
+      expect(updated.body.linkedMetas).toEqual([
+        { id: second.id, name: "Second", metaDeckEntryId: null, metaDeckEntryLabel: null },
+      ]);
     });
 
     it("rejects a meta from another team (cross-team FK → 422)", async () => {

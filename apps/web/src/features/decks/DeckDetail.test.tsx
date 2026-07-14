@@ -56,7 +56,10 @@ const deck: DeckDetailType = {
   visibility: "team",
   tags: ["aggro"],
   notes: "Race fast, keep +[[card-1]] for reach.",
-  linkedMetas: [{ id: "meta-1", name: "Summer Season" }],
+  linkedMetas: [
+    { id: "meta-1", name: "Summer Season", metaDeckEntryId: null, metaDeckEntryLabel: null },
+  ],
+  linkedMetaEntries: [],
   archivedAt: null,
   createdAt: "2026-07-12T00:00:00.000Z",
   updatedAt: "2026-07-12T00:00:00.000Z",

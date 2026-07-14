@@ -911,6 +911,8 @@ model MetaDeckEntry {
   gamePlanLinks   GamePlanMetaDeckEntry[]
   gameLogsAsSelf  GameLog[]               @relation("GameLogSelfMetaDeckEntry")
   gameLogsAsOpponent GameLog[]            @relation("GameLogOpponentMetaDeckEntry")
+  // Team decks that correspond to this entry in the entry's meta (per-meta link on DeckMeta).
+  deckLinks       DeckMeta[]              @relation("DeckMetaEntry")
 
   @@index([teamId])
   @@index([metaId])
@@ -920,17 +922,23 @@ model MetaDeckEntry {
 /// Explicit many-to-many join between a deck and a meta (a deck can belong to many
 /// metas; deck-create defaults to linking the current meta). No teamId — it is
 /// reached only through its team-scoped parents (like Attendance through its event).
+/// Optionally records which of the meta's deck entries this deck *is* the team's build
+/// of, within that meta (`metaDeckEntryId`) — per-meta because entries live inside one
+/// meta. That link identifies the deck in the game logger and feeds matchup data.
 model DeckMeta {
-  id        String   @id @default(cuid())
-  deckId    String   @map("deck_id")
-  metaId    String   @map("meta_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  id              String   @id @default(cuid())
+  deckId          String   @map("deck_id")
+  metaId          String   @map("meta_id")
+  metaDeckEntryId String?  @map("meta_deck_entry_id")
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  meta Meta @relation(fields: [metaId], references: [id], onDelete: Cascade)
+  deck          Deck           @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  meta          Meta           @relation(fields: [metaId], references: [id], onDelete: Cascade)
+  metaDeckEntry MetaDeckEntry? @relation("DeckMetaEntry", fields: [metaDeckEntryId], references: [id], onDelete: SetNull)
 
   @@unique([deckId, metaId])
   @@index([metaId])
+  @@index([metaDeckEntryId])
   @@map("deck_meta")
 }
 

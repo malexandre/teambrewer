@@ -99,3 +99,14 @@ export type MetaDeckEntry = z.infer<typeof metaDeckEntrySchema>;
 /** A meta's full opponent-deck list. */
 export const metaDeckEntryListSchema = z.object({ data: z.array(metaDeckEntrySchema) });
 export type MetaDeckEntryList = z.infer<typeof metaDeckEntryListSchema>;
+
+/**
+ * Retro-link recorded games to a meta deck entry: the ids of game logs whose
+ * opponent (currently unlinked and matching the entry's hero/label) should be
+ * bound to this entry. The server validates each id (same-team, unlinked,
+ * matching) and rejects the rest. Capped so the request stays bounded.
+ */
+export const linkGamesToEntrySchema = z.object({
+  gameLogIds: z.array(z.string().min(1)).min(1, "Select at least one game.").max(200),
+});
+export type LinkGamesToEntryInput = z.infer<typeof linkGamesToEntrySchema>;

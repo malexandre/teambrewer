@@ -88,23 +88,66 @@ export const deckMetaIdsSchema = z
   });
 
 /**
+ * Per-meta deck↔entry links: within a linked meta, the entry this deck is the
+ * team's build of. At most one entry per meta; every `metaId` here must also be
+ * in `metaIds` (cross-checked on the create/update schemas). Server-validated
+ * same-team + same-meta.
+ */
+export const deckMetaEntryLinkSchema = z.object({
+  metaId: z.string().min(1),
+  metaDeckEntryId: z.string().min(1),
+});
+export type DeckMetaEntryLink = z.infer<typeof deckMetaEntryLinkSchema>;
+
+export const deckMetaEntryLinksSchema = z
+  .array(deckMetaEntryLinkSchema)
+  .max(50)
+  .refine((links) => new Set(links.map((link) => link.metaId)).size === links.length, {
+    message: "A deck can link at most one entry per meta.",
+  });
+
+/**
+ * Every entry-link's meta must be among the deck's linked metas. Only checked when
+ * `metaIds` is also present in the payload (otherwise the linked-meta set isn't being
+ * changed here and the server validates entry links against the stored set). The
+ * server re-validates same-team/same-meta regardless.
+ */
+function entryLinksWithinMetas(value: {
+  metaIds?: string[] | undefined;
+  metaEntryLinks?: DeckMetaEntryLink[] | undefined;
+}): boolean {
+  if (!value.metaEntryLinks || value.metaEntryLinks.length === 0 || value.metaIds === undefined) {
+    return true;
+  }
+  const metaIds = new Set(value.metaIds);
+  return value.metaEntryLinks.every((link) => metaIds.has(link.metaId));
+}
+
+/**
  * Create-deck input. Omits every server-controlled field (`teamId`/`gameId`/
  * `ownerId`/`status`/`source`): `teamId`/`gameId`/`ownerId` come from the verified
  * context, `status` starts at `exploratory`, and `source` is set by URL
  * recognition. Unknown keys are stripped (Zod's default), so a spoofed `teamId`
  * in the body is simply ignored.
  */
-export const createDeckSchema = z.object({
-  name: deckNameSchema,
-  formatId: z.string().min(1, "A format is required."),
-  heroId: z.string().min(1).optional(),
-  externalUrl: deckExternalUrlSchema,
-  visibility: deckVisibilitySchema.default("team"),
-  tags: deckTagsSchema.default([]),
-  notes: deckNotesSchema.default(""),
-  // Omitted → link the current meta by default; provided (even []) → override.
-  metaIds: deckMetaIdsSchema.optional(),
-});
+export const createDeckSchema = z
+  .object({
+    name: deckNameSchema,
+    formatId: z.string().min(1, "A format is required."),
+    heroId: z.string().min(1).optional(),
+    externalUrl: deckExternalUrlSchema,
+    visibility: deckVisibilitySchema.default("team"),
+    tags: deckTagsSchema.default([]),
+    notes: deckNotesSchema.default(""),
+    // Omitted → link the current meta by default; provided (even []) → override.
+    metaIds: deckMetaIdsSchema.optional(),
+    // Optional per-meta entry links (the deck's build of a meta deck entry).
+    metaEntryLinks: deckMetaEntryLinksSchema.optional(),
+  })
+  .refine(entryLinksWithinMetas, {
+    message: "An entry link's meta must be one of the deck's linked metas.",
+    path: ["metaEntryLinks"],
+  });
 export type CreateDeckInput = z.infer<typeof createDeckSchema>;
 
 /**
@@ -123,10 +166,16 @@ export const updateDeckSchema = z
     notes: deckNotesSchema.optional(),
     // Provided → replaces the deck's whole linked-meta set (validated same-team).
     metaIds: deckMetaIdsSchema.optional(),
+    // Provided → replaces the deck's per-meta entry links.
+    metaEntryLinks: deckMetaEntryLinksSchema.optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
     message: "An update must change at least one field.",
+  })
+  .refine(entryLinksWithinMetas, {
+    message: "An entry link's meta must be one of the deck's linked metas.",
+    path: ["metaEntryLinks"],
   });
 export type UpdateDeckInput = z.infer<typeof updateDeckSchema>;
 
@@ -154,6 +203,19 @@ export const deckListQuerySchema = z.object({
 });
 export type DeckListQuery = z.infer<typeof deckListQuerySchema>;
 
+/**
+ * The meta deck entry a deck is linked to within one meta, denormalized onto the
+ * deck summary so surfaces like the game logger can annotate a team deck ("this is
+ * our build of <entry>") without a detail fetch. Only linked metas appear here.
+ */
+export const deckLinkedMetaEntrySchema = z.object({
+  metaId: z.string(),
+  metaDeckEntryId: z.string(),
+  /** The entry's durable `opponentSnapshotLabel` (hero · label). */
+  label: z.string(),
+});
+export type DeckLinkedMetaEntry = z.infer<typeof deckLinkedMetaEntrySchema>;
+
 /** A deck as returned in list responses (notes omitted; see detail). */
 export const deckSummarySchema = z.object({
   id: z.string(),
@@ -167,14 +229,25 @@ export const deckSummarySchema = z.object({
   status: deckStatusSchema,
   visibility: deckVisibilitySchema,
   tags: z.array(z.string()),
+  // Per-meta entry links (only metas where an entry is linked); drives the logger badge.
+  linkedMetaEntries: z.array(deckLinkedMetaEntrySchema).default([]),
   archivedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 export type DeckSummary = z.infer<typeof deckSummarySchema>;
 
-/** A meta a deck is linked to, denormalized onto the deck detail (id + name). */
-export const deckLinkedMetaSchema = z.object({ id: z.string(), name: z.string() });
+/**
+ * A meta a deck is linked to, denormalized onto the deck detail. Carries the deck's
+ * chosen entry within that meta (or null), so the deck form seeds the per-meta entry
+ * select and the deck page shows the link.
+ */
+export const deckLinkedMetaSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  metaDeckEntryId: z.string().nullable().default(null),
+  metaDeckEntryLabel: z.string().nullable().default(null),
+});
 export type DeckLinkedMeta = z.infer<typeof deckLinkedMetaSchema>;
 
 /**

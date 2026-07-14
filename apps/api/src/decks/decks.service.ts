@@ -10,6 +10,7 @@ import {
   type CreateDeckInput,
   type DeckDetail,
   type DeckLinkedMeta,
+  type DeckLinkedMetaEntry,
   type DeckListQuery,
   type DeckListResponse,
   type DeckMetaReadinessQuery,
@@ -136,8 +137,9 @@ export class DecksService {
     const hasMore = rows.length > query.limit;
     const page = hasMore ? rows.slice(0, query.limit) : rows;
     const last = page.at(-1);
+    const entriesByDeck = await this.loadLinkedMetaEntries(page.map((deck) => deck.id));
     return {
-      data: page.map(toDeckSummary),
+      data: page.map((deck) => toDeckSummary(deck, entriesByDeck.get(deck.id) ?? [])),
       nextCursor: hasMore && last ? encodeKeysetCursor(last.createdAt, last.id) : null,
     };
   }
@@ -145,7 +147,11 @@ export class DecksService {
   /** A single deck (404 when missing, cross-tenant, or a private draft the caller can't see). */
   async getDeck(team: TeamContext, deckId: string): Promise<DeckDetail> {
     const deck = await this.loadVisibleDeck(team, deckId);
-    return toDeckDetail(deck, await this.loadLinkedMetas(deckId));
+    const [linkedMetas, entriesByDeck] = await Promise.all([
+      this.loadLinkedMetas(deckId),
+      this.loadLinkedMetaEntries([deckId]),
+    ]);
+    return toDeckDetail(deck, linkedMetas, entriesByDeck.get(deckId) ?? []);
   }
 
   /**
@@ -444,14 +450,64 @@ export class DecksService {
     }
   }
 
-  /** A deck's linked metas (id + name), newest-window first, for the detail response. */
+  /**
+   * A deck's linked metas (id + name + its chosen entry within each), newest-window
+   * first, for the detail response. The entry (if any) seeds the deck form's per-meta
+   * entry select and the deck page's link display.
+   */
   private async loadLinkedMetas(deckId: string): Promise<DeckLinkedMeta[]> {
     const links = (await this.scoped.db.deckMeta.findMany({
       where: { deckId },
-      include: { meta: { select: { id: true, name: true, startDate: true } } },
+      include: {
+        meta: { select: { id: true, name: true, startDate: true } },
+        metaDeckEntry: { select: { id: true, opponentSnapshotLabel: true } },
+      },
       orderBy: { meta: { startDate: "desc" } },
-    })) as { meta: { id: string; name: string; startDate: Date } }[];
-    return links.map((link) => ({ id: link.meta.id, name: link.meta.name }));
+    })) as {
+      meta: { id: string; name: string; startDate: Date };
+      metaDeckEntry: { id: string; opponentSnapshotLabel: string } | null;
+    }[];
+    return links.map((link) => ({
+      id: link.meta.id,
+      name: link.meta.name,
+      metaDeckEntryId: link.metaDeckEntry?.id ?? null,
+      metaDeckEntryLabel: link.metaDeckEntry?.opponentSnapshotLabel ?? null,
+    }));
+  }
+
+  /**
+   * The per-meta entry links for a set of decks, keyed by deck id (only the metas
+   * where an entry is linked). Feeds `DeckSummary.linkedMetaEntries` so the game
+   * logger can annotate a team deck without a per-deck detail fetch.
+   */
+  private async loadLinkedMetaEntries(
+    deckIds: string[],
+  ): Promise<Map<string, DeckLinkedMetaEntry[]>> {
+    const byDeck = new Map<string, DeckLinkedMetaEntry[]>();
+    if (deckIds.length === 0) {
+      return byDeck;
+    }
+    const links = (await this.scoped.db.deckMeta.findMany({
+      where: { deckId: { in: deckIds }, metaDeckEntryId: { not: null } },
+      include: { metaDeckEntry: { select: { id: true, opponentSnapshotLabel: true } } },
+    })) as {
+      deckId: string;
+      metaId: string;
+      metaDeckEntry: { id: string; opponentSnapshotLabel: string } | null;
+    }[];
+    for (const link of links) {
+      if (!link.metaDeckEntry) {
+        continue;
+      }
+      const list = byDeck.get(link.deckId) ?? [];
+      list.push({
+        metaId: link.metaId,
+        metaDeckEntryId: link.metaDeckEntry.id,
+        label: link.metaDeckEntry.opponentSnapshotLabel,
+      });
+      byDeck.set(link.deckId, list);
+    }
+    return byDeck;
   }
 
   /** Load a deck the caller may see, or throw 404 (also hides private drafts). */
@@ -480,7 +536,7 @@ export class DecksService {
   }
 }
 
-function toDeckSummary(deck: DeckRow): DeckSummary {
+function toDeckSummary(deck: DeckRow, linkedMetaEntries: DeckLinkedMetaEntry[] = []): DeckSummary {
   return {
     id: deck.id,
     name: deck.name,
@@ -493,14 +549,19 @@ function toDeckSummary(deck: DeckRow): DeckSummary {
     status: deck.status,
     visibility: deck.visibility,
     tags: deck.tags,
+    linkedMetaEntries,
     archivedAt: deck.archivedAt ? deck.archivedAt.toISOString() : null,
     createdAt: deck.createdAt.toISOString(),
     updatedAt: deck.updatedAt.toISOString(),
   };
 }
 
-function toDeckDetail(deck: DeckRow, linkedMetas: DeckLinkedMeta[]): DeckDetail {
-  return { ...toDeckSummary(deck), notes: deck.notes, linkedMetas };
+function toDeckDetail(
+  deck: DeckRow,
+  linkedMetas: DeckLinkedMeta[],
+  linkedMetaEntries: DeckLinkedMetaEntry[],
+): DeckDetail {
+  return { ...toDeckSummary(deck, linkedMetaEntries), notes: deck.notes, linkedMetas };
 }
 
 /** Order readiness rows by tier priority (as declared), then oldest entry first. */
