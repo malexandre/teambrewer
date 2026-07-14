@@ -4,20 +4,21 @@ import {
   type LossReason,
   lossReasonSchema,
   type MetaSummary,
-  type TeamMember,
   type WinType,
   winTypeSchema,
 } from "@teambrewer/shared";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { LOSS_REASON_LABELS, SELECT_CLASS, WIN_TYPE_LABELS } from "../game-display";
 import { CardCaptureList } from "./CardCaptureList";
-import type { OpponentKind } from "./opponent";
 
-/** Step 4 (optional) — captured cards plus the deeper detail fields, then Save. */
+/**
+ * Step 4 (optional) — captured cards plus the deeper detail fields, then Save. The
+ * matchup subjects and their optional pilots live on step 1; this step keeps the
+ * meta link, the win/loss tags, and the free-text learnings.
+ */
 export function StepNotes({
   teamId,
   impressiveCards,
@@ -26,12 +27,6 @@ export function StepNotes({
   setUnderperformingCards,
   onCaptureCard,
   cardNameOf,
-  opponentKind,
-  effectivePilotUserId,
-  setPilotUserId,
-  memberOptions,
-  externalOpponentName,
-  setExternalOpponentName,
   metaId,
   setMetaId,
   metaOptions,
@@ -52,12 +47,6 @@ export function StepNotes({
   setUnderperformingCards: (next: GameLogCardInput[]) => void;
   onCaptureCard: (card: CardSummary) => void;
   cardNameOf: (cardId: string) => string;
-  opponentKind: OpponentKind;
-  effectivePilotUserId: string;
-  setPilotUserId: (userId: string) => void;
-  memberOptions: TeamMember[];
-  externalOpponentName: string;
-  setExternalOpponentName: (name: string) => void;
   metaId: string;
   setMetaId: (metaId: string) => void;
   metaOptions: MetaSummary[];
@@ -91,34 +80,6 @@ export function StepNotes({
       />
 
       <div className="flex flex-col gap-4 rounded-md border border-border p-3">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="game-pilot">Pilot (defaults to you)</Label>
-          <select
-            id="game-pilot"
-            className={SELECT_CLASS}
-            value={effectivePilotUserId}
-            onChange={(event) => setPilotUserId(event.target.value)}
-          >
-            {memberOptions.map((member) => (
-              <option key={member.userId} value={member.userId}>
-                {member.displayName}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {opponentKind !== "teammate" ? (
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="game-opponent-name">Opponent name (optional)</Label>
-            <Input
-              id="game-opponent-name"
-              placeholder="Who did you play against?"
-              value={externalOpponentName}
-              onChange={(event) => setExternalOpponentName(event.target.value)}
-            />
-          </div>
-        ) : null}
-
         <div className="flex flex-col gap-1">
           <Label htmlFor="game-meta">Meta (optional)</Label>
           <select

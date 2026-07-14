@@ -227,6 +227,40 @@ describe("GameLogWizard", () => {
     expect(await screen.findByRole("alert")).toBeInTheDocument();
   });
 
+  it("blocks Next when the opponent is missing even though our side is set", async () => {
+    const user = userEvent.setup();
+    mockApi();
+    renderWithClient(<GameLogWizard teamId="team-1" onSaved={() => {}} />);
+    // Our side is a valid team deck, but the opponent archetype label is empty.
+    await screen.findByRole("option", { name: "Classic Constructed" });
+    await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
+    await screen.findByRole("option", { name: "Our Deck" });
+    await user.selectOptions(screen.getByLabelText("Your deck"), "deck-ours");
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    // Still on step 1: the result control has not appeared.
+    expect(screen.queryByRole("button", { name: /single game/i })).not.toBeInTheDocument();
+  });
+
+  it("goes back a step without losing entered matchup data", async () => {
+    const user = userEvent.setup();
+    mockApi();
+    renderWithClient(<GameLogWizard teamId="team-1" onSaved={() => {}} />);
+    // Fill step 1 and advance to step 2.
+    await screen.findByRole("option", { name: "Classic Constructed" });
+    await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
+    await screen.findByRole("option", { name: "Our Deck" });
+    await user.selectOptions(screen.getByLabelText("Your deck"), "deck-ours");
+    await user.type(screen.getByLabelText(/opponent archetype label/i), "Aggro Red");
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    // Step 2 shows the result control and a Back control.
+    await screen.findByRole("button", { name: /single game/i });
+    await user.click(screen.getByRole("button", { name: /^back$/i }));
+    // Back on step 1, with the previously entered values intact.
+    expect(await screen.findByLabelText("Your deck")).toHaveValue("deck-ours");
+    expect(screen.getByLabelText(/opponent archetype label/i)).toHaveValue("Aggro Red");
+  });
+
   it("captures an impressive card and includes it in the create payload", async () => {
     const user = userEvent.setup();
     const created: Array<Record<string, unknown>> = [];
@@ -329,6 +363,19 @@ describe("GameLogWizard", () => {
       "aria-pressed",
       "false",
     );
+  });
+
+  it("seeds the opponent hero + label subject from an existing log (edit mode)", async () => {
+    mockApi();
+    renderWithClient(
+      <GameLogWizard teamId="team-1" gameLog={makeExistingLog()} onSaved={() => {}} />,
+    );
+    // The opponent side seeds into hero+label mode with the stored label and hero.
+    expect(await screen.findByLabelText(/opponent archetype label/i)).toHaveValue(
+      "Draconic Dorinthea",
+    );
+    await screen.findByRole("option", { name: "Dorinthea" });
+    expect(screen.getByRole("combobox", { name: "Hero" })).toHaveValue("hero-dori");
   });
 
   it("expands the notes step on edit when the log already has a captured card", async () => {

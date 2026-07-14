@@ -23,7 +23,14 @@ import { ApiError } from "@/lib/api-client";
 import { type ConfidenceFactorField } from "./game-display";
 import { useGameConfig } from "./use-game-config";
 import { useCreateGame, useUpdateGame } from "./use-game-mutations";
-import { opponentStateFromLog, type OpponentKind } from "./wizard/opponent";
+import {
+  buildSideAInput,
+  buildSideBInput,
+  isSubjectComplete,
+  type MatchupSubjectState,
+  subjectStateFromSideA,
+  subjectStateFromSideB,
+} from "./wizard/matchup-subject";
 import { StepConfidence } from "./wizard/StepConfidence";
 import { StepMatchup } from "./wizard/StepMatchup";
 import { StepNotes } from "./wizard/StepNotes";
@@ -42,12 +49,12 @@ const DEFAULT_FACTORS: ConfidenceFactors = {
 const FALLBACK_BEST_OF: BestOf = 3;
 
 /**
- * The mobile-first game-logging wizard (the signature UX), the drop-in replacement
- * for the single-screen form. It splits the log into short steps — matchup, result,
- * confidence — so the fast path is three taps + Log game, with an optional fourth
- * step for notes and impressive/underperforming card capture. All the field logic
- * (payload shape, confidence-weight preview, opponent switcher) is shared with the
- * former form; the container owns every piece of state and threads it into the steps.
+ * The mobile-first game-logging wizard (the signature UX). It splits the log into
+ * short steps — matchup, result, confidence — so the fast path is three taps + Log
+ * game, with an optional fourth step for notes and impressive/underperforming card
+ * capture. Both sides of the matchup are chosen with the same unified 3-mode subject
+ * picker (team deck / meta deck / hero + label). The container owns every piece of
+ * state and threads it into the steps, so stepping back and forth never loses input.
  */
 export function GameLogWizard({
   teamId,
@@ -68,8 +75,6 @@ export function GameLogWizard({
   const { data: metas } = useMetas(teamId);
   const { data: currentMeta, isPending: currentMetaPending } = useCurrentMeta(teamId);
 
-  const initialOpponent = opponentStateFromLog(gameLog);
-
   const [step, setStep] = useState<1 | 2 | 3>(1);
   // On edit, expand the optional notes/cards step up front when the log already
   // carries any of its fields, so nothing captured is hidden behind "Add notes &
@@ -85,16 +90,11 @@ export function GameLogWizard({
   );
 
   const [formatId, setFormatId] = useState(gameLog?.formatId ?? "");
-  const [deckId, setDeckId] = useState(gameLog?.sideA.deckId ?? "");
-  const [pilotUserId, setPilotUserId] = useState(gameLog?.sideA.pilotUserId ?? "");
-  const [opponentKind, setOpponentKind] = useState<OpponentKind>(initialOpponent.kind);
-  const [opponentHeroId, setOpponentHeroId] = useState(initialOpponent.heroId);
-  const [opponentPilotUserId, setOpponentPilotUserId] = useState(initialOpponent.pilotUserId);
-  const [opponentTeamDeckId, setOpponentTeamDeckId] = useState(initialOpponent.teamDeckId);
-  const [opponentDeckId, setOpponentDeckId] = useState(initialOpponent.opponentDeckId);
-  const [archetypeLabel, setArchetypeLabel] = useState(initialOpponent.archetypeLabel);
-  const [externalOpponentName, setExternalOpponentName] = useState(
-    initialOpponent.externalOpponentName,
+  const [selfSubject, setSelfSubject] = useState<MatchupSubjectState>(() =>
+    subjectStateFromSideA(gameLog?.sideA),
+  );
+  const [opponentSubject, setOpponentSubject] = useState<MatchupSubjectState>(() =>
+    subjectStateFromSideB(gameLog?.sideB),
   );
   const [firstPlayerSide, setFirstPlayerSide] = useState<GameSide>(gameLog?.firstPlayerSide ?? "A");
   const [bestOf, setBestOf] = useState<BestOf>(gameLog?.bestOf ?? FALLBACK_BEST_OF);
@@ -134,8 +134,19 @@ export function GameLogWizard({
   const updateGame = useUpdateGame(teamId, gameLog?.id ?? "");
   const mutation = isEditing ? updateGame : createGame;
 
-  const effectivePilotUserId = pilotUserId || currentUser?.id || "";
   const previewWeight = deriveConfidenceWeight(factors);
+
+  // In create mode, default our pilot to the current user once they resolve — the
+  // friendly "defaults to you" — while leaving it optional and clearable. Applied at
+  // most once, so re-clearing to "No pilot" is never overwritten. Never runs on edit.
+  const selfPilotDefaultAppliedRef = useRef(false);
+  useEffect(() => {
+    if (isEditing || selfPilotDefaultAppliedRef.current || !currentUser?.id) return;
+    selfPilotDefaultAppliedRef.current = true;
+    setSelfSubject((current) =>
+      current.pilotUserId ? current : { ...current, pilotUserId: currentUser.id },
+    );
+  }, [isEditing, currentUser]);
 
   // In create mode, adopt the game's default best-of once the config resolves —
   // resetting the result so it stays consistent — but only until the member has taken
@@ -212,38 +223,17 @@ export function GameLogWizard({
     });
   }
 
-  function buildSideB(): CreateGameLogInput["sideB"] | null {
-    const trimmedName = externalOpponentName.trim();
-    const externalName = trimmedName.length > 0 ? trimmedName : undefined;
-    if (opponentKind === "teammate") {
-      return opponentPilotUserId && opponentTeamDeckId
-        ? { pilotUserId: opponentPilotUserId, deckId: opponentTeamDeckId }
-        : null;
-    }
-    if (opponentKind === "team_deck") {
-      return opponentDeckId ? { deckId: opponentDeckId, externalOpponentName: externalName } : null;
-    }
-    // Archetype subject: a required label with an optional hero qualifier.
-    const trimmedLabel = archetypeLabel.trim();
-    if (trimmedLabel.length === 0) {
-      return null;
-    }
-    return {
-      archetypeLabel: trimmedLabel,
-      externalOpponentName: externalName,
-      ...(opponentHeroId ? { heroId: opponentHeroId } : {}),
-    };
-  }
-
   function isStepMatchupComplete(): boolean {
-    return Boolean(formatId && deckId && buildSideB());
+    return Boolean(
+      formatId && isSubjectComplete(selfSubject) && isSubjectComplete(opponentSubject),
+    );
   }
 
   function goNext(): void {
     setValidationError(null);
     if (step === 1) {
       if (!isStepMatchupComplete()) {
-        setValidationError("Pick the format, your deck, and identify the opponent.");
+        setValidationError("Pick the format, your side, and identify the opponent.");
         return;
       }
       // Reaching the result step counts as taking control: a config that resolves
@@ -277,15 +267,12 @@ export function GameLogWizard({
       setValidationError("Pick the format the game was played in.");
       return;
     }
-    if (!deckId) {
-      setValidationError("Pick the deck you played.");
+    const sideA = buildSideAInput(selfSubject);
+    if (!sideA) {
+      setValidationError("Pick or describe the side you played.");
       return;
     }
-    if (!effectivePilotUserId) {
-      setValidationError("Pick who piloted our deck.");
-      return;
-    }
-    const sideB = buildSideB();
+    const sideB = buildSideBInput(opponentSubject);
     if (!sideB) {
       setValidationError("Identify the opponent.");
       return;
@@ -298,7 +285,7 @@ export function GameLogWizard({
 
     const payload: CreateGameLogInput = {
       formatId,
-      sideA: { pilotUserId: effectivePilotUserId, deckId },
+      sideA,
       sideB,
       firstPlayerSide,
       bestOf,
@@ -333,22 +320,13 @@ export function GameLogWizard({
           teamId={teamId}
           formatId={formatId}
           setFormatId={setFormatId}
-          deckId={deckId}
-          setDeckId={setDeckId}
+          selfSubject={selfSubject}
+          setSelfSubject={setSelfSubject}
+          opponentSubject={opponentSubject}
+          setOpponentSubject={setOpponentSubject}
           deckOptions={deckOptions}
           memberOptions={memberOptions}
-          opponentKind={opponentKind}
-          setOpponentKind={setOpponentKind}
-          opponentHeroId={opponentHeroId}
-          setOpponentHeroId={setOpponentHeroId}
-          opponentPilotUserId={opponentPilotUserId}
-          setOpponentPilotUserId={setOpponentPilotUserId}
-          opponentTeamDeckId={opponentTeamDeckId}
-          setOpponentTeamDeckId={setOpponentTeamDeckId}
-          opponentDeckId={opponentDeckId}
-          setOpponentDeckId={setOpponentDeckId}
-          archetypeLabel={archetypeLabel}
-          setArchetypeLabel={setArchetypeLabel}
+          currentMetaId={currentMeta?.id}
         />
       ) : null}
 
@@ -390,12 +368,6 @@ export function GameLogWizard({
           setUnderperformingCards={setUnderperformingCards}
           onCaptureCard={rememberCard}
           cardNameOf={(cardId) => cardNames.get(cardId) ?? "Card"}
-          opponentKind={opponentKind}
-          effectivePilotUserId={effectivePilotUserId}
-          setPilotUserId={setPilotUserId}
-          memberOptions={memberOptions}
-          externalOpponentName={externalOpponentName}
-          setExternalOpponentName={setExternalOpponentName}
           metaId={metaId ?? ""}
           setMetaId={setMetaId}
           metaOptions={metaOptions}
