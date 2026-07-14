@@ -2,7 +2,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { Section } from "@/components/ui/section";
 import { useActiveTeam } from "@/features/teams/active-team";
 
 import { EventForm } from "./EventForm";
@@ -16,17 +17,17 @@ export function EventsPage() {
   const [creating, setCreating] = useState(false);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Events</CardTitle>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Events"
+        actions={
           <Button size="sm" onClick={() => setCreating((open) => !open)}>
             {creating ? "Close" : "New event"}
           </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-6">
-        {creating ? (
+        }
+      />
+      {creating ? (
+        <Section title="New event">
           <EventForm
             teamId={teamId}
             onSaved={(event) => {
@@ -35,9 +36,11 @@ export function EventsPage() {
             }}
             onCancel={() => setCreating(false)}
           />
-        ) : null}
+        </Section>
+      ) : null}
+      <Section aria-label="Events">
         <EventList teamId={teamId} />
-      </CardContent>
-    </Card>
+      </Section>
+    </div>
   );
 }

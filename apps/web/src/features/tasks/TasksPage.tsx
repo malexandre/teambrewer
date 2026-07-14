@@ -2,7 +2,9 @@ import type { Task } from "@teambrewer/shared";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Section } from "@/components/ui/section";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { useActiveTeam } from "@/features/teams/active-team";
 
@@ -35,66 +37,68 @@ export function TasksPage() {
     task.author.userId === user?.id || task.assignee?.userId === user?.id || isTeamAdmin;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Tasks</CardTitle>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Tasks"
+        actions={
           <Button size="sm" onClick={() => setCreating((open) => !open)}>
             {creating ? "Close" : "New task"}
           </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {creating ? <TaskForm teamId={teamId} onDone={() => setCreating(false)} /> : null}
+        }
+      />
 
-        <div className="flex gap-2" role="group" aria-label="Task scope">
-          <Button
-            type="button"
-            size="sm"
-            variant={scope === "all" ? "default" : "outline"}
-            onClick={() => setScope("all")}
-          >
-            All
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={scope === "mine" ? "default" : "outline"}
-            onClick={() => setScope("mine")}
-          >
-            Assigned to me
-          </Button>
-        </div>
+      {creating ? (
+        <Section title="New task">
+          <TaskForm teamId={teamId} onDone={() => setCreating(false)} />
+        </Section>
+      ) : null}
 
-        {isPending ? (
-          <p className="text-sm text-muted-foreground">Loading tasks…</p>
-        ) : tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No tasks yet.</p>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {TASK_STATUS_ORDER.map((status) => {
-              const inStatus = tasks.filter((task) => task.status === status);
-              if (inStatus.length === 0) return null;
-              return (
-                <div key={status} className="flex flex-col gap-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {TASK_STATUS_LABELS[status]} ({inStatus.length})
-                  </h3>
-                  {inStatus.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      teamId={teamId}
-                      task={task}
-                      viewerUserId={user?.id}
-                      canModify={canModify(task)}
-                    />
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      <div className="flex gap-2" role="group" aria-label="Task scope">
+        <Button
+          type="button"
+          size="sm"
+          variant={scope === "all" ? "default" : "outline"}
+          onClick={() => setScope("all")}
+        >
+          All
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={scope === "mine" ? "default" : "outline"}
+          onClick={() => setScope("mine")}
+        >
+          Assigned to me
+        </Button>
+      </div>
+
+      {isPending ? (
+        <p className="text-sm text-muted-foreground">Loading tasks…</p>
+      ) : tasks.length === 0 ? (
+        <EmptyState message="No tasks yet." />
+      ) : (
+        TASK_STATUS_ORDER.map((status) => {
+          const inStatus = tasks.filter((task) => task.status === status);
+          if (inStatus.length === 0) return null;
+          return (
+            <Section
+              key={status}
+              title={`${TASK_STATUS_LABELS[status]} (${inStatus.length})`}
+              bodyClassName="gap-3"
+            >
+              {inStatus.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  teamId={teamId}
+                  task={task}
+                  viewerUserId={user?.id}
+                  canModify={canModify(task)}
+                />
+              ))}
+            </Section>
+          );
+        })
+      )}
+    </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { Section } from "@/components/ui/section";
 import { useActiveTeam } from "@/features/teams/active-team";
 
 import { GameList } from "./GameList";
@@ -13,18 +14,18 @@ export function GamesPage() {
   const navigate = useNavigate();
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Games</CardTitle>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Games"
+        actions={
           <Button size="sm" onClick={() => void navigate({ to: "/games/new" })}>
             Log a game
           </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-6">
+        }
+      />
+      <Section aria-label="Games">
         <GameList teamId={teamId} />
-      </CardContent>
-    </Card>
+      </Section>
+    </div>
   );
 }

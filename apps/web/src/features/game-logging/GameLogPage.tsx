@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { Section } from "@/components/ui/section";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
 
@@ -24,13 +25,10 @@ function GameLogShell({
   children: ReactNode;
 }) {
   return (
-    <Card className="mx-auto w-full max-w-2xl">
-      <CardHeader>
-        {back}
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      <PageHeader title={title} backSlot={back} />
+      <Section>{children}</Section>
+    </div>
   );
 }
 

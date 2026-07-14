@@ -2,8 +2,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/ui/page-header";
+import { Section } from "@/components/ui/section";
 import { useActiveTeam } from "@/features/teams/active-team";
 
 import { DeckForm } from "./DeckForm";
@@ -17,18 +18,18 @@ export function DecksPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Decks</CardTitle>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Decks"
+        actions={
           <Button size="sm" onClick={() => setIsCreateOpen(true)}>
             New deck
           </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-6">
+        }
+      />
+      <Section aria-label="Decks">
         <DeckList teamId={teamId} />
-      </CardContent>
+      </Section>
 
       <Dialog open={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="New deck">
         <DeckForm
@@ -40,6 +41,6 @@ export function DecksPage() {
           onCancel={() => setIsCreateOpen(false)}
         />
       </Dialog>
-    </Card>
+    </div>
   );
 }
