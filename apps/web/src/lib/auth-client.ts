@@ -11,10 +11,12 @@ import { twoFactorClient, usernameClient } from "better-auth/client/plugins";
 export const authClient = createAuthClient({
   plugins: [
     usernameClient(),
-    twoFactorClient({
-      // A 2FA-enabled login lands here; the login page reads this to show the
-      // TOTP step rather than doing a hard redirect.
-      twoFactorPage: "/login",
-    }),
+    // No `twoFactorPage`/`onTwoFactorRedirect`: a 2FA-required sign-in resolves
+    // with `{ twoFactorRedirect: true }`, which LoginPage reads to switch to the
+    // TOTP step in place. Setting `twoFactorPage` makes better-auth do a hard
+    // `window.location.href` redirect — that reloads the SPA mid-request, aborts
+    // the sign-in call, and drops the user back on an empty login form (the code
+    // field never shows). Handling it in-page is the whole point.
+    twoFactorClient(),
   ],
 });
