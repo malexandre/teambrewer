@@ -228,7 +228,7 @@ export function TasksPage() {
           onDragEnd={handleDragEnd}
           onDragCancel={() => setActiveId(null)}
         >
-          <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="mx-auto flex w-fit max-w-full gap-3 overflow-x-auto pb-2">
             {TASK_STATUS_ORDER.map((status) => (
               <TaskColumn
                 key={status}
