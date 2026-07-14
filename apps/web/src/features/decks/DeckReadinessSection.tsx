@@ -28,6 +28,14 @@ function formatWinRate(rate: number | null): string {
   return rate === null ? "—" : `${Math.round(rate * 100)}%`;
 }
 
+/** Color the win rate by favorability: green ≥55%, red ≤45%, neutral in between. */
+function winRateToneClass(rate: number | null): string {
+  if (rate === null) return "text-muted-foreground";
+  if (rate >= 0.55) return "text-success-foreground";
+  if (rate <= 0.45) return "text-danger-foreground";
+  return "";
+}
+
 /**
  * A single readiness table row: tier rank, the matchup subject (hero · label), the
  * confidence-weighted win rate, the raw sample size, a trust badge (thin/solid data),
@@ -47,12 +55,19 @@ function ReadinessRow({
   return (
     <tr className="border-b border-border/60 last:border-0">
       <td className="py-2 pr-3 align-middle">
-        <Badge tone={META_TIER_TONE[row.tier]} size="sm" dot>
+        <Badge tone={META_TIER_TONE[row.tier]} size="sm" className="whitespace-normal">
           {META_TIER_LABELS[row.tier]}
         </Badge>
       </td>
-      <td className="py-2 pr-3 align-middle font-medium">{opponentLabel}</td>
-      <td className="py-2 pr-3 text-right align-middle tabular-nums">
+      <td className="truncate py-2 pr-3 align-middle font-medium" title={opponentLabel}>
+        {opponentLabel}
+      </td>
+      <td
+        className={cn(
+          "py-2 pr-3 text-right align-middle font-semibold tabular-nums",
+          winRateToneClass(row.weightedWinRate),
+        )}
+      >
         {formatWinRate(row.weightedWinRate)}
       </td>
       <td className="py-2 pr-3 text-right align-middle tabular-nums text-muted-foreground">
@@ -63,13 +78,13 @@ function ReadinessRow({
           {trust.label}
         </Badge>
       </td>
-      <td className="py-2 align-middle">
+      <td className="py-2 text-center align-middle">
         {row.hasGamePlan ? (
           <span
             role="img"
             aria-label="Has a game-plan"
             title="Has a game-plan"
-            className="font-semibold text-success-foreground"
+            className="text-base font-bold text-success-foreground"
           >
             ✓
           </span>
@@ -80,10 +95,7 @@ function ReadinessRow({
             title={
               needsPlan ? "Needs a plan (a meta-defining deck should have one)" : "No game-plan"
             }
-            className={cn(
-              "font-semibold",
-              needsPlan ? "text-danger-foreground" : "text-muted-foreground",
-            )}
+            className="text-base font-bold text-danger-foreground"
           >
             ✗
           </span>
@@ -149,15 +161,23 @@ export function DeckReadinessSection({
         <p className="text-sm text-muted-foreground">This meta has no decks yet.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col style={{ width: "116px" }} />
+              <col />
+              <col style={{ width: "64px" }} />
+              <col style={{ width: "56px" }} />
+              <col style={{ width: "108px" }} />
+              <col style={{ width: "52px" }} />
+            </colgroup>
             <thead>
               <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                 <th className="py-2 pr-3 font-medium">Rank</th>
                 <th className="py-2 pr-3 font-medium">Matchup</th>
                 <th className="py-2 pr-3 text-right font-medium">Win rate</th>
                 <th className="py-2 pr-3 text-right font-medium">Games</th>
-                <th className="py-2 pr-3 font-medium">Data</th>
-                <th className="py-2 font-medium">Plan</th>
+                <th className="py-2 pr-3 font-medium">Confidence</th>
+                <th className="py-2 text-center font-medium">Plan</th>
               </tr>
             </thead>
             <tbody>
