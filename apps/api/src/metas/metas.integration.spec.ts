@@ -470,6 +470,99 @@ describe("Metas endpoints (integration)", () => {
     });
   });
 
+  describe("Link recorded games to an entry (migration)", () => {
+    it("lists unlinked same-hero games and links the selected ones", async () => {
+      const meta = await createMeta(prisma, { teamId: teamA.id });
+      const entry = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        heroId: fabHeroId,
+        label: "Zyggy",
+      });
+      const otherEntry = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        label: "Other deck",
+      });
+
+      // Candidate: unlinked, opponent = the entry's hero.
+      const candidate = await createGameLog(prisma, {
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        opponentHeroId: fabHeroId,
+        opponentArchetypeLabel: "Zyggy Aggro",
+      });
+      // Not a candidate: already linked to another entry.
+      await createGameLog(prisma, {
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        opponentMetaDeckEntryId: otherEntry.id,
+      });
+      // Not a candidate: a different opponent (no hero).
+      await createGameLog(prisma, {
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        opponentArchetypeLabel: "Control",
+      });
+
+      const candidates = await asMemberA(
+        http().get(`/api/metas/${meta.id}/deck-entries/${entry.id}/link-candidates`),
+      );
+      expect(candidates.status).toBe(200);
+      expect(candidates.body.data.map((game: { id: string }) => game.id)).toEqual([candidate.id]);
+
+      const linked = await asMemberA(
+        http().post(`/api/metas/${meta.id}/deck-entries/${entry.id}/link-games`),
+      ).send({ gameLogIds: [candidate.id] });
+      expect(linked.status).toBe(201);
+      expect(linked.body.linkedCount).toBe(1);
+
+      // The game is now bound to the entry; its hero/label were cleared.
+      const persisted = await prisma.gameLog.findUnique({ where: { id: candidate.id } });
+      expect(persisted?.opponentMetaDeckEntryId).toBe(entry.id);
+      expect(persisted?.opponentHeroId).toBeNull();
+      expect(persisted?.opponentArchetypeLabel).toBeNull();
+
+      // And it is no longer a candidate.
+      const after = await asMemberA(
+        http().get(`/api/metas/${meta.id}/deck-entries/${entry.id}/link-candidates`),
+      );
+      expect(after.body.data).toHaveLength(0);
+    });
+
+    it("never links or reveals another team's games", async () => {
+      const metaA = await createMeta(prisma, { teamId: teamA.id });
+      const entryA = await createMetaDeckEntry(prisma, {
+        metaId: metaA.id,
+        teamId: teamA.id,
+        heroId: fabHeroId,
+      });
+      const gameB = await createGameLog(prisma, {
+        teamId: teamB.id,
+        loggedById: memberB.id,
+        formatId: fabFormatId,
+        opponentHeroId: fabHeroId,
+      });
+
+      const candidates = await asMemberA(
+        http().get(`/api/metas/${metaA.id}/deck-entries/${entryA.id}/link-candidates`),
+      );
+      expect(candidates.body.data).toHaveLength(0);
+
+      const link = await asMemberA(
+        http().post(`/api/metas/${metaA.id}/deck-entries/${entryA.id}/link-games`),
+      ).send({ gameLogIds: [gameB.id] });
+      expect(link.status).toBe(201);
+      expect(link.body.linkedCount).toBe(0);
+
+      const persisted = await prisma.gameLog.findUnique({ where: { id: gameB.id } });
+      expect(persisted?.opponentMetaDeckEntryId).toBeNull();
+    });
+  });
+
   describe("Tenant isolation (mandatory)", () => {
     it("returns 404 when a team-A user reads a team-B meta / its deck entries", async () => {
       const metaB = await createMeta(prisma, { teamId: teamB.id });

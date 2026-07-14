@@ -14,6 +14,9 @@ import {
 import {
   createMetaDeckEntrySchema,
   createMetaSchema,
+  type LinkCandidatesResponse,
+  type LinkGamesResult,
+  linkGamesToEntrySchema,
   type MetaDeckEntry,
   type MetaDeckEntryList,
   type MetaDetail,
@@ -101,5 +104,24 @@ export class MetasController {
     @Param("entryId") entryId: string,
   ): Promise<void> {
     return this.metas.removeDeckEntry(metaId, entryId);
+  }
+
+  /** Recorded games eligible to retro-link to this entry (unlinked + matching its hero/label). */
+  @Get(":metaId/deck-entries/:entryId/link-candidates")
+  listLinkCandidates(
+    @Param("metaId") metaId: string,
+    @Param("entryId") entryId: string,
+  ): Promise<LinkCandidatesResponse> {
+    return this.metas.listLinkCandidates(metaId, entryId);
+  }
+
+  /** Bind the given (validated) recorded games to this entry. */
+  @Post(":metaId/deck-entries/:entryId/link-games")
+  linkGames(
+    @Param("metaId") metaId: string,
+    @Param("entryId") entryId: string,
+    @Body() body: unknown,
+  ): Promise<LinkGamesResult> {
+    return this.metas.linkGames(metaId, entryId, linkGamesToEntrySchema.parse(body));
   }
 }

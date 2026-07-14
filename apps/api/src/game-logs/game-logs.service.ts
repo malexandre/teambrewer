@@ -33,7 +33,7 @@ import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 import { canModifyGameLog } from "./game-log-authorization.js";
 
 /** The persisted game-log shape this service maps to the shared contracts. */
-interface GameLogRow {
+export interface GameLogRow {
   id: string;
   teamId: string;
   loggedById: string;
@@ -610,7 +610,7 @@ function metaNotFound(): NotFoundException {
   });
 }
 
-function toGameLogSummary(row: GameLogRow): GameLogSummary {
+export function toGameLogSummary(row: GameLogRow): GameLogSummary {
   return {
     id: row.id,
     loggedById: row.loggedById,

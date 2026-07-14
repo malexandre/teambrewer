@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { gameLogSummarySchema } from "./game-log.js";
+
 /**
  * Shared meta-deck-entry contracts (see docs/features/metas.md). A
  * **MetaDeckEntry** is one tiered entry in a meta's opponent-deck list — the
@@ -110,3 +112,11 @@ export const linkGamesToEntrySchema = z.object({
   gameLogIds: z.array(z.string().min(1)).min(1, "Select at least one game.").max(200),
 });
 export type LinkGamesToEntryInput = z.infer<typeof linkGamesToEntrySchema>;
+
+/** The recorded games eligible to link to an entry (unlinked + matching its hero/label). */
+export const linkCandidatesResponseSchema = z.object({ data: z.array(gameLogSummarySchema) });
+export type LinkCandidatesResponse = z.infer<typeof linkCandidatesResponseSchema>;
+
+/** The outcome of a link-games request: how many of the requested games were linked. */
+export const linkGamesResultSchema = z.object({ linkedCount: z.number().int().min(0) });
+export type LinkGamesResult = z.infer<typeof linkGamesResultSchema>;

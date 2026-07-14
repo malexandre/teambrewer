@@ -4,6 +4,9 @@ import {
   type CreateMetaDeckEntryInput,
   type CreateMetaInput,
   errorCode,
+  type LinkCandidatesResponse,
+  type LinkGamesResult,
+  type LinkGamesToEntryInput,
   type MetaDeckEntry,
   type MetaDeckEntryList,
   type MetaDetail,
@@ -17,6 +20,7 @@ import {
 
 import { CollaborationActivityService } from "../collaboration/activity.service.js";
 import { decodeKeysetCursor, encodeKeysetCursor } from "../common/keyset-cursor.js";
+import { type GameLogRow, toGameLogSummary } from "../game-logs/game-logs.service.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 
@@ -294,6 +298,60 @@ export class MetasService {
     await this.scoped.db.metaDeckEntry.deleteMany({ where: { id: entryId } });
   }
 
+  /**
+   * The team's recorded games eligible to retro-link to this entry: non-archived
+   * game logs whose **opponent** is not yet linked to any meta entry and matches the
+   * entry — same opponent hero when the entry has a hero, else the entry's label
+   * (case-insensitive) against a hero-less opponent. Most recently played first.
+   */
+  async listLinkCandidates(metaId: string, entryId: string): Promise<LinkCandidatesResponse> {
+    await this.requireMeta(metaId);
+    const entry = await this.requireDeckEntry(metaId, entryId);
+    const rows = (await this.scoped.db.gameLog.findMany({
+      where: { archivedAt: null, opponentMetaDeckEntryId: null, ...entryOpponentMatch(entry) },
+      orderBy: [{ playedAt: "desc" }, { id: "desc" }],
+    })) as GameLogRow[];
+    return { data: rows.map(toGameLogSummary) };
+  }
+
+  /**
+   * Bind the given recorded games to this entry: set `opponentMetaDeckEntryId` and clear
+   * the other opponent-subject columns (exactly-one invariant). Only ids that are the
+   * team's own (scoped), non-archived, currently unlinked, and match the entry are
+   * written; the rest are silently skipped. Returns how many were linked.
+   */
+  async linkGames(
+    metaId: string,
+    entryId: string,
+    input: LinkGamesToEntryInput,
+  ): Promise<LinkGamesResult> {
+    await this.requireMeta(metaId);
+    const entry = await this.requireDeckEntry(metaId, entryId);
+    const eligible = (await this.scoped.db.gameLog.findMany({
+      where: {
+        id: { in: input.gameLogIds },
+        archivedAt: null,
+        opponentMetaDeckEntryId: null,
+        ...entryOpponentMatch(entry),
+      },
+      select: { id: true },
+    })) as { id: string }[];
+    const ids = eligible.map((row) => row.id);
+    if (ids.length === 0) {
+      return { linkedCount: 0 };
+    }
+    await this.scoped.db.gameLog.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        opponentMetaDeckEntryId: entryId,
+        opponentDeckId: null,
+        opponentHeroId: null,
+        opponentArchetypeLabel: null,
+      },
+    });
+    return { linkedCount: ids.length };
+  }
+
   /** Record a meta lifecycle action on the team activity feed (metas are a shared board). */
   private async recordMetaActivity(
     team: TeamContext,
@@ -442,6 +500,24 @@ function metaNotFound(): NotFoundException {
   return new NotFoundException({
     error: { code: errorCode.notFound, message: "Meta not found." },
   });
+}
+
+/**
+ * The Prisma `where` fragment matching a game log's **opponent** to a meta deck entry
+ * for retro-linking: the entry's hero (any label) when it has one, else its label
+ * against a hero-less opponent (case-insensitive, mirroring the subject-ref match).
+ */
+function entryOpponentMatch(entry: {
+  heroId: string | null;
+  label: string;
+}): Record<string, unknown> {
+  if (entry.heroId) {
+    return { opponentHeroId: entry.heroId };
+  }
+  return {
+    opponentHeroId: null,
+    opponentArchetypeLabel: { equals: entry.label, mode: "insensitive" },
+  };
 }
 
 /** Sort entries by tier priority (as declared), then oldest-first within a tier. */

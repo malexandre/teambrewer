@@ -394,11 +394,16 @@ export {
   metaDeckEntrySchema,
   metaDeckEntryListSchema,
   linkGamesToEntrySchema,
+  linkCandidatesResponseSchema,
+  linkGamesResultSchema,
   type MetaTier,
   type CreateMetaDeckEntryInput,
   type UpdateMetaDeckEntryInput,
   type MetaDeckEntry,
   type MetaDeckEntryList,
+  type LinkGamesToEntryInput,
+  type LinkCandidatesResponse,
+  type LinkGamesResult,
 } from "./meta-deck-entries.js";
 
 export {
