@@ -157,7 +157,7 @@ export function MetaDeckEntryBuilder({
                           type="button"
                           onClick={() => setDetailEntryId(entry.id)}
                           aria-label={`Details for ${displayLabel}`}
-                          className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-center transition hover:ring-2 hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="relative flex h-36 w-36 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-center transition hover:ring-2 hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           {hero?.imageUrl ? (
                             <img
