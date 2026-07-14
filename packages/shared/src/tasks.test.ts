@@ -24,40 +24,33 @@ describe("task status enum", () => {
 });
 
 describe("task status transitions", () => {
-  const legalTransitions: ReadonlyArray<[TaskStatus, TaskStatus]> = [
-    ["proposed", "assigned"],
-    ["proposed", "abandoned"],
-    ["assigned", "finished"],
-    ["assigned", "abandoned"],
-  ];
+  const statuses: readonly TaskStatus[] = ["proposed", "assigned", "finished", "abandoned"];
 
-  const illegalTransitions: ReadonlyArray<[TaskStatus, TaskStatus]> = [
-    ["proposed", "finished"],
-    ["assigned", "proposed"],
-    ["finished", "assigned"],
-    ["finished", "abandoned"],
-    ["abandoned", "proposed"],
-    ["proposed", "proposed"],
-    ["assigned", "assigned"],
-  ];
-
-  it.each(legalTransitions)("allows %s → %s", (from, to) => {
-    expect(isTaskStatusTransitionAllowed(from, to)).toBe(true);
+  // The board is a free kanban: any status may move to any *other* status.
+  it("allows every move between two different statuses", () => {
+    for (const from of statuses) {
+      for (const to of statuses) {
+        if (from === to) continue;
+        expect(isTaskStatusTransitionAllowed(from, to)).toBe(true);
+      }
+    }
   });
 
-  it.each(illegalTransitions)("rejects %s → %s", (from, to) => {
-    expect(isTaskStatusTransitionAllowed(from, to)).toBe(false);
+  it("rejects a no-op (same status) for every status", () => {
+    for (const status of statuses) {
+      expect(isTaskStatusTransitionAllowed(status, status)).toBe(false);
+    }
   });
 
-  it("treats finished and abandoned as terminal", () => {
-    expect(allowedNextTaskStatuses("finished")).toEqual([]);
-    expect(allowedNextTaskStatuses("abandoned")).toEqual([]);
+  it("offers all other statuses as next, including out of a terminal state", () => {
+    expect(allowedNextTaskStatuses("finished")).toEqual(["proposed", "assigned", "abandoned"]);
+    expect(allowedNextTaskStatuses("abandoned")).toEqual(["proposed", "assigned", "finished"]);
   });
 
   it("returns a fresh mutable copy from allowedNext", () => {
     const next = allowedNextTaskStatuses("proposed");
     next.pop();
-    expect(taskStatusTransitions.proposed).toEqual(["assigned", "abandoned"]);
+    expect(taskStatusTransitions.proposed).toEqual(["assigned", "finished", "abandoned"]);
   });
 });
 

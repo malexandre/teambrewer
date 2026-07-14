@@ -45,6 +45,24 @@ export function useUpdateTask(teamId: string | undefined, taskId: string) {
   });
 }
 
+/**
+ * Move a task to a new status from the board (drag-and-drop). Unlike {@link useUpdateTask}
+ * this isn't bound to one task id — the board patches whichever card was dropped. Pass a
+ * `report` when finishing (the server requires one; see the report-on-finish rule).
+ */
+export function useMoveTask(teamId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, ...input }: UpdateTaskInput & { taskId: string }) =>
+      apiClient.patch<Task>(`/tasks/${taskId}`, {
+        teamId: requireTeam(teamId),
+        body: input,
+        schema: taskSchema,
+      }),
+    onSuccess: (task) => invalidateTasks(queryClient, teamId, task.id),
+  });
+}
+
 /** Archive a task (DELETE /api/tasks/:taskId). */
 export function useArchiveTask(teamId: string | undefined, taskId: string) {
   const queryClient = useQueryClient();

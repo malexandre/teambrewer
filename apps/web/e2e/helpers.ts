@@ -1,7 +1,29 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { authenticator } from "otplib";
 
 import { E2E_PASSWORD } from "./fixtures";
+
+/**
+ * Drag a dnd-kit draggable (its handle) onto a droppable target. dnd-kit's pointer
+ * sensor needs a real move past its activation distance before it starts dragging, then
+ * a move over the target, so this dispatches stepped mouse moves rather than a single
+ * jump (a plain dragTo often doesn't trigger it).
+ */
+export async function dragCardOnto(page: Page, handle: Locator, target: Locator): Promise<void> {
+  const from = await handle.boundingBox();
+  const to = await target.boundingBox();
+  if (!from || !to) throw new Error("dragCardOnto: missing bounding box");
+  const startX = from.x + from.width / 2;
+  const startY = from.y + from.height / 2;
+  const endX = to.x + to.width / 2;
+  const endY = to.y + to.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 12, startY + 12, { steps: 5 }); // clear the activation distance
+  await page.mouse.move(endX, endY, { steps: 12 });
+  await page.mouse.move(endX, endY + 4, { steps: 3 }); // settle over the target
+  await page.mouse.up();
+}
 
 /**
  * Drive the real onboarding flow (setup link → password → TOTP → backup codes)

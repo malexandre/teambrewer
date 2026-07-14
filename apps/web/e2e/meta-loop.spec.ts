@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { authenticator } from "otplib";
 
 import { E2E_CARD_NAME, E2E_METALOOP_SETUP_TOKEN, E2E_PASSWORD, E2E_REFERENCE } from "./fixtures";
+import { dragCardOnto } from "./helpers";
 
 /**
  * The signature meta-pivot loop, end to end through the UI:
@@ -80,33 +81,35 @@ test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) 
   await page.getByRole("button", { name: "Create task" }).click();
   await expect(page.getByText(new RegExp(`Card idea: ${deckName}`))).toBeVisible();
 
-  // 6. On the Tasks board the task appears as a card in its status column. Open its
-  //    detail dialog (which holds the +card chip and the controls) and advance it
-  //    proposed -> assigned -> finished; finishing demands a report, then the report
-  //    is revealed behind the Report button.
+  // 6. On the Tasks board the task is a card in the Proposed column. Its detail dialog
+  //    holds the +card chip and the upvote; status changes are made by dragging the card
+  //    between columns. Dragging it into Finished demands a report first.
   await page.getByRole("link", { name: "Tasks", exact: true }).click();
   await page.getByRole("button", { name: new RegExp(`Open task: Card idea: ${deckName}`) }).click();
 
   const taskDialog = page.getByRole("dialog");
   await expect(taskDialog.getByText(E2E_CARD_NAME)).toBeVisible();
   await taskDialog.getByRole("button", { name: "Upvote" }).click();
-  await taskDialog
-    .getByRole("combobox", { name: "Change status" })
-    .selectOption({ label: "Assigned" });
-  await taskDialog
-    .getByRole("combobox", { name: "Change status" })
-    .selectOption({ label: "Finished" });
-  await taskDialog
+  await taskDialog.getByRole("button", { name: "Close" }).click();
+
+  // Drag the card from Proposed into the Finished column.
+  await dragCardOnto(
+    page,
+    page.getByRole("button", { name: new RegExp(`Drag Card idea: ${deckName}`) }),
+    page.locator('[data-column="finished"]'),
+  );
+
+  // Finishing prompts for a report; fill it and confirm.
+  const finishDialog = page.getByRole("dialog", { name: "Finish task" });
+  await finishDialog
     .getByLabel(/required to finish/i)
     .fill("Command and Conquer over-performed; keeping it.");
-  await taskDialog.getByRole("button", { name: "Finish task" }).click();
+  await finishDialog.getByRole("button", { name: "Finish task" }).click();
 
-  await taskDialog.getByRole("button", { name: "Report", exact: true }).click();
+  // The card now lives in the Finished column.
   await expect(
-    taskDialog.getByText("Command and Conquer over-performed; keeping it."),
+    page.locator('[data-column="finished"]').getByText(new RegExp(`Card idea: ${deckName}`)),
   ).toBeVisible();
-  // Close the detail dialog before navigating (its modal backdrop blocks the sidebar).
-  await taskDialog.getByRole("button", { name: "Close" }).click();
 
   // 7. Create an event linked to the meta and RSVP going.
   await page.getByRole("link", { name: "Events", exact: true }).click();

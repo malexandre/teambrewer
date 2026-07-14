@@ -20,16 +20,18 @@ export const taskStatusSchema = z.enum(["proposed", "assigned", "finished", "aba
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 
 /**
- * The task lifecycle as data (docs/features/tasks.md):
- * `proposed → [assigned, abandoned]`, `assigned → [finished, abandoned]`;
- * `finished` and `abandoned` are terminal. Single source of truth shared by the
- * API validator and the web status control; a no-op (same status) is never valid.
+ * The task lifecycle as data (docs/features/tasks.md). A task may move **freely between
+ * any statuses** — the board is a kanban where cards are dragged into any column
+ * (including back out of a terminal state). The only structural rule is that a no-op
+ * (same status) is never a move; finishing still requires a report (see
+ * {@link taskStatusRequiresReport}). Single source of truth shared by the API validator
+ * and the web board.
  */
 export const taskStatusTransitions: Record<TaskStatus, readonly TaskStatus[]> = {
-  proposed: ["assigned", "abandoned"],
-  assigned: ["finished", "abandoned"],
-  finished: [],
-  abandoned: [],
+  proposed: ["assigned", "finished", "abandoned"],
+  assigned: ["proposed", "finished", "abandoned"],
+  finished: ["proposed", "assigned", "abandoned"],
+  abandoned: ["proposed", "assigned", "finished"],
 };
 
 /** The statuses a task may move to from `from` (never itself). */

@@ -8,18 +8,17 @@ import {
 } from "./task-status-transition.js";
 
 /**
- * The task lifecycle (docs/features/tasks.md): `proposed → [assigned, abandoned]`,
- * `assigned → [finished, abandoned]`; `finished` and `abandoned` are terminal. Every
- * other move — including a no-op — is rejected. This table is the single source of
- * truth for the tests below.
+ * The task lifecycle (docs/features/tasks.md) is a free kanban: any status may move to
+ * any *other* status; only a no-op (from === to) is rejected. This table is the single
+ * source of truth for the tests below.
  */
 const ALL_STATUSES: TaskStatus[] = ["proposed", "assigned", "finished", "abandoned"];
 
 const ALLOWED: Record<TaskStatus, TaskStatus[]> = {
-  proposed: ["assigned", "abandoned"],
-  assigned: ["finished", "abandoned"],
-  finished: [],
-  abandoned: [],
+  proposed: ["assigned", "finished", "abandoned"],
+  assigned: ["proposed", "finished", "abandoned"],
+  finished: ["proposed", "assigned", "abandoned"],
+  abandoned: ["proposed", "assigned", "finished"],
 };
 
 describe("assertTaskStatusTransition", () => {
@@ -44,11 +43,11 @@ describe("assertTaskStatusTransition", () => {
 });
 
 describe("allowedNextStatuses", () => {
-  it("returns the permitted next statuses for each state", () => {
-    expect(allowedNextStatuses("proposed")).toEqual(["assigned", "abandoned"]);
-    expect(allowedNextStatuses("assigned")).toEqual(["finished", "abandoned"]);
-    expect(allowedNextStatuses("finished")).toEqual([]);
-    expect(allowedNextStatuses("abandoned")).toEqual([]);
+  it("returns every other status for each state (free kanban)", () => {
+    expect(allowedNextStatuses("proposed")).toEqual(["assigned", "finished", "abandoned"]);
+    expect(allowedNextStatuses("assigned")).toEqual(["proposed", "finished", "abandoned"]);
+    expect(allowedNextStatuses("finished")).toEqual(["proposed", "assigned", "abandoned"]);
+    expect(allowedNextStatuses("abandoned")).toEqual(["proposed", "assigned", "finished"]);
   });
 });
 

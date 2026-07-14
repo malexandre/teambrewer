@@ -1,4 +1,4 @@
-import type { Task, TaskStatus } from "@teambrewer/shared";
+import type { Task } from "@teambrewer/shared";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,6 @@ import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
 import { CommentThread } from "@/features/collaboration/CommentThread";
 
 import { TaskForm } from "./TaskForm";
-import { TaskStatusControl } from "./TaskStatusControl";
 import { useArchiveTask, useUpdateTask } from "./use-task-mutations";
 import { VoteControl } from "./VoteControl";
 
@@ -15,9 +14,9 @@ import { VoteControl } from "./VoteControl";
  * A task's detail body, shown inside the board's detail dialog (the dialog supplies the
  * title + close): the `+card`-rich description (tokens resolved to card chips), the
  * author/assignee, and the upvote control. Any member may self-assign a still-open task;
- * the author, the assignee, or a team-admin gets the status control (with the required
- * report on finish), inline edit, and archive. A finished task's report is revealed
- * behind a Report toggle; discussion loads on demand.
+ * the author, the assignee, or a team-admin gets inline edit + archive. Status changes
+ * happen by dragging the card between board columns, not here. A finished task's report
+ * is revealed behind a Report toggle; discussion loads on demand.
  */
 export function TaskCard({
   teamId,
@@ -39,10 +38,6 @@ export function TaskCard({
   const isTerminal = task.status === "finished" || task.status === "abandoned";
   const canSelfAssign =
     Boolean(viewerUserId) && task.assignee?.userId !== viewerUserId && !isTerminal;
-
-  function changeStatus(next: TaskStatus, report?: string) {
-    updateTask.mutate({ status: next, ...(report ? { report } : {}) });
-  }
 
   if (editing) {
     return <TaskForm teamId={teamId} task={task} onDone={() => setEditing(false)} />;
@@ -104,33 +99,26 @@ export function TaskCard({
       </div>
 
       {canModify ? (
-        <div className="flex flex-col gap-2 border-t border-input pt-2">
-          <TaskStatusControl
-            status={task.status}
-            onChange={changeStatus}
-            disabled={updateTask.isPending}
-          />
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="self-start"
-              onClick={() => setEditing(true)}
-            >
-              Edit
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="self-start text-destructive"
-              disabled={archiveTask.isPending}
-              onClick={() => archiveTask.mutate()}
-            >
-              Archive
-            </Button>
-          </div>
+        <div className="flex gap-2 border-t border-input pt-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="self-start"
+            onClick={() => setEditing(true)}
+          >
+            Edit
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="self-start text-destructive"
+            disabled={archiveTask.isPending}
+            onClick={() => archiveTask.mutate()}
+          >
+            Archive
+          </Button>
         </div>
       ) : null}
 

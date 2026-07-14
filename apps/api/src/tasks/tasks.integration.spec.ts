@@ -257,12 +257,19 @@ describe("Tasks endpoints (integration)", () => {
       expect(events.map((event) => event.verb)).toContain("task_status_changed");
     });
 
-    it("rejects an illegal transition with 422", async () => {
-      const task = await createTask(prisma, { teamId: teamA.id, authorId: memberA.id });
-      const response = await asMemberA(http().patch(`/api/tasks/${task.id}`)).send({
-        status: "finished",
+    it("allows a previously-illegal move now that the board is a free kanban", async () => {
+      // assigned -> proposed was rejected under the old lifecycle; the kanban allows it.
+      const task = await createTask(prisma, {
+        teamId: teamA.id,
+        authorId: memberA.id,
+        status: "assigned",
+        assigneeId: memberA.id,
       });
-      expect(response.status).toBe(422);
+      const response = await asMemberA(http().patch(`/api/tasks/${task.id}`)).send({
+        status: "proposed",
+      });
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe("proposed");
     });
 
     it("requires a report to finish (422), then accepts it (200)", async () => {
