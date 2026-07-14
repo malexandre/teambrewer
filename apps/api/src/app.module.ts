@@ -11,6 +11,7 @@ import { CollaborationModule } from "./collaboration/collaboration.module.js";
 import { DecksModule } from "./decks/decks.module.js";
 import { DomainExceptionFilter } from "./common/domain-exception.filter.js";
 import { OriginCheckGuard } from "./common/origin-check.guard.js";
+import { resolveRootEnvPath } from "./common/root-env.js";
 import { THROTTLER_OPTIONS } from "./common/throttling.js";
 import { DiscordModule } from "./discord/discord.module.js";
 import { EventsModule } from "./events/events.module.js";
@@ -28,7 +29,11 @@ import { TenancyModule } from "./tenancy/tenancy.module.js";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // Load the single root .env (not the cwd-relative one) so the API reads the
+    // same config whether started via `pnpm start` (root) or `pnpm dev` /
+    // `pnpm --filter api …` (cwd apps/api). See resolveRootEnvPath. process.env
+    // still wins over the file, so start-local's injected values take precedence.
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: resolveRootEnvPath() }),
     ThrottlerModule.forRoot(THROTTLER_OPTIONS),
     PrismaModule,
     AuthModule,
