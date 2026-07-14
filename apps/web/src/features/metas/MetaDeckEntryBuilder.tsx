@@ -171,7 +171,7 @@ export function MetaDeckEntryBuilder({
                             </span>
                           )}
                           {entry.heroId && entry.label ? (
-                            <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-1 pb-0.5 pt-3 text-left text-[10px] font-medium text-white">
+                            <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-1 pb-0.5 pt-3 text-center text-[10px] font-medium text-white">
                               {entry.label}
                             </span>
                           ) : null}
