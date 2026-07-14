@@ -1,11 +1,18 @@
-import type { MatchupGamePlan } from "@teambrewer/shared";
-import { useState } from "react";
+import type { MatchupGamePlan, MetaDeckEntry } from "@teambrewer/shared";
+import { META_TIER_LABELS } from "@teambrewer/shared";
+import { useMemo, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
+import { useHeroes } from "@/features/cards/use-heroes";
 import { MentionComposer } from "@/features/collaboration/MentionComposer";
 import { HeroPicker } from "@/features/decks/HeroPicker";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
+import { META_TIER_TONE } from "@/features/metas/meta-display";
 import { ApiError } from "@/lib/api-client";
 
+import { metaEntryDisplayName } from "./gameplan-display";
 import { useCreateGamePlan, useUpdateGamePlan } from "./use-game-plan-mutations";
 
 /**
@@ -22,12 +29,18 @@ export function GamePlanEditor({
   deckId,
   formatId,
   existing,
+  metaName,
+  metaDeckEntries,
   onDone,
 }: {
   teamId: string | undefined;
   deckId: string;
   formatId: string;
   existing?: MatchupGamePlan;
+  /** The current meta's name (for the assignment label), or null when none is current. */
+  metaName: string | null;
+  /** The current meta's tiered deck entries, offered as assignment targets. */
+  metaDeckEntries: MetaDeckEntry[];
   onDone: () => void;
 }) {
   const isEdit = existing !== undefined;
@@ -35,10 +48,40 @@ export function GamePlanEditor({
   const [heroId, setHeroId] = useState("");
   const [archetypeLabel, setArchetypeLabel] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
+  // The set of meta deck entries this plan covers (edited via the multi-select). Seeded
+  // from the existing assignment on edit; the whole set is sent on save (replace semantics).
+  const [coveredEntryIds, setCoveredEntryIds] = useState<string[]>(
+    existing?.metaDeckEntryIds ?? [],
+  );
   // The body lives in the composer (uncontrolled); mirror the last submitted value so a
   // validation/API failure can re-seed a remounted composer instead of dropping the text.
   const [draftBody, setDraftBody] = useState(existing?.body ?? "");
   const [composerKey, setComposerKey] = useState(0);
+
+  const { data: heroData } = useHeroes(teamId);
+  const heroNamesById = useMemo(
+    () => new Map((heroData?.data ?? []).map((hero) => [hero.id, hero.name])),
+    [heroData],
+  );
+  const coverageOptions: MultiSelectOption[] = useMemo(
+    () =>
+      metaDeckEntries.map((entry) => {
+        const name = metaEntryDisplayName(entry, heroNamesById);
+        return {
+          value: entry.id,
+          label: name,
+          node: (
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate">{name}</span>
+              <Badge tone={META_TIER_TONE[entry.tier]} size="sm">
+                {META_TIER_LABELS[entry.tier]}
+              </Badge>
+            </span>
+          ),
+        };
+      }),
+    [metaDeckEntries, heroNamesById],
+  );
 
   const create = useCreateGamePlan(teamId);
   const update = useUpdateGamePlan(teamId, existing?.id ?? "");
@@ -53,7 +96,10 @@ export function GamePlanEditor({
     setValidationError(null);
 
     if (isEdit) {
-      update.mutate({ body }, { onSuccess: onDone, onError: () => restoreComposer(body) });
+      update.mutate(
+        { body, metaDeckEntryIds: coveredEntryIds },
+        { onSuccess: onDone, onError: () => restoreComposer(body) },
+      );
       return;
     }
 
@@ -70,6 +116,7 @@ export function GamePlanEditor({
         body,
         opponentArchetypeLabel: archetypeLabel.trim(),
         ...(heroId ? { opponentHeroId: heroId } : {}),
+        ...(coveredEntryIds.length > 0 ? { metaDeckEntryIds: coveredEntryIds } : {}),
       },
       { onSuccess: onDone, onError: () => restoreComposer(body) },
     );
@@ -100,6 +147,22 @@ export function GamePlanEditor({
             value={heroId}
             onChange={setHeroId}
             id="game-plan-hero"
+          />
+        </div>
+      ) : null}
+
+      {coverageOptions.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="game-plan-coverage">
+            Covers matchups{metaName ? ` · ${metaName}` : ""}
+          </Label>
+          <MultiSelect
+            id="game-plan-coverage"
+            ariaLabel="Covers matchups"
+            placeholder="Which of this meta's decks does this beat?"
+            options={coverageOptions}
+            value={coveredEntryIds}
+            onChange={setCoveredEntryIds}
           />
         </div>
       ) : null}

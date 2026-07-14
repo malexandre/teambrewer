@@ -97,8 +97,8 @@ const briarEntry = {
  * replaces the plan's `metaDeckEntryIds` is reflected when the invalidated list refetches
  * (matching the R-1 replace-the-whole-set contract). Captured PATCH bodies are returned.
  */
-function mockApi(patchBodies: unknown[] = []): void {
-  let attachedEntryIds: string[] = [];
+function mockApi(patchBodies: unknown[] = [], initialAttached: string[] = []): void {
+  let attachedEntryIds: string[] = initialAttached;
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = typeof input === "string" ? input : input.toString();
     const method = init?.method ?? "GET";
@@ -152,8 +152,6 @@ describe("GamePlanSection", () => {
     expect(screen.getByText(/Race the clock/)).toBeInTheDocument();
     // The +[[card-1]] token resolves to an inline "+Command and Conquer" chip.
     expect(await screen.findByText(/Command and Conquer/)).toBeInTheDocument();
-    // A hero-carrying meta entry is offered by its "hero · label" display name.
-    expect(await screen.findByRole("button", { name: "+ Briar · Aggressive" })).toBeInTheDocument();
   });
 
   it("reveals the editor with the plan body composer and the opponent subject fields when writing", async () => {
@@ -181,7 +179,8 @@ describe("GamePlanSection", () => {
     expect(screen.queryByRole("button", { name: "Write a game-plan" })).not.toBeInTheDocument();
   });
 
-  it("assigns a plan to a current-meta deck entry and reflects it as attached", async () => {
+  it("assigns a plan to a current-meta deck entry from the editor's multi-select", async () => {
+    const user = userEvent.setup();
     const patchBodies: unknown[] = [];
     mockApi(patchBodies);
     renderSection(
@@ -189,28 +188,34 @@ describe("GamePlanSection", () => {
     );
 
     await screen.findByText("vs Briar");
-    // Oscilio is an unassigned current-meta entry, offered as an assign target.
-    await userEvent.click(await screen.findByRole("button", { name: "+ Oscilio" }));
+    // Assignment now lives in edit mode: open the editor, then the "Covers matchups" box.
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(await screen.findByRole("button", { name: "Covers matchups" }));
+    await user.click(screen.getByRole("checkbox", { name: /Oscilio/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
-    // The PATCH replaces the whole set with the newly-attached id (R-1 contract).
-    expect(patchBodies).toContainEqual({ metaDeckEntryIds: ["entry-oscilio"] });
-    // After the invalidated list refetches, Oscilio shows as attached (with an unassign).
-    expect(await screen.findByRole("button", { name: "Unassign Oscilio" })).toBeInTheDocument();
+    // The PATCH sends the whole desired set (R-1 replace contract), alongside the body.
+    expect(patchBodies.at(-1)).toMatchObject({ metaDeckEntryIds: ["entry-oscilio"] });
+    // After the invalidated list refetches, the read view lists Oscilio as covered.
+    expect(await screen.findByText("Oscilio")).toBeInTheDocument();
   });
 
-  it("unassigns a plan from a meta deck entry", async () => {
+  it("unassigns a plan from a meta deck entry from the editor's multi-select", async () => {
+    const user = userEvent.setup();
     const patchBodies: unknown[] = [];
-    mockApi(patchBodies);
+    mockApi(patchBodies, ["entry-oscilio"]);
     renderSection(
       <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
     );
 
     await screen.findByText("vs Briar");
-    await userEvent.click(await screen.findByRole("button", { name: "+ Oscilio" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Unassign Oscilio" }));
+    // The plan starts covering Oscilio; open the editor and untick it.
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(await screen.findByRole("button", { name: "Covers matchups" }));
+    await user.click(screen.getByRole("checkbox", { name: /Oscilio/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     // The last PATCH replaces the set with an empty array (detached).
-    expect(patchBodies.at(-1)).toEqual({ metaDeckEntryIds: [] });
-    expect(await screen.findByRole("button", { name: "+ Oscilio" })).toBeInTheDocument();
+    expect(patchBodies.at(-1)).toMatchObject({ metaDeckEntryIds: [] });
   });
 });

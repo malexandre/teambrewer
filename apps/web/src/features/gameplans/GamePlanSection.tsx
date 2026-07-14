@@ -55,6 +55,8 @@ export function GamePlanSection({
           teamId={teamId}
           deckId={deckId}
           formatId={formatId}
+          metaName={metaName}
+          metaDeckEntries={metaDeckEntries}
           onDone={() => setWriting(false)}
         />
       ) : null}

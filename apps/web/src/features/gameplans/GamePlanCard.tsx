@@ -47,6 +47,8 @@ export function GamePlanCard({
         deckId={deckId}
         formatId={formatId}
         existing={gamePlan}
+        metaName={metaName}
+        metaDeckEntries={metaDeckEntries}
         onDone={() => setEditing(false)}
       />
     );
