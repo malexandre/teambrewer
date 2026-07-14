@@ -2,13 +2,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   CalendarDays,
+  ChevronsRight,
   FlaskConical,
   Layers,
   ListChecks,
   type LucideIcon,
   LogOut,
   PanelLeftClose,
-  PanelLeftOpen,
   Settings,
   ShieldCheck,
   Swords,
@@ -329,18 +329,17 @@ export function AppChrome({ children }: { children: ReactNode }) {
         </div>
 
         {isCollapsed ? (
-          <div className="flex justify-center px-2 pb-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Expand sidebar"
-              title="Expand sidebar"
-              onClick={() => setIsCollapsed(false)}
-            >
-              <PanelLeftOpen className="size-[18px]" aria-hidden="true" />
-            </Button>
-          </div>
+          // A binder-style tab that reaches out past the rail's right edge, level
+          // with the logo — click to expand the sidebar back to full width.
+          <button
+            type="button"
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+            onClick={() => setIsCollapsed(false)}
+            className="absolute -right-5 top-3 z-30 grid h-9 w-5 place-items-center rounded-r-md border border-l-0 border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ChevronsRight className="size-4" aria-hidden="true" />
+          </button>
         ) : null}
 
         <MainMenu pathname={pathname} canAdminister={canAdminister} collapsed={isCollapsed} />
