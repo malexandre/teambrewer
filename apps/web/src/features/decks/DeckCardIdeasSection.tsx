@@ -31,9 +31,10 @@ function DeckTaskRow({ teamId, task }: { teamId: string | undefined; task: Task 
         <span className="min-w-0 flex-1 truncate font-medium" title={task.title}>
           {task.title}
         </span>
-        {/* Fixed-width, right-aligned slots so Report / Discussion / status line up as
-            columns across every row; wraps rather than overflowing on the narrowest widths. */}
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {/* Fixed-width slots so Report / Discussion / status line up as columns across
+            every row; `justify-end` keeps them flush right (aligning the status badges even
+            on rows without a Report) once the group spans the row on the mobile stack. */}
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           {hasReport ? (
             <span className="flex w-24 justify-end">
               <Button
