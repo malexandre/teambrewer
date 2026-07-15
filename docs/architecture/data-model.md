@@ -91,10 +91,12 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
   confidenceFactors: { skillParity, seriousness, deckMaturity, pilotFamiliarity } (each an enum),
   confidenceWeight (0–1, derived) }`
   — see [ADR-0005](../decisions/0005-confidence-weight-model.md) for the factor→weight formula.
-- **GameLogCard** `{ id, gameLogId, cardId, role: 'impressive' | 'underperforming', side: 'ours' | 'theirs' }`
-  — an optional card reference captured on a `GameLog` (which cards over- or under-performed, tagged by
-  side). Scoped **transitively through its parent `GameLog`** — like `Attendance` on `Event`, it carries no
-  `teamId` of its own; `cardId` must belong to the team's game.
+- **GameLogCard** `{ id, gameLogId, cardId, role: 'impressive' | 'underperforming', side: 'A' | 'B' }`
+  — an optional card reference captured on a `GameLog` (which cards over- or under-performed, tagged with
+  the game side — the shared `GameSide` — it belonged to, so it attaches to a real matchup subject). Scoped
+  **transitively through its parent `GameLog`** — like `Attendance` on `Event`, it carries no `teamId` of
+  its own; `cardId` must belong to the team's game. A deck rolls up its own side's rows into per-card
+  observation counts (see [decks.md](../features/decks.md#card-observations)).
 - **Matchup** — *derived/aggregated*, not necessarily a stored table: for a `(deckA/heroA vs deckB/heroB,
   format, [event])` pairing, compute weighted win rate `Σ(wᵢ·winᵢ)/Σ(wᵢ)`, raw N, effective sample
   `Σ(wᵢ)`, trust indicator. May be materialized for performance later; source of truth is `GameLog`.

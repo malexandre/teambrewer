@@ -14,6 +14,7 @@ import {
 import {
   createDeckSchema,
   createIterationEntrySchema,
+  type DeckCardObservationsResponse,
   type DeckDetail,
   type DeckListResponse,
   deckListQuerySchema,
@@ -98,6 +99,14 @@ export class DecksController {
     @Query() query: unknown,
   ): Promise<DeckMetaReadinessResponse> {
     return this.decks.getMetaReadiness(team, deckId, deckMetaReadinessQuerySchema.parse(query));
+  }
+
+  @Get(":deckId/card-observations")
+  cardObservations(
+    @CurrentTeam() team: TeamContext,
+    @Param("deckId") deckId: string,
+  ): Promise<DeckCardObservationsResponse> {
+    return this.decks.getCardObservations(team, deckId);
   }
 
   @Get(":deckId/iteration-entries")

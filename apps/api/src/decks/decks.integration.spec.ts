@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createDatabaseClient, resetDatabase } from "../../test/database.js";
 import {
   addMembership,
+  createCard,
   createDeck,
   createFormat,
   createGame,
@@ -897,6 +898,290 @@ describe("Decks endpoints (integration)", () => {
         http().get(`/api/decks/${ourDeck.id}/meta-readiness`).query({ metaId: foreignMeta.id }),
       );
       expect(response.status).toBe(404);
+    });
+  });
+
+  describe("GET /api/decks/:deckId/card-observations", () => {
+    /** Attach a captured card to one side (A/B) of a game log. */
+    const captureCard = (
+      gameLogId: string,
+      cardId: string,
+      role: "impressive" | "underperforming",
+      side: "A" | "B",
+    ) => prisma.gameLogCard.create({ data: { gameLogId, cardId, role, side } });
+
+    const makeDeck = (options: Parameters<typeof createDeck>[1]) => createDeck(prisma, options);
+    const ownDeck = () =>
+      makeDeck({ teamId: teamA.id, ownerId: memberA.id, formatId: fabFormatId, name: "Ours" });
+    const logGame = (options: Parameters<typeof createGameLog>[1]) =>
+      createGameLog(prisma, options);
+
+    it("counts the deck's own impressive/underperforming cards, excludes the opponent's, and sorts by total", async () => {
+      const deck = await ownDeck();
+      const impressive = await createCard(prisma, { name: "Command and Conquer" });
+      const flopped = await createCard(prisma, { name: "Sink Below" });
+      const opponentCard = await createCard(prisma, { name: "Enemy Tech" });
+
+      const game1 = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: deck.id,
+      });
+      await captureCard(game1.id, impressive.id, "impressive", "A");
+      await captureCard(game1.id, flopped.id, "underperforming", "A");
+      await captureCard(game1.id, opponentCard.id, "impressive", "B"); // opponent's — excluded
+      const game2 = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: deck.id,
+      });
+      await captureCard(game2.id, impressive.id, "impressive", "A");
+      // An archived game with the deck's card must not be counted.
+      const archived = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: deck.id,
+        archivedAt: new Date("2026-07-02T00:00:00.000Z"),
+      });
+      await captureCard(archived.id, impressive.id, "impressive", "A");
+
+      const response = await asMemberA(http().get(`/api/decks/${deck.id}/card-observations`));
+      expect(response.status).toBe(200);
+      expect(response.body.gamesConsidered).toBe(2);
+      expect(response.body.observations).toEqual([
+        {
+          card: { id: impressive.id, name: "Command and Conquer", pitch: null, imageUrl: null },
+          impressiveCount: 2,
+          underperformingCount: 0,
+        },
+        {
+          card: { id: flopped.id, name: "Sink Below", pitch: null, imageUrl: null },
+          impressiveCount: 0,
+          underperformingCount: 1,
+        },
+      ]);
+    });
+
+    it("keeps impressive and underperforming counts separate for a card that is both", async () => {
+      const deck = await ownDeck();
+      const flex = await createCard(prisma, { name: "Flex Card" });
+      const game1 = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: deck.id,
+      });
+      await captureCard(game1.id, flex.id, "impressive", "A");
+      const game2 = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: deck.id,
+      });
+      await captureCard(game2.id, flex.id, "underperforming", "A");
+
+      const response = await asMemberA(http().get(`/api/decks/${deck.id}/card-observations`));
+      expect(response.status).toBe(200);
+      expect(response.body.observations).toEqual([
+        expect.objectContaining({ impressiveCount: 1, underperformingCount: 1 }),
+      ]);
+    });
+
+    it("counts the deck's cards when it was piloted as side B (the opponent)", async () => {
+      const deck = await ownDeck();
+      const ourCard = await createCard(prisma, { name: "Our Card" });
+      const theirCard = await createCard(prisma, { name: "Their Card" });
+      const game = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        selfHeroId: fabHeroId, // side A is an opponent hero
+        opponentDeckId: deck.id, // our deck is side B
+      });
+      await captureCard(game.id, ourCard.id, "impressive", "B");
+      await captureCard(game.id, theirCard.id, "impressive", "A");
+
+      const response = await asMemberA(http().get(`/api/decks/${deck.id}/card-observations`));
+      expect(response.status).toBe(200);
+      expect(response.body.observations).toEqual([
+        expect.objectContaining({ card: expect.objectContaining({ id: ourCard.id }) }),
+      ]);
+    });
+
+    it("counts cards from a game against a meta deck entry the deck is linked to", async () => {
+      const deck = await ownDeck();
+      const meta = await createMeta(prisma, { teamId: teamA.id, name: "July" });
+      const katsu = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        heroId: fabHeroId,
+        label: "Katsu",
+        opponentSnapshotLabel: "Katsu",
+      });
+      await prisma.deckMeta.create({
+        data: { deckId: deck.id, metaId: meta.id, metaDeckEntryId: katsu.id },
+      });
+      // A different (unlinked) deck faced the META Katsu entry, not our build.
+      const otherDeck = await makeDeck({
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+        name: "Random",
+      });
+      const katsuCard = await createCard(prisma, { name: "Art of War" });
+      const game = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: otherDeck.id,
+        opponentMetaDeckEntryId: katsu.id,
+      });
+      await captureCard(game.id, katsuCard.id, "impressive", "B"); // the Katsu side
+
+      const response = await asMemberA(http().get(`/api/decks/${deck.id}/card-observations`));
+      expect(response.status).toBe(200);
+      expect(response.body.gamesConsidered).toBe(1);
+      expect(response.body.observations).toEqual([
+        expect.objectContaining({
+          card: expect.objectContaining({ id: katsuCard.id }),
+          impressiveCount: 1,
+        }),
+      ]);
+    });
+
+    it("counts sibling-deck games linked to the same entry, but not unrelated decks", async () => {
+      const deck = await ownDeck();
+      const meta = await createMeta(prisma, { teamId: teamA.id, name: "July" });
+      const katsu = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        heroId: fabHeroId,
+        label: "Katsu",
+        opponentSnapshotLabel: "Katsu",
+      });
+      const sibling = await makeDeck({
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+        name: "Teammate Katsu",
+      });
+      const unrelated = await makeDeck({
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+        name: "Unrelated",
+      });
+      await prisma.deckMeta.createMany({
+        data: [
+          { deckId: deck.id, metaId: meta.id, metaDeckEntryId: katsu.id },
+          { deckId: sibling.id, metaId: meta.id, metaDeckEntryId: katsu.id },
+        ],
+      });
+      const siblingCard = await createCard(prisma, { name: "Sibling Tech" });
+      const unrelatedCard = await createCard(prisma, { name: "Unrelated Tech" });
+      const siblingGame = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: sibling.id,
+      });
+      await captureCard(siblingGame.id, siblingCard.id, "impressive", "A");
+      const unrelatedGame = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: unrelated.id,
+      });
+      await captureCard(unrelatedGame.id, unrelatedCard.id, "impressive", "A");
+
+      const response = await asMemberA(http().get(`/api/decks/${deck.id}/card-observations`));
+      expect(response.status).toBe(200);
+      const ids = response.body.observations.map(
+        (observation: { card: { id: string } }) => observation.card.id,
+      );
+      expect(ids).toContain(siblingCard.id);
+      expect(ids).not.toContain(unrelatedCard.id);
+    });
+
+    it("matches an unlinked hero+label game to a linked entry, but not the same hero under a different label", async () => {
+      const deck = await ownDeck();
+      const meta = await createMeta(prisma, { teamId: teamA.id, name: "July" });
+      const katsu = await createMetaDeckEntry(prisma, {
+        metaId: meta.id,
+        teamId: teamA.id,
+        heroId: fabHeroId,
+        label: "Aggro Katsu",
+        opponentSnapshotLabel: "Aggro Katsu",
+      });
+      await prisma.deckMeta.create({
+        data: { deckId: deck.id, metaId: meta.id, metaDeckEntryId: katsu.id },
+      });
+      const otherDeck = await makeDeck({
+        teamId: teamA.id,
+        ownerId: memberA.id,
+        formatId: fabFormatId,
+        name: "Random",
+      });
+      const matchCard = await createCard(prisma, { name: "Match Card" });
+      const missCard = await createCard(prisma, { name: "Miss Card" });
+      // Same hero, matching label → ref-matches the entry (T4).
+      const matchGame = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: otherDeck.id,
+        opponentHeroId: fabHeroId,
+        opponentArchetypeLabel: "Aggro Katsu",
+      });
+      await captureCard(matchGame.id, matchCard.id, "impressive", "B");
+      // Same hero, different label → selected by the SQL superset but dropped by the matcher.
+      const missGame = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: otherDeck.id,
+        opponentHeroId: fabHeroId,
+        opponentArchetypeLabel: "Control Katsu",
+      });
+      await captureCard(missGame.id, missCard.id, "impressive", "B");
+
+      const response = await asMemberA(http().get(`/api/decks/${deck.id}/card-observations`));
+      expect(response.status).toBe(200);
+      const ids = response.body.observations.map(
+        (observation: { card: { id: string } }) => observation.card.id,
+      );
+      expect(ids).toContain(matchCard.id);
+      expect(ids).not.toContain(missCard.id);
+    });
+
+    it("is empty for a deck with no relevant games, and never reads another team's data", async () => {
+      // Cross-tenant deck id → 404.
+      const bDeck = await makeDeck({
+        teamId: teamB.id,
+        ownerId: memberB.id,
+        formatId: fabFormatId,
+      });
+      const forged = await asMemberA(http().get(`/api/decks/${bDeck.id}/card-observations`));
+      expect(forged.status).toBe(404);
+
+      // Team B's captured cards never feed team A's deck observations.
+      const bCard = await createCard(prisma, { name: "Bravo Card" });
+      const bGame = await logGame({
+        teamId: teamB.id,
+        loggedById: memberB.id,
+        formatId: fabFormatId,
+        deckId: bDeck.id,
+      });
+      await captureCard(bGame.id, bCard.id, "impressive", "A");
+
+      const ourDeck = await ownDeck();
+      const ours = await asMemberA(http().get(`/api/decks/${ourDeck.id}/card-observations`));
+      expect(ours.status).toBe(200);
+      expect(ours.body.gamesConsidered).toBe(0);
+      expect(ours.body.observations).toEqual([]);
     });
   });
 

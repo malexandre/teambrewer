@@ -37,6 +37,16 @@ they hang off events, carry a status lifecycle and visibility, and keep a manual
   an entry when side A is this deck and side B either links the entry directly (`opponentMetaDeckEntryId`)
   or matches the entry's matchup-subject ref (shared hero + label), so repeated heroes under different
   labels aggregate distinctly; a game log's optional `metaId` is not required (a later narrowing).
+- <a id="card-observations"></a>As a **member**, I can see a deck's **card observations** on its detail
+  page (the **Cards** tab): one row per card with **two separate counts** — how many times it was noted
+  *impressive* and how many times *underperforming* — never netted, so a card can show both. It aggregates
+  only the deck's **own** side's captured cards (`GameLogCard`, see
+  [game-logging.md](game-logging.md)), read-only via `GET /api/decks/:deckId/card-observations`, sorted by
+  total observations (desc), then card name. "Relevant" games are the **broadest** attribution (shared
+  `deckOwnedGameSides`): the deck was piloted (either side), **or** a side is a meta deck entry the deck is
+  linked to, a sibling team deck linked to the same entry, or a bare hero+label ref-matching a linked entry.
+  So a game logged against the *meta* build of an archetype the deck represents still feeds the deck's card
+  counts. `gamesConsidered` counts the relevant games that contributed at least one of the deck's own cards.
 - As a **member**, I can **"Add card idea"** from the deck page: it opens the shared **Task** form
   (see [tasks.md](tasks.md)) pre-linked to this deck with a card-test title/description scaffold ready for
   `+card` mentions — the same `POST /api/tasks` path as the tasks board, not a parallel one. The deck page

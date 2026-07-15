@@ -23,6 +23,7 @@ import { GamePlanSection } from "@/features/gameplans/GamePlanSection";
 
 import { DeckCardIdeasSection } from "./DeckCardIdeasSection";
 import { DeckNotesSection } from "./DeckNotesSection";
+import { DeckCardObservationsSection } from "./DeckCardObservationsSection";
 import { DeckReadinessSection } from "./DeckReadinessSection";
 import { DECK_STATUS_LABELS, DECK_STATUS_TONE, DECK_VISIBILITY_LABELS } from "./deck-display";
 import { DeckForm } from "./DeckForm";
@@ -146,6 +147,11 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
       id: "matchups",
       label: "Matchup Matrix",
       panel: <DeckReadinessSection teamId={teamId} deckId={deck.id} />,
+    },
+    {
+      id: "cards",
+      label: "Cards",
+      panel: <DeckCardObservationsSection teamId={teamId} deckId={deck.id} />,
     },
     {
       id: "plan",

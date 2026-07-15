@@ -14,8 +14,10 @@ identified by name, deck, hero, or archetype), the result, and the confidence fa
 [ADR-0005](../decisions/0005-confidence-weight-model.md).
 
 Logging is a short **wizard** (a fast 3-step path plus an optional 4th step) rather than a single long
-form, and a log can optionally capture which **cards over- or under-performed**, each tagged as ours or
-theirs — see [UI / UX](#ui--ux) and [Data](#data) below.
+form, and a log can optionally capture which **cards over- or under-performed**, each tagged with the game
+side (**A / B**) it belonged to — so the card attaches to a real matchup subject (a team deck / meta deck
+entry / hero). These roll up onto a deck as its [card observations](decks.md) — see
+[UI / UX](#ui--ux) and [Data](#data) below.
 
 ## Goals & value
 
@@ -68,12 +70,14 @@ Uses **GameLog** from [data-model.md](../architecture/data-model.md#game-logging
 - **winType? / lossReason?** — optional tags (e.g. won on time, decked out, misplay); free-text
   `learnings`. These are captured but **do not affect the weight**.
 
-**GameLogCard** `{ id, gameLogId, cardId, role: 'impressive' | 'underperforming', side: 'ours' | 'theirs' }`
+**GameLogCard** `{ id, gameLogId, cardId, role: 'impressive' | 'underperforming', side: 'A' | 'B' }`
 (see [data-model.md](../architecture/data-model.md#game-logging--matchups)) — an optional set of card
-references captured per log: which cards over- or under-performed, each tagged by side. Scoped transitively
-through its parent `GameLog` (no `teamId` of its own), the same pattern as `Attendance` on `Event`. This is
-a per-game observation, not durable matchup knowledge — "cards to watch for vs archetype X" is out of scope
-here and belongs to phase-09's `MatchupGamePlan.keyCards[]`.
+references captured per log: which cards over- or under-performed, each tagged with the game side (`A`/`B`,
+the shared `GameSide`) it belonged to. Scoped transitively through its parent `GameLog` (no `teamId` of its
+own), the same pattern as `Attendance` on `Event`. Each row is a per-game observation; a deck aggregates
+its **own** side's observations into per-card impressive/underperforming counts (see
+[decks.md](decks.md#card-observations)). "Cards to watch for vs archetype X" (the opponent's tech) remains
+out of scope here and belongs to `MatchupGamePlan` bodies.
 
 ## Behavior & rules
 
@@ -137,12 +141,13 @@ in responses.
     live "counts as ~0.XX" hint and the primary **Log game** button — the fast finish; a fast log is three
     steps and zero required taps on the factors.
   - **Step 4 · Notes & cards (optional)** — reached via "Add notes & cards" from step 3, or skipped entirely.
-    Holds impressive cards, underperforming cards (each added via `CardPicker` and tagged ours/theirs),
-    `learnings`, `winType`/`lossReason`, `eventId`, opponent pilot/name. Has its own **Save**.
+    Holds impressive cards, underperforming cards (each added via `CardPicker` and tagged with the game
+    side — the toggle shows each side's resolved hero-first name, Deck A / Deck B), `learnings`,
+    `winType`/`lossReason`, `eventId`, opponent pilot/name. Has its own **Save**.
 - Minimal free typing overall; card/hero references support a **hover/press image preview** of the card.
 - Show the **derived confidence weight** back to the logger after save (a small "this game counts as ~0.7"
   hint), reinforcing the model without asking them to compute it; the detail hub also renders any captured
-  impressive/underperforming cards, tagged ours/theirs.
+  impressive/underperforming cards, tagged by game side (Deck A / Deck B).
 
 ## Tenancy & permissions
 

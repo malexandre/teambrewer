@@ -8,6 +8,8 @@ import {
 import {
   aggregateMatchup,
   type CreateDeckInput,
+  type DeckCardObservation,
+  type DeckCardObservationsResponse,
   type DeckDetail,
   type DeckLinkedMeta,
   type DeckLinkedMetaEntry,
@@ -19,9 +21,11 @@ import {
   type DeckMetaReadinessRow,
   type DeckStatus,
   type DeckSummary,
+  deckOwnedGameSides,
   deriveGameOutcome,
   deriveMatchupSubjectRef,
   errorCode,
+  type GameSide,
   type IterationEntry,
   type IterationEntryList,
   matchupSubjectDisplayName,
@@ -82,6 +86,24 @@ interface GameLogReadinessRow {
   opponentMetaDeckEntryId: string | null;
   opponentHeroId: string | null;
   opponentArchetypeLabel: string | null;
+}
+
+/** Both sides' subject identity + the captured cards of a game log, for card observations. */
+interface GameLogCardObservationRow {
+  deckId: string | null;
+  selfMetaDeckEntryId: string | null;
+  selfHeroId: string | null;
+  selfArchetypeLabel: string | null;
+  opponentDeckId: string | null;
+  opponentMetaDeckEntryId: string | null;
+  opponentHeroId: string | null;
+  opponentArchetypeLabel: string | null;
+  cards: {
+    cardId: string;
+    role: "impressive" | "underperforming";
+    side: GameSide;
+    card: { id: string; name: string; pitch: number | null; imageUrl: string | null };
+  }[];
 }
 
 /** Fallback `source` label for a link no adapter recognized. */
@@ -427,6 +449,169 @@ export class DecksService {
       return meta;
     }
     return findMostRecentMetaForFormat(this.scoped.db, deckFormatId);
+  }
+
+  /**
+   * Roll up the impressive/underperforming cards captured on game logs into per-card
+   * counts for this deck (see docs/features/decks.md). Counts only the deck's **own**
+   * side's cards, across the broadest set of relevant games: where the deck was piloted,
+   * where a side is a meta deck entry the deck is linked to, where a side is a sibling
+   * team deck linked to the same entry, or where a bare hero+label side ref-matches a
+   * linked entry (`deckOwnedGameSides`). The impressive and underperforming counts are
+   * kept separate — a card can appear in both. Read-only; `GameLogCard` has no `teamId`
+   * and is reached only through its team-scoped parent `GameLog`.
+   */
+  async getCardObservations(
+    team: TeamContext,
+    deckId: string,
+  ): Promise<DeckCardObservationsResponse> {
+    await this.loadVisibleDeck(team, deckId);
+
+    // The deck's linked meta deck entries, and the closure used for broadest attribution:
+    // the entries' subject refs (hero+label fallback) and the sibling decks linked to them.
+    const links = await this.loadDeckMetaLinks(deckId);
+    const linkedMetaDeckEntryIds = new Set(
+      links.map((link) => link.metaDeckEntryId).filter((id): id is string => id !== null),
+    );
+    const entryIds = [...linkedMetaDeckEntryIds];
+    const entries = entryIds.length
+      ? ((await this.scoped.db.metaDeckEntry.findMany({
+          where: { id: { in: entryIds } },
+          select: { id: true, heroId: true, label: true },
+        })) as { id: string; heroId: string | null; label: string }[])
+      : [];
+    const linkedEntrySubjectRefs = new Set(
+      entries.map((entry) => deriveMatchupSubjectRef({ heroId: entry.heroId, label: entry.label })),
+    );
+    const linkedHeroIds = [
+      ...new Set(entries.map((entry) => entry.heroId).filter((id): id is string => id !== null)),
+    ];
+    const labelOnlyLabels = entries
+      .filter((entry) => entry.heroId === null)
+      .map((entry) => entry.label);
+
+    const siblingLinks = entryIds.length
+      ? ((await this.scoped.db.deckMeta.findMany({
+          where: { metaDeckEntryId: { in: entryIds } },
+          select: { deckId: true },
+        })) as { deckId: string }[])
+      : [];
+    const siblingDeckIds = new Set(
+      siblingLinks.map((link) => link.deckId).filter((id) => id !== deckId),
+    );
+    const siblingIds = [...siblingDeckIds];
+
+    // Superset of candidate games (team-scoped, with at least one captured card). The
+    // hero/label branches over-select; `deckOwnedGameSides` is authoritative below and
+    // drops the false positives (e.g. a linked hero under a non-matching label).
+    const games = (await this.scoped.db.gameLog.findMany({
+      where: {
+        archivedAt: null,
+        cards: { some: {} },
+        OR: [
+          { deckId },
+          { opponentDeckId: deckId },
+          ...(entryIds.length
+            ? [
+                { selfMetaDeckEntryId: { in: entryIds } },
+                { opponentMetaDeckEntryId: { in: entryIds } },
+              ]
+            : []),
+          ...(siblingIds.length
+            ? [{ deckId: { in: siblingIds } }, { opponentDeckId: { in: siblingIds } }]
+            : []),
+          ...(linkedHeroIds.length
+            ? [{ selfHeroId: { in: linkedHeroIds } }, { opponentHeroId: { in: linkedHeroIds } }]
+            : []),
+          ...(labelOnlyLabels.length
+            ? [
+                { selfArchetypeLabel: { in: labelOnlyLabels } },
+                { opponentArchetypeLabel: { in: labelOnlyLabels } },
+              ]
+            : []),
+        ],
+      },
+      select: {
+        deckId: true,
+        selfMetaDeckEntryId: true,
+        selfHeroId: true,
+        selfArchetypeLabel: true,
+        opponentDeckId: true,
+        opponentMetaDeckEntryId: true,
+        opponentHeroId: true,
+        opponentArchetypeLabel: true,
+        cards: {
+          select: {
+            cardId: true,
+            role: true,
+            side: true,
+            card: { select: { id: true, name: true, pitch: true, imageUrl: true } },
+          },
+        },
+      },
+    })) as GameLogCardObservationRow[];
+
+    const identity = {
+      deckId,
+      linkedMetaDeckEntryIds,
+      siblingDeckIds,
+      linkedEntrySubjectRefs,
+    };
+    const byCard = new Map<string, DeckCardObservation>();
+    let gamesConsidered = 0;
+    for (const game of games) {
+      const ownedSides = new Set(
+        deckOwnedGameSides(
+          {
+            sideA: {
+              deckId: game.deckId,
+              metaDeckEntryId: game.selfMetaDeckEntryId,
+              heroId: game.selfHeroId,
+              archetypeLabel: game.selfArchetypeLabel,
+            },
+            sideB: {
+              deckId: game.opponentDeckId,
+              metaDeckEntryId: game.opponentMetaDeckEntryId,
+              heroId: game.opponentHeroId,
+              archetypeLabel: game.opponentArchetypeLabel,
+            },
+          },
+          identity,
+        ),
+      );
+      if (ownedSides.size === 0) {
+        continue; // false positive from the hero/label superset above
+      }
+      let contributed = false;
+      for (const captured of game.cards) {
+        if (!ownedSides.has(captured.side)) {
+          continue; // the deck's own side only, never the opponent's cards
+        }
+        contributed = true;
+        const existing = byCard.get(captured.cardId) ?? {
+          card: captured.card,
+          impressiveCount: 0,
+          underperformingCount: 0,
+        };
+        if (captured.role === "impressive") {
+          existing.impressiveCount += 1;
+        } else {
+          existing.underperformingCount += 1;
+        }
+        byCard.set(captured.cardId, existing);
+      }
+      if (contributed) {
+        gamesConsidered += 1;
+      }
+    }
+
+    const observations = [...byCard.values()].sort((a, b) => {
+      const totalDifference =
+        b.impressiveCount + b.underperformingCount - (a.impressiveCount + a.underperformingCount);
+      return totalDifference !== 0 ? totalDifference : a.card.name.localeCompare(b.card.name);
+    });
+
+    return { deckId, gamesConsidered, observations };
   }
 
   /** Best-effort deck-URL recognition (URL-pattern only, never a content fetch). */

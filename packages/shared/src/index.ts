@@ -356,6 +356,13 @@ export {
 } from "./game-plans.js";
 
 export {
+  gameSideBelongsToDeck,
+  deckOwnedGameSides,
+  type GameSideSubjectIdentity,
+  type DeckAttributionIdentity,
+} from "./deck-attribution.js";
+
+export {
   metaNameSchema,
   metaDescriptionSchema,
   metaDateSchema,
@@ -385,6 +392,13 @@ export {
   type DeckMetaReadinessRow,
   type DeckMetaReadinessResponse,
 } from "./meta-readiness.js";
+
+export {
+  deckCardObservationSchema,
+  deckCardObservationsResponseSchema,
+  type DeckCardObservation,
+  type DeckCardObservationsResponse,
+} from "./deck-card-observations.js";
 
 export {
   matchupSubjectDisplayName,

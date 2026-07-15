@@ -43,6 +43,8 @@ export const queryKeys = {
     [teamId, "deck", deckId, "iterations"] as const,
   deckMetaReadiness: (teamId: string, deckId: string, metaId: string | undefined) =>
     [teamId, "deck", deckId, "meta-readiness", metaId ?? "current"] as const,
+  deckCardObservations: (teamId: string, deckId: string) =>
+    [teamId, "deck", deckId, "card-observations"] as const,
 
   /**
    * Events, keyed by the active team first so switching teams yields a different
