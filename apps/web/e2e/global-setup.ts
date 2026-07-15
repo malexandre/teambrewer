@@ -289,10 +289,12 @@ export default async function globalSetup(): Promise<void> {
   });
 
   // Seed the network-free reference catalog (games + formats) so decks can be
-  // created against a real format and game (Deck.gameId/formatId are FKs).
+  // created against a real format and game (Deck.gameId/formatId are FKs). The seed
+  // boots the full Nest app, which builds Better Auth — so it needs BETTER_AUTH_SECRET
+  // too (locally it comes from the root .env; CI has none, so pass the e2e secret).
   execFileSync("pnpm", ["--filter", "@teambrewer/api", "db:seed"], {
     cwd: repoRoot,
-    env: { ...process.env, DATABASE_URL: databaseUrl },
+    env: { ...process.env, DATABASE_URL: databaseUrl, BETTER_AUTH_SECRET },
     stdio: "inherit",
   });
 
