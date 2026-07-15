@@ -20,6 +20,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # The Prisma client is generated into apps/api/src/generated (gitignored), so a
+      # fresh checkout must generate it before typecheck/build/test can compile. generate
+      # is offline (no DB connection); the placeholder URL just satisfies the datasource.
+      - run: pnpm --filter @teambrewer/api db:generate
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm build
@@ -33,4 +40,6 @@ jobs:
 
       # Critical-journey e2e (Playwright) — Testcontainers Postgres + the built API,
       # then chromium + mobile projects. Uses the same Docker daemon as `pnpm test`.
+      # The chromium browser + its OS deps must be installed on the runner first.
+      - run: pnpm --filter @teambrewer/web exec playwright install --with-deps chromium
       - run: pnpm test:e2e
