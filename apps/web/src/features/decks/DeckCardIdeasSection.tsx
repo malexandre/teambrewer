@@ -24,15 +24,18 @@ function DeckTaskRow({ teamId, task }: { teamId: string | undefined; task: Task 
 
   return (
     <li className="flex flex-col gap-1 rounded-md border border-border p-2 text-sm">
-      <div className="flex items-center gap-2">
+      {/* Stack on phones so the title keeps a full-width line (it would otherwise be
+          squeezed to zero by the fixed-width action columns and clipped by `truncate`);
+          side-by-side from `sm` up. */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
         <span className="min-w-0 flex-1 truncate font-medium" title={task.title}>
           {task.title}
         </span>
         {/* Fixed-width, right-aligned slots so Report / Discussion / status line up as
-            columns across every row — the Report slot is reserved even when absent. */}
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="flex w-24 justify-end">
-            {hasReport ? (
+            columns across every row; wraps rather than overflowing on the narrowest widths. */}
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {hasReport ? (
+            <span className="flex w-24 justify-end">
               <Button
                 type="button"
                 size="sm"
@@ -43,8 +46,8 @@ function DeckTaskRow({ teamId, task }: { teamId: string | undefined; task: Task 
               >
                 {showReport ? "Hide report" : "Report"}
               </Button>
-            ) : null}
-          </span>
+            </span>
+          ) : null}
           <span className="flex w-28 justify-end">
             <Button
               type="button"
