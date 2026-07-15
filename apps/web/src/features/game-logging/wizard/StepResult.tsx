@@ -15,6 +15,8 @@ export function StepResult({
   gamesWonB,
   setGamesWonB,
   setSingleGameOutcome,
+  sideAName,
+  sideBName,
 }: {
   firstPlayerSide: GameSide;
   setFirstPlayerSide: (side: GameSide) => void;
@@ -25,6 +27,9 @@ export function StepResult({
   gamesWonB: number;
   setGamesWonB: (games: number) => void;
   setSingleGameOutcome: (outcome: "win" | "loss" | "draw") => void;
+  /** Resolved names for each side (hero-first), so the result reads by who, not "Deck A/B". */
+  sideAName: string;
+  sideBName: string;
 }) {
   const winThreshold = Math.ceil(bestOf / 2);
   return (
@@ -33,8 +38,8 @@ export function StepResult({
         label="Who went first?"
         value={firstPlayerSide}
         options={[
-          { value: "A", label: "Deck A" },
-          { value: "B", label: "Deck B" },
+          { value: "A", label: sideAName, tone: "sideA" },
+          { value: "B", label: sideBName, tone: "sideB" },
         ]}
         onChange={setFirstPlayerSide}
       />
@@ -55,8 +60,8 @@ export function StepResult({
           label="Who won?"
           value={gamesWonA > gamesWonB ? "win" : gamesWonA < gamesWonB ? "loss" : "draw"}
           options={[
-            { value: "win", label: "Deck A" },
-            { value: "loss", label: "Deck B" },
+            { value: "win", label: sideAName, tone: "sideA" },
+            { value: "loss", label: sideBName, tone: "sideB" },
             { value: "draw", label: "Draw" },
           ]}
           onChange={(next) => setSingleGameOutcome(next as "win" | "loss" | "draw")}
@@ -65,8 +70,8 @@ export function StepResult({
         <fieldset className="flex flex-col gap-1">
           <legend className="text-sm font-medium">Games won</legend>
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm">
-              Deck A
+            <label className="flex items-center gap-2 text-sm font-medium text-info-foreground">
+              {sideAName}
               <Input
                 type="number"
                 className="w-20"
@@ -74,11 +79,11 @@ export function StepResult({
                 max={winThreshold}
                 value={gamesWonA}
                 onChange={(event) => setGamesWonA(Number(event.target.value))}
-                aria-label="Games Deck A won"
+                aria-label={`Games ${sideAName} won`}
               />
             </label>
-            <label className="flex items-center gap-2 text-sm">
-              Deck B
+            <label className="flex items-center gap-2 text-sm font-medium text-danger-foreground">
+              {sideBName}
               <Input
                 type="number"
                 className="w-20"
@@ -86,7 +91,7 @@ export function StepResult({
                 max={winThreshold}
                 value={gamesWonB}
                 onChange={(event) => setGamesWonB(Number(event.target.value))}
-                aria-label="Games Deck B won"
+                aria-label={`Games ${sideBName} won`}
               />
             </label>
           </div>

@@ -368,9 +368,7 @@ describe("GameLogWizard", () => {
       <GameLogWizard teamId="team-1" gameLog={makeExistingLog()} onSaved={() => {}} />,
     );
     // Deck B (the opponent side) seeds into hero+label mode with the stored label and hero.
-    expect(await screen.findByLabelText(/deck b archetype label/i)).toHaveValue(
-      "Draconic Dorinthea",
-    );
+    expect(await screen.findByLabelText(/archetype label/i)).toHaveValue("Draconic Dorinthea");
     await screen.findByRole("option", { name: "Dorinthea" });
     expect(screen.getByRole("combobox", { name: "Hero" })).toHaveValue("hero-dori");
   });

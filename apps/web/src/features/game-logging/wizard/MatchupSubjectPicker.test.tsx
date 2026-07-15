@@ -159,7 +159,7 @@ describe("MatchupSubjectPicker", () => {
     await user.selectOptions(screen.getByLabelText("Deck B"), "other");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
-    await user.type(screen.getByLabelText(/deck b archetype label/i), "Aggro Red");
+    await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");
     await user.click(screen.getByRole("button", { name: "Circuit player" }));
     expect(emitted()).toEqual({
       heroId: "hero-dori",

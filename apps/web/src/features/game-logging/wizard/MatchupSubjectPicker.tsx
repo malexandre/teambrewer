@@ -80,10 +80,12 @@ export function MatchupSubjectPicker({
   const metaEntries = metaEntriesData?.data ?? [];
 
   const isSelf = side === "self";
-  // Neutral side names ("Deck A"/"Deck B") so a game between two players other than
-  // the logging member (e.g. a spectated match) reads correctly. They map to the
-  // internal A/B sides the rest of the wizard and the model already use.
+  // The two sides are told apart by colour (blue Deck A / red Deck B) and position
+  // rather than an "A"/"B" label — a spectated match between two other players still
+  // reads cleanly. The name is kept only as the controls' accessible name (screen
+  // readers, tests). Colour maps to the internal A/B sides the model already uses.
   const deckSideName = isSelf ? "Deck A" : "Deck B";
+  const panelClassName = isSelf ? "border-info-border bg-info" : "border-danger-border bg-danger";
   // The self subject select keeps the stable `game-deck` id the e2e drives.
   const subjectSelectId = isSelf ? "game-deck" : "opponent-deck";
 
@@ -100,13 +102,14 @@ export function MatchupSubjectPicker({
   }
 
   return (
-    <fieldset className="flex min-w-0 flex-col gap-3">
+    <fieldset className={`flex min-w-0 flex-col gap-3 rounded-lg border p-3 ${panelClassName}`}>
       <div className="flex min-w-0 flex-col gap-1">
-        <Label htmlFor={subjectSelectId}>{deckSideName}</Label>
-        {/* `w-full min-w-0` keeps a long deck name from stretching the select (and its
-            flex-column ancestors) past the card; the native select truncates it instead. */}
+        {/* No visible "Deck A"/"Deck B" label — the panel colour is the side cue; the
+            name stays as the select's accessible name. `w-full min-w-0` keeps a long
+            deck name from stretching the select past the card (it truncates instead). */}
         <select
           id={subjectSelectId}
+          aria-label={deckSideName}
           className={`${SELECT_CLASS} w-full min-w-0`}
           value={selectValueFor(state)}
           onChange={(event) => patch(subjectPatchFromSelectValue(event.target.value))}
@@ -143,9 +146,7 @@ export function MatchupSubjectPicker({
       {state.mode === "hero_label" ? (
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
-            <Label htmlFor={`${side}-hero`}>
-              {deckSideName} {identityLabel.toLowerCase()}
-            </Label>
+            <Label htmlFor={`${side}-hero`}>{identityLabel}</Label>
             <HeroPicker
               id={`${side}-hero`}
               teamId={teamId}
@@ -155,9 +156,7 @@ export function MatchupSubjectPicker({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label htmlFor={`${side}-archetype-label`}>
-              {deckSideName} archetype label (optional)
-            </Label>
+            <Label htmlFor={`${side}-archetype-label`}>Archetype label (optional)</Label>
             <Input
               id={`${side}-archetype-label`}
               placeholder="e.g. Aggro Red"
@@ -169,7 +168,7 @@ export function MatchupSubjectPicker({
       ) : null}
 
       <SegmentedControl<PlayerCategory>
-        label={`Who piloted ${deckSideName}?`}
+        label="Piloted by"
         value={state.playerCategory}
         options={PLAYER_CATEGORIES.map((category) => ({
           value: category,

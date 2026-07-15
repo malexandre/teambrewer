@@ -1,4 +1,24 @@
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+/** Optional per-option side colouring: blue for Deck A, red for Deck B. */
+export type SegmentedTone = "sideA" | "sideB";
+
+/**
+ * Classes for a side-toned option. Each option keeps its side colour whether or
+ * not it is selected (so the blue/red cue survives a mirror where both labels
+ * read the same); the selected one is filled, the rest are outlined.
+ */
+function sideToneClassName(tone: SegmentedTone, isActive: boolean): string {
+  if (tone === "sideA") {
+    return isActive
+      ? "border-info-border bg-info text-info-foreground hover:bg-info"
+      : "border-info-border text-info-foreground hover:bg-info/50";
+  }
+  return isActive
+    ? "border-danger-border bg-danger text-danger-foreground hover:bg-danger"
+    : "border-danger-border text-danger-foreground hover:bg-danger/50";
+}
 
 /** A row of mutually-exclusive buttons (the segmented-control idiom used across the app). */
 export function SegmentedControl<Value extends string>({
@@ -9,7 +29,7 @@ export function SegmentedControl<Value extends string>({
 }: {
   label: string;
   value: Value;
-  options: { value: Value; label: string }[];
+  options: { value: Value; label: string; tone?: SegmentedTone }[];
   onChange: (next: Value) => void;
 }) {
   return (
@@ -28,9 +48,12 @@ export function SegmentedControl<Value extends string>({
               key={option.value}
               type="button"
               size="sm"
-              variant={isActive ? "default" : "outline"}
+              variant={option.tone ? "outline" : isActive ? "default" : "outline"}
               aria-pressed={isActive}
-              className="h-auto min-h-8 w-full py-1 text-center whitespace-normal"
+              className={cn(
+                "h-auto min-h-8 w-full py-1 text-center whitespace-normal",
+                option.tone && sideToneClassName(option.tone, isActive),
+              )}
               onClick={() => onChange(option.value)}
             >
               {option.label}

@@ -14,8 +14,10 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useFormats } from "@/features/cards/use-formats";
+import { useHeroes } from "@/features/cards/use-heroes";
 import { useDecks } from "@/features/decks/use-decks";
-import { mostRecentMetaForFormat, useMetas } from "@/features/metas/use-metas";
+import { mostRecentMetaForFormat, useMetaDeckEntries, useMetas } from "@/features/metas/use-metas";
 import { ApiError } from "@/lib/api-client";
 
 import { type ConfidenceFactorField } from "./game-display";
@@ -29,6 +31,7 @@ import {
   subjectStateFromSideA,
   subjectStateFromSideB,
 } from "./wizard/matchup-subject";
+import { resolveMatchupSubjectName } from "./wizard/matchup-subject-name";
 import { StepConfidence } from "./wizard/StepConfidence";
 import { StepMatchup } from "./wizard/StepMatchup";
 import { StepNotes } from "./wizard/StepNotes";
@@ -70,6 +73,8 @@ export function GameLogWizard({
   const { data: gameConfig } = useGameConfig(teamId);
   const { data: teamDecks } = useDecks(teamId, {});
   const { data: metas } = useMetas(teamId);
+  const { data: formatsData } = useFormats(teamId);
+  const { data: heroesData } = useHeroes(teamId);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   // On edit, expand the optional notes/cards step up front when the log already
@@ -151,10 +156,21 @@ export function GameLogWizard({
     }
   }, [defaultBestOf, isEditing]);
 
+  // In create mode, default the format to the game's first (primary) format once the
+  // reference list loads — a sensible starting point (Classic Constructed for Flesh and
+  // Blood, whose sortOrder is 0) without hard-coding a game's format. Never overrides an
+  // edit's stored format or a choice the member has already made.
+  useEffect(() => {
+    if (isEditing || formatId) return;
+    const firstFormat = formatsData?.data[0];
+    if (firstFormat) setFormatId(firstFormat.id);
+  }, [isEditing, formatId, formatsData]);
+
   // In create mode, default the meta link to the most recent meta of the selected format
   // (mirroring the server's per-format auto-suggest), re-applied when the format changes
   // until the member customizes it. `""` when the format has no meta. Never runs on edit.
   const mostRecentMeta = mostRecentMetaForFormat(metas?.data ?? [], formatId);
+  const { data: metaEntriesData } = useMetaDeckEntries(teamId, mostRecentMeta?.id);
   const metaSelectionCustomizedRef = useRef(false);
   useEffect(() => {
     if (isEditing || metaSelectionCustomizedRef.current) return;
@@ -294,6 +310,16 @@ export function GameLogWizard({
   const deckOptions = teamDecks?.data ?? [];
   const metaOptions = metas?.data ?? [];
 
+  // Resolve each side to a hero-first name so the result step labels the two decks by
+  // who they are (blue Deck A / red Deck B), which also disentangles a mirror match.
+  const subjectNameData = {
+    decks: deckOptions,
+    heroes: heroesData?.data ?? [],
+    metaEntries: metaEntriesData?.data ?? [],
+  };
+  const sideAName = resolveMatchupSubjectName(selfSubject, subjectNameData, "Deck A");
+  const sideBName = resolveMatchupSubjectName(opponentSubject, subjectNameData, "Deck B");
+
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <WizardProgress
@@ -327,6 +353,8 @@ export function GameLogWizard({
           gamesWonB={gamesWonB}
           setGamesWonB={setGamesWonB}
           setSingleGameOutcome={setSingleGameOutcome}
+          sideAName={sideAName}
+          sideBName={sideBName}
         />
       ) : null}
 
