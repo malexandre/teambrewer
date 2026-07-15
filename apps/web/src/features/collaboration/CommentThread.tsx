@@ -1,6 +1,7 @@
 import type { Comment, SubjectType } from "@teambrewer/shared";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { CardRichText } from "@/features/cards/CardRichText";
 import { useActiveTeam } from "@/features/teams/active-team";
@@ -20,16 +21,30 @@ export function CommentThread({
   subjectType,
   subjectId,
   canComment,
+  previewCount,
 }: {
   teamId: string | undefined;
   subjectType: SubjectType;
   subjectId: string;
   canComment: boolean;
+  /**
+   * When set, only the most recent `previewCount` top-level threads render, behind a
+   * "Show N earlier comments" expander — keeping a feed of threads compact. Unset
+   * (the default) renders the whole thread, so existing surfaces are unaffected.
+   */
+  previewCount?: number;
 }) {
   const { data } = useComments(teamId, subjectType, subjectId);
   const postComment = usePostComment(teamId, subjectType, subjectId);
+  const [showAllComments, setShowAllComments] = useState(false);
 
   const comments = data?.data ?? [];
+  const hiddenCount =
+    previewCount !== undefined && !showAllComments
+      ? Math.max(0, comments.length - previewCount)
+      : 0;
+  const visibleComments =
+    hiddenCount > 0 ? comments.slice(comments.length - previewCount!) : comments;
 
   return (
     <section className="flex flex-col gap-3">
@@ -54,11 +69,19 @@ export function CommentThread({
         </p>
       ) : null}
 
+      {hiddenCount > 0 ? (
+        <div>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setShowAllComments(true)}>
+            {`Show ${hiddenCount} earlier ${hiddenCount === 1 ? "comment" : "comments"}`}
+          </Button>
+        </div>
+      ) : null}
+
       {comments.length === 0 ? (
         <p className="text-sm text-muted-foreground">No comments yet.</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {comments.map((comment) => (
+          {visibleComments.map((comment) => (
             <li key={comment.id}>
               <CommentItem
                 teamId={teamId}

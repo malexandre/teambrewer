@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -100,13 +100,19 @@ const briarEntry = {
  * replaces the plan's `metaDeckEntryIds` is reflected when the invalidated list refetches
  * (matching the R-1 replace-the-whole-set contract). Captured PATCH bodies are returned.
  */
-function mockApi(patchBodies: unknown[] = [], initialAttached: string[] = []): void {
+function mockApi(
+  patchBodies: unknown[] = [],
+  initialAttached: string[] = [],
+  commentsThread: unknown = { data: [] },
+): void {
   let attachedEntryIds: string[] = initialAttached;
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = typeof input === "string" ? input : input.toString();
     const method = init?.method ?? "GET";
     if (url.endsWith("/api/me/teams")) return json({ data: [TEAM] });
     if (url.endsWith("/api/me")) return json(CURRENT_USER);
+    if (url.includes("/api/members")) return json({ data: [] });
+    if (url.includes("/api/comments") && method === "GET") return json(commentsThread);
     if (url.includes("/api/heroes")) {
       return json({ data: [{ id: "hero-1", name: "Briar", classes: [], talents: [] }] });
     }
@@ -157,6 +163,90 @@ describe("GamePlanSection", () => {
     expect(await screen.findByText(/Command and Conquer/)).toBeInTheDocument();
   });
 
+  it("shows each plan's discussion by default, without a reveal toggle", async () => {
+    mockApi();
+    renderSection(
+      <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
+    );
+
+    await screen.findByText("vs Briar");
+    // The discussion is the body of the card, not hidden behind a "Discussion" button.
+    expect(screen.getByRole("heading", { name: "Discussion" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Discussion" })).not.toBeInTheDocument();
+  });
+
+  it("collapses a plan onto its matchup header, hiding the plan body and discussion", async () => {
+    const user = userEvent.setup();
+    mockApi();
+    renderSection(
+      <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
+    );
+
+    await screen.findByText("vs Briar");
+    expect(screen.getByRole("heading", { name: "Discussion" })).toBeInTheDocument();
+
+    // The tinted matchup header doubles as the collapse toggle.
+    await user.click(screen.getByRole("button", { name: /vs Briar/ }));
+
+    expect(screen.queryByRole("heading", { name: "Discussion" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Race the clock/)).not.toBeInTheDocument();
+    // The header (and its matchup name) stays, so the plan is still findable.
+    expect(screen.getByText("vs Briar")).toBeInTheDocument();
+  });
+
+  it("does not show the meta-coverage chips in the read view", async () => {
+    // The plan covers Oscilio, but coverage is edited only via the editor's multi-select.
+    mockApi([], ["entry-oscilio"]);
+    renderSection(
+      <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
+    );
+
+    await screen.findByText("vs Briar");
+    expect(screen.queryByText(/Covers/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Oscilio")).not.toBeInTheDocument();
+  });
+
+  it("summarises the thread activity in the card header", async () => {
+    const commentsThread = {
+      data: [
+        {
+          id: "c1",
+          subjectType: "matchup_game_plan",
+          subjectId: "gp1",
+          author: { userId: "user-2", username: "bob", displayName: "Bob" },
+          body: "Cut a blue for the on-hit?",
+          parentCommentId: null,
+          archivedAt: null,
+          createdAt: "2026-07-12T00:00:00.000Z",
+          updatedAt: "2026-07-12T00:00:00.000Z",
+          replies: [
+            {
+              id: "c2",
+              subjectType: "matchup_game_plan",
+              subjectId: "gp1",
+              author: { userId: "user-1", username: "alice", displayName: "Alice" },
+              body: "Tried it, feels great.",
+              parentCommentId: "c1",
+              archivedAt: null,
+              createdAt: "2026-07-12T00:01:00.000Z",
+              updatedAt: "2026-07-12T00:01:00.000Z",
+              replies: [],
+            },
+          ],
+        },
+      ],
+    };
+    mockApi([], [], commentsThread);
+    renderSection(
+      <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
+    );
+
+    await screen.findByText("vs Briar");
+    // Comment + reply = 2 active comments, with a relative "last reply" (value left to the clock).
+    expect(await screen.findByText(/2 comments/)).toBeInTheDocument();
+    expect(screen.getByText(/last reply/)).toBeInTheDocument();
+  });
+
   it("reveals the editor with the plan body composer and the opponent subject fields when writing", async () => {
     mockApi();
     renderSection(
@@ -198,9 +288,10 @@ describe("GamePlanSection", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     // The PATCH sends the whole desired set (R-1 replace contract), alongside the body.
-    expect(patchBodies.at(-1)).toMatchObject({ metaDeckEntryIds: ["entry-oscilio"] });
-    // After the invalidated list refetches, the read view lists Oscilio as covered.
-    expect(await screen.findByText("Oscilio")).toBeInTheDocument();
+    // Coverage is edited here in the editor but is intentionally not shown in the read view.
+    await waitFor(() =>
+      expect(patchBodies.at(-1)).toMatchObject({ metaDeckEntryIds: ["entry-oscilio"] }),
+    );
   });
 
   it("unassigns a plan from a meta deck entry from the editor's multi-select", async () => {

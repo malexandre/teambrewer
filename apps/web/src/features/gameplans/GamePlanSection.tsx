@@ -66,7 +66,7 @@ export function GamePlanSection({
       ) : gamePlans.length === 0 ? (
         <p className="text-sm text-muted-foreground">No game-plans yet.</p>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {gamePlans.map((gamePlan) => (
             <GamePlanCard
               key={gamePlan.id}
