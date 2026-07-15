@@ -126,7 +126,7 @@ describe("MatchupSubjectPicker", () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("self");
-    await user.selectOptions(screen.getByLabelText("Your deck"), "deck:deck-ours");
+    await user.selectOptions(screen.getByLabelText("Deck A"), "deck:deck-ours");
     expect(emitted()).toEqual({ deckId: "deck-ours", playerCategory: "teammate" });
   });
 
@@ -135,7 +135,7 @@ describe("MatchupSubjectPicker", () => {
     mockApi();
     renderHarness("self");
     await screen.findByRole("option", { name: "Dorinthea · Aggro Red" });
-    await user.selectOptions(screen.getByLabelText("Your deck"), "meta:entry-1");
+    await user.selectOptions(screen.getByLabelText("Deck A"), "meta:entry-1");
     expect(emitted()).toEqual({ metaDeckEntryId: "entry-1", playerCategory: "teammate" });
   });
 
@@ -143,7 +143,7 @@ describe("MatchupSubjectPicker", () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("opponent");
-    await user.selectOptions(screen.getByLabelText("Opponent deck"), "other");
+    await user.selectOptions(screen.getByLabelText("Deck B"), "other");
     // Before a hero is picked the subject is incomplete.
     expect(emitted()).toBeNull();
     await screen.findByRole("option", { name: "Dorinthea" });
@@ -156,10 +156,10 @@ describe("MatchupSubjectPicker", () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("opponent");
-    await user.selectOptions(screen.getByLabelText("Opponent deck"), "other");
+    await user.selectOptions(screen.getByLabelText("Deck B"), "other");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
-    await user.type(screen.getByLabelText(/opponent archetype label/i), "Aggro Red");
+    await user.type(screen.getByLabelText(/deck b archetype label/i), "Aggro Red");
     await user.click(screen.getByRole("button", { name: "Circuit player" }));
     expect(emitted()).toEqual({
       heroId: "hero-dori",

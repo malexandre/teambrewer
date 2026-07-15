@@ -80,7 +80,10 @@ export function MatchupSubjectPicker({
   const metaEntries = metaEntriesData?.data ?? [];
 
   const isSelf = side === "self";
-  const heading = isSelf ? "Your side" : "Opponent";
+  // Neutral side names ("Deck A"/"Deck B") so a game between two players other than
+  // the logging member (e.g. a spectated match) reads correctly. They map to the
+  // internal A/B sides the rest of the wizard and the model already use.
+  const deckSideName = isSelf ? "Deck A" : "Deck B";
   // The self subject select keeps the stable `game-deck` id the e2e drives.
   const subjectSelectId = isSelf ? "game-deck" : "opponent-deck";
 
@@ -98,10 +101,8 @@ export function MatchupSubjectPicker({
 
   return (
     <fieldset className="flex min-w-0 flex-col gap-3">
-      <legend className="text-sm font-medium">{heading}</legend>
-
       <div className="flex min-w-0 flex-col gap-1">
-        <Label htmlFor={subjectSelectId}>{isSelf ? "Your deck" : "Opponent deck"}</Label>
+        <Label htmlFor={subjectSelectId}>{deckSideName}</Label>
         {/* `w-full min-w-0` keeps a long deck name from stretching the select (and its
             flex-column ancestors) past the card; the native select truncates it instead. */}
         <select
@@ -143,7 +144,7 @@ export function MatchupSubjectPicker({
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
             <Label htmlFor={`${side}-hero`}>
-              {isSelf ? "Your" : "Opponent"} {identityLabel.toLowerCase()}
+              {deckSideName} {identityLabel.toLowerCase()}
             </Label>
             <HeroPicker
               id={`${side}-hero`}
@@ -155,7 +156,7 @@ export function MatchupSubjectPicker({
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor={`${side}-archetype-label`}>
-              {isSelf ? "Your archetype label" : "Opponent archetype label"} (optional)
+              {deckSideName} archetype label (optional)
             </Label>
             <Input
               id={`${side}-archetype-label`}
@@ -168,7 +169,7 @@ export function MatchupSubjectPicker({
       ) : null}
 
       <SegmentedControl<PlayerCategory>
-        label={isSelf ? "Who piloted your side?" : "Who was the opponent?"}
+        label={`Who piloted ${deckSideName}?`}
         value={state.playerCategory}
         options={PLAYER_CATEGORIES.map((category) => ({
           value: category,

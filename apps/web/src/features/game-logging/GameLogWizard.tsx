@@ -221,7 +221,7 @@ export function GameLogWizard({
     setValidationError(null);
     if (step === 1) {
       if (!isStepMatchupComplete()) {
-        setValidationError("Pick the format, your side, and identify the opponent.");
+        setValidationError("Pick the format and identify both decks.");
         return;
       }
       // Reaching the result step counts as taking control: a config that resolves
@@ -257,12 +257,12 @@ export function GameLogWizard({
     }
     const sideA = buildSideAInput(selfSubject);
     if (!sideA) {
-      setValidationError("Pick or describe the side you played.");
+      setValidationError("Pick or describe Deck A.");
       return;
     }
     const sideB = buildSideBInput(opponentSubject);
     if (!sideB) {
-      setValidationError("Identify the opponent.");
+      setValidationError("Identify Deck B.");
       return;
     }
     const result = { gamesWonA, gamesWonB };

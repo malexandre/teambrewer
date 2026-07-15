@@ -183,7 +183,7 @@ describe("GameLogWizard", () => {
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
     await screen.findAllByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText(/your deck/i), "deck:deck-ours");
+    await user.selectOptions(screen.getByLabelText(/deck a/i), "deck:deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -203,7 +203,7 @@ describe("GameLogWizard", () => {
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
     await screen.findAllByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText(/your deck/i), "deck:deck-ours");
+    await user.selectOptions(screen.getByLabelText(/deck a/i), "deck:deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -232,7 +232,7 @@ describe("GameLogWizard", () => {
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
     await screen.findAllByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText("Your deck"), "deck:deck-ours");
+    await user.selectOptions(screen.getByLabelText("Deck A"), "deck:deck-ours");
     await user.click(screen.getByRole("button", { name: /next/i }));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     // Still on step 1: the result control has not appeared.
@@ -247,7 +247,7 @@ describe("GameLogWizard", () => {
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
     await screen.findAllByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText("Your deck"), "deck:deck-ours");
+    await user.selectOptions(screen.getByLabelText("Deck A"), "deck:deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -255,7 +255,7 @@ describe("GameLogWizard", () => {
     await screen.findByRole("button", { name: /single game/i });
     await user.click(screen.getByRole("button", { name: /^back$/i }));
     // Back on step 1, with the previously entered values intact.
-    expect(await screen.findByLabelText("Your deck")).toHaveValue("deck:deck-ours");
+    expect(await screen.findByLabelText("Deck A")).toHaveValue("deck:deck-ours");
     expect(screen.getByRole("combobox", { name: "Hero" })).toHaveValue("hero-dori");
   });
 
@@ -269,7 +269,7 @@ describe("GameLogWizard", () => {
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
     await screen.findAllByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText(/your deck/i), "deck:deck-ours");
+    await user.selectOptions(screen.getByLabelText(/deck a/i), "deck:deck-ours");
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -367,8 +367,8 @@ describe("GameLogWizard", () => {
     renderWithClient(
       <GameLogWizard teamId="team-1" gameLog={makeExistingLog()} onSaved={() => {}} />,
     );
-    // The opponent side seeds into hero+label mode with the stored label and hero.
-    expect(await screen.findByLabelText(/opponent archetype label/i)).toHaveValue(
+    // Deck B (the opponent side) seeds into hero+label mode with the stored label and hero.
+    expect(await screen.findByLabelText(/deck b archetype label/i)).toHaveValue(
       "Draconic Dorinthea",
     );
     await screen.findByRole("option", { name: "Dorinthea" });

@@ -33,8 +33,8 @@ export function StepResult({
         label="Who went first?"
         value={firstPlayerSide}
         options={[
-          { value: "A", label: "Me" },
-          { value: "B", label: "Opponent" },
+          { value: "A", label: "Deck A" },
+          { value: "B", label: "Deck B" },
         ]}
         onChange={setFirstPlayerSide}
       />
@@ -52,11 +52,11 @@ export function StepResult({
 
       {bestOf === 1 ? (
         <SegmentedControl<string>
-          label="Result"
+          label="Who won?"
           value={gamesWonA > gamesWonB ? "win" : gamesWonA < gamesWonB ? "loss" : "draw"}
           options={[
-            { value: "win", label: "Win" },
-            { value: "loss", label: "Loss" },
+            { value: "win", label: "Deck A" },
+            { value: "loss", label: "Deck B" },
             { value: "draw", label: "Draw" },
           ]}
           onChange={(next) => setSingleGameOutcome(next as "win" | "loss" | "draw")}
@@ -66,7 +66,7 @@ export function StepResult({
           <legend className="text-sm font-medium">Games won</legend>
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 text-sm">
-              You
+              Deck A
               <Input
                 type="number"
                 className="w-20"
@@ -74,11 +74,11 @@ export function StepResult({
                 max={winThreshold}
                 value={gamesWonA}
                 onChange={(event) => setGamesWonA(Number(event.target.value))}
-                aria-label="Games you won"
+                aria-label="Games Deck A won"
               />
             </label>
             <label className="flex items-center gap-2 text-sm">
-              Them
+              Deck B
               <Input
                 type="number"
                 className="w-20"
@@ -86,7 +86,7 @@ export function StepResult({
                 max={winThreshold}
                 value={gamesWonB}
                 onChange={(event) => setGamesWonB(Number(event.target.value))}
-                aria-label="Games they won"
+                aria-label="Games Deck B won"
               />
             </label>
           </div>
