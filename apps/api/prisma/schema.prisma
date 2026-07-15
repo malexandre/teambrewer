@@ -640,22 +640,17 @@ enum GameLogCardRole {
   underperforming
 }
 
-/// Whose card it was in the game.
-enum GameLogCardSide {
-  ours
-  theirs
-}
-
 /// A card reference captured on a game log (impressive/underperforming, tagged by
-/// side). Like Attendance, it carries no teamId — it is reached only through its
-/// team-scoped parent GameLog. Cards come from the global card DB (decks are
-/// links, ADR-0002); the referenced card must belong to the team's game.
+/// which of the game's two A/B sides it belonged to). Like Attendance, it carries
+/// no teamId — it is reached only through its team-scoped parent GameLog. Cards
+/// come from the global card DB (decks are links, ADR-0002); the referenced card
+/// must belong to the team's game.
 model GameLogCard {
   id        String          @id @default(cuid())
   gameLogId String          @map("game_log_id")
   cardId    String          @map("card_id")
   role      GameLogCardRole
-  side      GameLogCardSide
+  side      GameSide
   createdAt DateTime        @default(now()) @map("created_at")
 
   gameLog GameLog @relation(fields: [gameLogId], references: [id], onDelete: Cascade)

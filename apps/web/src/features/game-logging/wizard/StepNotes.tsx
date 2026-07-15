@@ -1,6 +1,7 @@
 import {
   type CardSummary,
   type GameLogCardInput,
+  type GameSide,
   type LossReason,
   lossReasonSchema,
   type MetaSummary,
@@ -27,6 +28,7 @@ export function StepNotes({
   setUnderperformingCards,
   onCaptureCard,
   cardNameOf,
+  sideNames,
   metaId,
   setMetaId,
   metaOptions,
@@ -47,6 +49,7 @@ export function StepNotes({
   setUnderperformingCards: (next: GameLogCardInput[]) => void;
   onCaptureCard: (card: CardSummary) => void;
   cardNameOf: (cardId: string) => string;
+  sideNames: Record<GameSide, string>;
   metaId: string;
   setMetaId: (metaId: string) => void;
   metaOptions: MetaSummary[];
@@ -69,6 +72,7 @@ export function StepNotes({
         onChange={setImpressiveCards}
         onCapture={onCaptureCard}
         nameOf={cardNameOf}
+        sideNames={sideNames}
       />
       <CardCaptureList
         teamId={teamId}
@@ -77,6 +81,7 @@ export function StepNotes({
         onChange={setUnderperformingCards}
         onCapture={onCaptureCard}
         nameOf={cardNameOf}
+        sideNames={sideNames}
       />
 
       <div className="flex flex-col gap-4 rounded-md border border-border p-3">

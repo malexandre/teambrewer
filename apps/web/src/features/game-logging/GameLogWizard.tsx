@@ -385,6 +385,7 @@ export function GameLogWizard({
           setUnderperformingCards={setUnderperformingCards}
           onCaptureCard={rememberCard}
           cardNameOf={(cardId) => cardNames.get(cardId) ?? "Card"}
+          sideNames={{ A: sideAName, B: sideBName }}
           metaId={metaId ?? ""}
           setMetaId={chooseMeta}
           metaOptions={metaOptions}

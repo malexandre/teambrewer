@@ -1,6 +1,5 @@
 import type {
   DeckMaturity,
-  GameLogCardSide,
   GameLogSummary,
   GameResult,
   LossReason,
@@ -118,12 +117,6 @@ export const LOSS_REASON_LABELS: Record<LossReason, string> = {
   mismatch: "Bad matchup",
   variance: "Variance",
   deck_out: "Decked out",
-};
-
-/** Human labels for whose card a captured card was. */
-export const GAME_LOG_CARD_SIDE_LABELS: Record<GameLogCardSide, string> = {
-  ours: "Our card",
-  theirs: "Their card",
 };
 
 /** The derived-weight hint, e.g. "counts as ~0.78". */

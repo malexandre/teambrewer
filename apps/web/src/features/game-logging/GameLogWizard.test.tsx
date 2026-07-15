@@ -294,10 +294,19 @@ describe("GameLogWizard", () => {
     const capturedEntry = await within(impressiveSection).findByRole("listitem");
     expect(within(capturedEntry).getByText("Command and Conquer")).toBeInTheDocument();
 
+    // The side toggle names the real subjects (Deck A "Our Deck" / Deck B "Dorinthea"),
+    // not "Our card"/"Their card", and defaults to side A (the card's own side).
+    const sideAButton = within(capturedEntry).getByRole("button", { name: "Our Deck" });
+    expect(sideAButton).toHaveAttribute("aria-pressed", "true");
+    expect(within(capturedEntry).getByRole("button", { name: "Dorinthea" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+
     await user.click(screen.getByRole("button", { name: /^save$/i }));
 
     await vi.waitFor(() => expect(created).toHaveLength(1));
-    expect(created[0]?.impressiveCards).toContainEqual({ cardId: "card-cnc", side: "ours" });
+    expect(created[0]?.impressiveCards).toContainEqual({ cardId: "card-cnc", side: "A" });
   });
 
   /** A minimal edit-mode log with no notes-triggering fields (so it opens on step 1). */
@@ -380,7 +389,7 @@ describe("GameLogWizard", () => {
       impressiveCards: [
         {
           card: { id: "card-cnc", name: "Command and Conquer", pitch: 1, imageUrl: null },
-          side: "ours",
+          side: "A",
         },
       ],
     });

@@ -214,31 +214,28 @@ describe("updateGameLogSchema", () => {
   });
 });
 
-import {
-  gameLogCardInputSchema,
-  gameLogCardRoleSchema,
-  gameLogCardSideSchema,
-} from "./game-log.js";
+import { gameLogCardInputSchema, gameLogCardRoleSchema, gameSideSchema } from "./game-log.js";
 
 describe("game-log card capture", () => {
-  it("accepts a valid card reference with a side", () => {
-    expect(gameLogCardInputSchema.parse({ cardId: "card_1", side: "ours" })).toEqual({
+  it("accepts a valid card reference with an A/B side", () => {
+    expect(gameLogCardInputSchema.parse({ cardId: "card_1", side: "A" })).toEqual({
       cardId: "card_1",
-      side: "ours",
+      side: "A",
     });
   });
 
-  it("rejects an unknown side", () => {
+  it("rejects the legacy ours/theirs side", () => {
+    expect(() => gameLogCardInputSchema.parse({ cardId: "card_1", side: "ours" })).toThrow();
     expect(() => gameLogCardInputSchema.parse({ cardId: "card_1", side: "mine" })).toThrow();
   });
 
   it("rejects a missing cardId", () => {
-    expect(() => gameLogCardInputSchema.parse({ side: "ours" })).toThrow();
+    expect(() => gameLogCardInputSchema.parse({ side: "A" })).toThrow();
   });
 
   it("enumerates roles and sides", () => {
     expect(gameLogCardRoleSchema.options).toEqual(["impressive", "underperforming"]);
-    expect(gameLogCardSideSchema.options).toEqual(["ours", "theirs"]);
+    expect(gameSideSchema.options).toEqual(["A", "B"]);
   });
 
   it("accepts card arrays on create and defaults them to empty", () => {
@@ -249,14 +246,14 @@ describe("game-log card capture", () => {
 
   it("accepts card arrays on create when provided", () => {
     const parsed = createGameLogSchema.parse(
-      validCreateInput({ impressiveCards: [{ cardId: "c1", side: "ours" }] }),
+      validCreateInput({ impressiveCards: [{ cardId: "c1", side: "A" }] }),
     );
-    expect(parsed.impressiveCards).toEqual([{ cardId: "c1", side: "ours" }]);
+    expect(parsed.impressiveCards).toEqual([{ cardId: "c1", side: "A" }]);
   });
 
   it("accepts a card-array-only update", () => {
     const parsed = updateGameLogSchema.parse({
-      underperformingCards: [{ cardId: "c2", side: "theirs" }],
+      underperformingCards: [{ cardId: "c2", side: "B" }],
     });
     expect(parsed.underperformingCards).toHaveLength(1);
   });

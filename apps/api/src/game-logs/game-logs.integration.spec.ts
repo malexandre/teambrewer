@@ -332,15 +332,15 @@ describe("Game-log endpoints (integration)", () => {
       });
       const response = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        impressiveCards: [{ cardId: card.id, side: "ours" }],
-        underperformingCards: [{ cardId: card.id, side: "theirs" }],
+        impressiveCards: [{ cardId: card.id, side: "A" }],
+        underperformingCards: [{ cardId: card.id, side: "B" }],
       });
       expect(response.status).toBe(201);
       expect(response.body.impressiveCards).toEqual([
-        expect.objectContaining({ side: "ours", card: expect.objectContaining({ id: card.id }) }),
+        expect.objectContaining({ side: "A", card: expect.objectContaining({ id: card.id }) }),
       ]);
       expect(response.body.underperformingCards).toEqual([
-        expect.objectContaining({ side: "theirs", card: expect.objectContaining({ id: card.id }) }),
+        expect.objectContaining({ side: "B", card: expect.objectContaining({ id: card.id }) }),
       ]);
     });
 
@@ -350,7 +350,7 @@ describe("Game-log endpoints (integration)", () => {
       });
       const response = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        impressiveCards: [{ cardId: riftCard.id, side: "ours" }],
+        impressiveCards: [{ cardId: riftCard.id, side: "A" }],
       });
       expect(response.status).toBe(422);
     });
@@ -483,15 +483,15 @@ describe("Game-log endpoints (integration)", () => {
       });
       const created = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        impressiveCards: [{ cardId: card1.id, side: "ours" }],
+        impressiveCards: [{ cardId: card1.id, side: "A" }],
       });
       const updated = await asMemberA(http().patch(`/api/game-logs/${created.body.id}`)).send({
-        impressiveCards: [{ cardId: card2.id, side: "theirs" }],
+        impressiveCards: [{ cardId: card2.id, side: "B" }],
       });
       expect(updated.status).toBe(200);
       expect(updated.body.impressiveCards).toEqual([
         expect.objectContaining({
-          side: "theirs",
+          side: "B",
           card: expect.objectContaining({ id: card2.id }),
         }),
       ]);
@@ -510,7 +510,7 @@ describe("Game-log endpoints (integration)", () => {
       // before the field write, so the learnings stay at their original value.
       const response = await asMemberA(http().patch(`/api/game-logs/${created.body.id}`)).send({
         learnings: "Should not persist.",
-        impressiveCards: [{ cardId: riftCard.id, side: "ours" }],
+        impressiveCards: [{ cardId: riftCard.id, side: "A" }],
       });
       expect(response.status).toBe(422);
 
@@ -525,7 +525,7 @@ describe("Game-log endpoints (integration)", () => {
       });
       const created = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        impressiveCards: [{ cardId: card.id, side: "ours" }],
+        impressiveCards: [{ cardId: card.id, side: "A" }],
       });
       // memberB (team B) cannot read or edit team A's log or its cards.
       const read = await asMemberB(http().get(`/api/game-logs/${created.body.id}`));
@@ -546,7 +546,7 @@ describe("Game-log endpoints (integration)", () => {
       // memberB (team B) hits team A's log with a card-array payload: the 404
       // must fire before the card-write path ever runs.
       const response = await asMemberB(http().patch(`/api/game-logs/${created.body.id}`)).send({
-        impressiveCards: [{ cardId: card.id, side: "ours" }],
+        impressiveCards: [{ cardId: card.id, side: "A" }],
       });
       expect(response.status).toBe(404);
 
@@ -568,22 +568,22 @@ describe("Game-log endpoints (integration)", () => {
       });
       const created = await asMemberA(http().post("/api/game-logs")).send({
         ...validGame(),
-        impressiveCards: [{ cardId: cardA.id, side: "ours" }],
-        underperformingCards: [{ cardId: cardB.id, side: "theirs" }],
+        impressiveCards: [{ cardId: cardA.id, side: "A" }],
+        underperformingCards: [{ cardId: cardB.id, side: "B" }],
       });
 
       // Only underperformingCards is sent; impressiveCards is omitted entirely.
       const updated = await asMemberA(http().patch(`/api/game-logs/${created.body.id}`)).send({
-        underperformingCards: [{ cardId: cardC.id, side: "ours" }],
+        underperformingCards: [{ cardId: cardC.id, side: "A" }],
       });
 
       expect(updated.status).toBe(200);
       expect(updated.body.underperformingCards).toEqual([
-        expect.objectContaining({ side: "ours", card: expect.objectContaining({ id: cardC.id }) }),
+        expect.objectContaining({ side: "A", card: expect.objectContaining({ id: cardC.id }) }),
       ]);
       // impressiveCards must be exactly what was created, untouched by the update.
       expect(updated.body.impressiveCards).toEqual([
-        expect.objectContaining({ side: "ours", card: expect.objectContaining({ id: cardA.id }) }),
+        expect.objectContaining({ side: "A", card: expect.objectContaining({ id: cardA.id }) }),
       ]);
     });
   });

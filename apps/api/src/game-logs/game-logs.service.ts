@@ -67,7 +67,7 @@ export interface GameLogRow {
   updatedAt: Date;
   cards?: {
     role: "impressive" | "underperforming";
-    side: "ours" | "theirs";
+    side: GameSide;
     card: { id: string; name: string; pitch: number | null; imageUrl: string | null };
   }[];
 }
@@ -509,11 +509,9 @@ export class GameLogsService {
   /** Validate captured cards belong to the team's game and map to GameLogCard rows. */
   private async resolveCapturedCards(
     gameId: string,
-    impressive: { cardId: string; side: "ours" | "theirs" }[],
-    underperforming: { cardId: string; side: "ours" | "theirs" }[],
-  ): Promise<
-    { cardId: string; role: "impressive" | "underperforming"; side: "ours" | "theirs" }[]
-  > {
+    impressive: { cardId: string; side: GameSide }[],
+    underperforming: { cardId: string; side: GameSide }[],
+  ): Promise<{ cardId: string; role: "impressive" | "underperforming"; side: GameSide }[]> {
     const all = [
       ...impressive.map((entry) => ({ ...entry, role: "impressive" as const })),
       ...underperforming.map((entry) => ({ ...entry, role: "underperforming" as const })),
@@ -527,7 +525,7 @@ export class GameLogsService {
     gameLogId: string,
     gameId: string,
     role: "impressive" | "underperforming",
-    cards: { cardId: string; side: "ours" | "theirs" }[],
+    cards: { cardId: string; side: GameSide }[],
   ): Promise<void> {
     await this.assertCardsInGame(gameId, cards);
     // gameLogCard is reached only through its team-scoped parent; scope by the

@@ -164,21 +164,22 @@ export const learningsSchema = z.string().max(2000);
 export const gameLogCardRoleSchema = z.enum(["impressive", "underperforming"]);
 export type GameLogCardRole = z.infer<typeof gameLogCardRoleSchema>;
 
-/** Whose card it was: our side or the opponent's. */
-export const gameLogCardSideSchema = z.enum(["ours", "theirs"]);
-export type GameLogCardSide = z.infer<typeof gameLogCardSideSchema>;
-
-/** A card reference captured on a game log, tagged by side. */
+/**
+ * Which of the game's two sides the card belonged to: `A` or `B`, the same
+ * symmetric matchup sides used for `firstPlayerSide` and the result. So a card is
+ * attributed to a real subject (a team deck / meta deck entry / hero), not a
+ * vague "ours/theirs" — this is what lets card observations roll up onto a deck.
+ */
 export const gameLogCardInputSchema = z.object({
   cardId: z.string().min(1),
-  side: gameLogCardSideSchema,
+  side: gameSideSchema,
 });
 export type GameLogCardInput = z.infer<typeof gameLogCardInputSchema>;
 
-/** A captured card as returned by the API (the card summary + its side). */
+/** A captured card as returned by the API (the card summary + its A/B side). */
 export const gameLogCardSchema = z.object({
   card: cardSummarySchema,
-  side: gameLogCardSideSchema,
+  side: gameSideSchema,
 });
 export type GameLogCard = z.infer<typeof gameLogCardSchema>;
 

@@ -24,7 +24,6 @@ import {
   formatConfidenceWeight,
   formatPlayedAt,
   formatResult,
-  GAME_LOG_CARD_SIDE_LABELS,
   type GameLogLabelMaps,
   gameResultTone,
   PILOT_FAMILIARITY_FIELD,
@@ -187,7 +186,7 @@ export function GameDetail({
                   <li key={entry.card.id} className="flex justify-between gap-2">
                     <span>{entry.card.name}</span>
                     <span className="text-muted-foreground">
-                      {GAME_LOG_CARD_SIDE_LABELS[entry.side]}
+                      {entry.side === "A" ? ourDeck : opponent}
                     </span>
                   </li>
                 ))}
@@ -203,7 +202,7 @@ export function GameDetail({
                   <li key={entry.card.id} className="flex justify-between gap-2">
                     <span>{entry.card.name}</span>
                     <span className="text-muted-foreground">
-                      {GAME_LOG_CARD_SIDE_LABELS[entry.side]}
+                      {entry.side === "A" ? ourDeck : opponent}
                     </span>
                   </li>
                 ))}

@@ -1,9 +1,7 @@
-import { type CardSummary, type GameLogCardInput, type GameLogCardSide } from "@teambrewer/shared";
+import { type CardSummary, type GameLogCardInput, type GameSide } from "@teambrewer/shared";
 
 import { Button } from "@/components/ui/button";
 import { CardPicker } from "@/features/cards/CardPicker";
-
-import { GAME_LOG_CARD_SIDE_LABELS } from "../game-display";
 
 /** Names + tags a set of captured cards for one role (impressive/underperforming). */
 export function CardCaptureList({
@@ -13,6 +11,7 @@ export function CardCaptureList({
   onChange,
   onCapture,
   nameOf,
+  sideNames,
 }: {
   teamId: string | undefined;
   label: string;
@@ -21,13 +20,16 @@ export function CardCaptureList({
   /** Lets the container remember the card's display name for later rendering. */
   onCapture: (card: CardSummary) => void;
   nameOf: (cardId: string) => string;
+  /** Display name of each game side (hero-first), so a captured card is tagged with
+   *  the real subject it belonged to (Deck A / Deck B) rather than "ours/theirs". */
+  sideNames: Record<GameSide, string>;
 }) {
   function add(card: CardSummary) {
     onCapture(card);
     if (value.some((entry) => entry.cardId === card.id)) return;
-    onChange([...value, { cardId: card.id, side: "ours" }]);
+    onChange([...value, { cardId: card.id, side: "A" }]);
   }
-  function setSide(cardId: string, side: GameLogCardSide) {
+  function setSide(cardId: string, side: GameSide) {
     onChange(value.map((entry) => (entry.cardId === cardId ? { ...entry, side } : entry)));
   }
   function remove(cardId: string) {
@@ -42,7 +44,7 @@ export function CardCaptureList({
           <li key={entry.cardId} className="flex items-center justify-between gap-2 text-sm">
             <span>{nameOf(entry.cardId)}</span>
             <span className="flex items-center gap-1">
-              {(["ours", "theirs"] as GameLogCardSide[]).map((side) => (
+              {(["A", "B"] as GameSide[]).map((side) => (
                 <Button
                   key={side}
                   type="button"
@@ -51,7 +53,7 @@ export function CardCaptureList({
                   aria-pressed={entry.side === side}
                   onClick={() => setSide(entry.cardId, side)}
                 >
-                  {GAME_LOG_CARD_SIDE_LABELS[side]}
+                  {sideNames[side]}
                 </Button>
               ))}
               <Button type="button" size="sm" variant="ghost" onClick={() => remove(entry.cardId)}>
