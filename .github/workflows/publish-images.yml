@@ -1,0 +1,164 @@
+name: Publish images
+
+# Builds the api and web runtime images from the single root Dockerfile and
+# publishes them to GHCR, so a throttled self-hosted VPS can deploy by *pulling*
+# pre-built images instead of building on the box. Packaging/publishing only —
+# no app/runtime behavior changes (the api image still runs `prisma migrate
+# deploy` on boot). See docs/ops/self-hosting.md for the pull-and-run model.
+on:
+  push:
+    tags: ["v*.*.*"] # primary trigger: real releases -> X.Y.Z / X.Y / latest
+    branches: [main] # rolling edge tag on every merge to main (never `latest`)
+  workflow_dispatch: {} # manual runs
+
+# Least privilege: read the repo, write GHCR packages with the built-in token.
+permissions:
+  contents: read
+  packages: write
+
+# Never cancel an in-flight publish (especially a release); serialize per ref.
+concurrency:
+  group: publish-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & push ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Image name is teambrewer-<target>, built from the Dockerfile target.
+        target: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Buildx is required for BuildKit features the Dockerfile relies on
+      # (`# syntax=` directive, cache mounts) and for the type=gha cache backend.
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata (tags + labels)
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/teambrewer-${{ matrix.target }}
+          # vX.Y.Z -> X.Y.Z and X.Y; main -> `main` + `edge`; every build -> sha-<commit>.
+          # `latest=auto` (flavor below) adds `latest` ONLY for a real, non-prerelease
+          # semver tag — never on a branch push, and never for a prerelease tag.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=raw,value=edge,enable={{is_default_branch}}
+            type=sha,format=long,prefix=sha-
+          flavor: |
+            latest=auto
+
+      - name: Build & push
+        uses: docker/build-push-action@v7
+        with:
+          context: . # repo root: pnpm workspace + @teambrewer/shared
+          file: ./Dockerfile
+          target: ${{ matrix.target }}
+          platforms: linux/amd64 # the VPS is amd64; no arm64 / QEMU needed
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Per-target scope so the api/web caches don't clobber each other while
+          # keeping the shared deps layer warm across runs.
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+          # Clean single-platform manifest for a simple `docker pull` on the VPS.
+          provenance: false
+          # No build-args on purpose: the Dockerfile has zero ARGs, so NO runtime
+          # config (DATABASE_URL, BETTER_AUTH_*, DISCORD_*, WEB_ORIGIN, VITE_*, ...)
+          # is baked into either image — it is all injected at runtime on the server.
+
+  smoke-test:
+    name: Smoke-test published images
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: teambrewer
+          POSTGRES_PASSWORD: teambrewer
+          POSTGRES_DB: teambrewer
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U teambrewer -d teambrewer"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image refs (deterministic per-commit sha tag)
+        id: refs
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}" # GHCR requires a lowercase owner
+          echo "api=ghcr.io/${owner}/teambrewer-api:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "web=ghcr.io/${owner}/teambrewer-web:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: API image boots, applies migrations, and serves /api/health
+        run: |
+          set -euo pipefail
+          docker pull "${{ steps.refs.outputs.api }}"
+          # --network host so the container reaches the Postgres service on
+          # localhost:5432 and listens on the host's :3000. Runtime env is dummy —
+          # it only needs to be present for the app to boot.
+          docker run -d --name teambrewer-api --network host \
+            -e API_PORT=3000 \
+            -e DATABASE_URL='postgresql://teambrewer:teambrewer@localhost:5432/teambrewer' \
+            -e BETTER_AUTH_SECRET='smoke-test-secret-not-real-000000000000' \
+            -e BETTER_AUTH_URL='http://localhost:3000' \
+            -e WEB_ORIGIN='http://localhost:8080' \
+            "${{ steps.refs.outputs.api }}"
+          ok=""
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health | grep -q '"status":"ok"'; then
+              ok=1; break
+            fi
+            sleep 2
+          done
+          echo "----- api logs -----"
+          docker logs teambrewer-api
+          test "$ok" = 1
+          # Prove `prisma migrate deploy` ran on boot (CMD in the Dockerfile).
+          docker logs teambrewer-api 2>&1 | grep -iq "migrat"
+
+      - name: Web image serves the SPA
+        run: |
+          set -euo pipefail
+          docker pull "${{ steps.refs.outputs.web }}"
+          docker run -d --name teambrewer-web -p 8080:80 "${{ steps.refs.outputs.web }}"
+          ok=""
+          for _ in $(seq 1 15); do
+            if curl -fsS http://localhost:8080/ | grep -q '<div id="root">'; then
+              ok=1; break
+            fi
+            sleep 2
+          done
+          curl -sI http://localhost:8080/ | head -1
+          test "$ok" = 1
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f teambrewer-api teambrewer-web || true
