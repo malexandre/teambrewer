@@ -38,8 +38,10 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
 ### Identity & tenancy
 - **User** `{ id, name, displayName, isInstanceAdmin, authMethod: 'password_totp' | 'discord',
   passwordHash? (password accounts, via Better Auth), totpEnabled?, discordUserId?, discordUsername?, ... }`
-  — each account uses exactly one login method; a `password_totp` user MAY also set `discordUserId` for
-  **identity only** (not login). See [ADR-0009](../decisions/0009-discord-authentication.md).
+  — a `password_totp` user MAY add a `discord` account row to also sign in with Discord (ADR-0011);
+  login capability is read from the `account` table, not `authMethod`. See
+  [ADR-0009](../decisions/0009-discord-authentication.md) and
+  [ADR-0011](../decisions/0011-discord-additional-login-method.md).
 - **Team** `{ id, name, slug, gameId (→ Game), createdBy, ... }` — bound to exactly one game.
 - **TeamMembership** `{ id, teamId, userId, role: 'team_admin' | 'member', joinedAt }`
 - **Session** — managed by Better Auth; carries the authenticated user; **active team** is resolved

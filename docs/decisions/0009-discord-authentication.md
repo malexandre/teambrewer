@@ -1,6 +1,6 @@
 # ADR-0009: Discord as an alternative authentication method
 
-- **Status:** Accepted (2026-07-11)
+- **Status:** Accepted (2026-07-11); **partially superseded by [ADR-0011](0011-discord-additional-login-method.md) (2026-07-15)** — password accounts may now add Discord as an *additional* login method (previously identity-only).
 - **Context:** The team lives on Discord. The user wants Discord to be usable for signing in, and asked
   what the tradeoffs/requirements are. This interacts with [ADR-0003](0003-no-email-auth.md) (invite-only,
   no email, mandatory TOTP 2FA). After weighing the tradeoffs, the user chose to support **Discord SSO as
@@ -58,5 +58,5 @@ password + TOTP accounts instead.
 - **No Discord (password + TOTP only)** — most secure/simplest; rejected in favor of the convenience the
   user wants.
 - **Discord bot delivering setup/reset links** — not selected now (adds bot infra); may revisit.
-- **Allowing both methods on one account** — rejected: the user wants a single login method per account
-  to keep it unambiguous.
+- **Allowing both methods on one account** — originally rejected for simplicity; **reversed for the
+  password → Discord direction by [ADR-0011](0011-discord-additional-login-method.md).**

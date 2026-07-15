@@ -13,8 +13,8 @@ authentication (mandatory 2FA)**, and **tenant isolation**. Related:
 
 ## Authentication (Better Auth)
 
-**Each account uses exactly one login method** (`authMethod`), chosen at provisioning — see
-[ADR-0009](../decisions/0009-discord-authentication.md):
+An account is provisioned with **password + TOTP 2FA** or **Discord SSO** (`authMethod`), chosen at
+provisioning — see [ADR-0009](../decisions/0009-discord-authentication.md):
 
 - **Password + TOTP 2FA (`password_totp`)** — TOTP is **mandatory**; a user cannot reach app data until
   TOTP is set up. Backup codes are generated at setup and shown once.
@@ -23,9 +23,13 @@ authentication (mandatory 2FA)**, and **tenant isolation**. Related:
   tradeoff** (ADR-0009). We surface a recommendation to enable Discord 2FA. Only **admin-provisioned**
   accounts can log in via Discord (no auto-provisioning) — invite-only is preserved.
 
+A password account may additionally link Discord for login (ADR-0011); that path's 2FA is delegated to
+Discord.
+
 Other properties:
-- **Optional identity link:** a password account MAY link a Discord identity for recognizability /
-  @mention mapping only — this does **not** enable Discord login.
+- **Discord link (password accounts):** a password account MAY link Discord for recognizability /
+  @mention mapping and, as of [ADR-0011](../decisions/0011-discord-additional-login-method.md), to also
+  sign in with Discord.
 - **Sessions:** secure, httpOnly, sameSite cookies; reasonable expiry + rotation; server-side session
   revocation (admin can revoke).
 - **Password storage:** handled by Better Auth (strong hashing). We never store plaintext or handle raw

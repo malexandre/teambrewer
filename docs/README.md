@@ -41,8 +41,9 @@ sessions. **Read the relevant documents here before implementing anything.**
   matchup win rates are **confidence-weighted with the sample size always shown**. See
   [`features/confidence-and-matchups.md`](features/confidence-and-matchups.md).
 - **Invite-only, no email:** admins hand out copy-paste links. Each account logs in with **either Discord
-  SSO or password + mandatory TOTP 2FA** (one method per account). See
-  [`architecture/security.md`](architecture/security.md) and [ADR-0009](decisions/0009-discord-authentication.md).
+  SSO or password + mandatory TOTP 2FA** (password + TOTP, optionally plus Discord login — ADR-0011). See
+  [`architecture/security.md`](architecture/security.md), [ADR-0009](decisions/0009-discord-authentication.md),
+  and [ADR-0011](decisions/0011-discord-additional-login-method.md).
 - **Stack:** React + Vite (PWA) · NestJS · PostgreSQL + Prisma · Better Auth · pnpm monorepo · Docker
   Compose · self-hosted. See [`architecture/tech-stack.md`](architecture/tech-stack.md).
 

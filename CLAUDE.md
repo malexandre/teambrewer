@@ -16,7 +16,9 @@ The authoritative description of the product, domain, architecture, and decision
 
 The app was built phase by phase (phases 00–13) into a shippable, self-hostable **v1**: the pnpm
 monorepo + strict TS + the Vitest/Testcontainers/Playwright harness; **Better Auth** (password +
-mandatory TOTP, or Discord SSO — invite-only, no email); the **tenant-isolation backbone**
+mandatory TOTP, or Discord SSO — invite-only, no email; a password account may additionally link
+Discord to also sign in with it, [ADR-0011](docs/decisions/0011-discord-additional-login-method.md));
+the **tenant-isolation backbone**
 (`TeamContextGuard` + `TeamScopedPrisma` + `TeamAdminGuard`); the global per-game **card database**
 (`GameAdapter` seam, Flesh and Blood + Riftbound adapters, idempotent `card:sync`); the
 collaboration core (comments, `@mentions` → notifications, activity); and PWA/ops hardening. That
