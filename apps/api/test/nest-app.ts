@@ -79,6 +79,7 @@ export async function createApiTestApp(
   // and superagent's default agent reuses sockets across sequential requests — under
   // parallel load the server may have closed a reused one, which surfaces client-side
   // as "Parse Error: Expected HTTP/, RTSP/ or ICE/". Test-only; production is unaffected.
+  // This is only a partial mitigation — see the `retry` note in vitest.config.ts.
   app.use((_request: Request, response: Response, next: NextFunction) => {
     response.setHeader("Connection", "close");
     next();

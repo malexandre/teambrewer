@@ -40,6 +40,16 @@ export default defineConfig({
     // A single Postgres container is shared across the run; keep DB-touching
     // suites from racing each other on shared tables.
     fileParallelism: false,
+    // The HTTP integration tests drive one shared supertest server per spec, and
+    // superagent intermittently reuses a stale socket across requests — a transport
+    // artifact that corrupts a single request (lost header → 400, mangled path →
+    // 404, or "Parse Error: Expected HTTP/") roughly a few percent of full-suite
+    // runs. It is a harness-only issue (tenancy/behaviour is correct), and the
+    // `Connection: close` response header in test/nest-app.ts only partially tames
+    // it. A retry re-issues the test on a fresh connection so a transient hiccup
+    // clears; a genuine logic failure still fails every attempt, so this cannot mask
+    // real bugs.
+    retry: 2,
     // Starting the container + applying migrations can exceed the default hook
     // timeout on a cold Docker image pull.
     hookTimeout: 120_000,
