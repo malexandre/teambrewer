@@ -34,9 +34,6 @@ export interface LinkIdentityInput {
  *   binds the returned Discord identity to a provisioned Discord account and
  *   creates the Better Auth `account` link that lets that user log in with
  *   Discord thereafter. `discordUserId` is globally unique.
- * - **Invite-only** (`resolveLoginUser`): a Discord identity with no linked,
- *   provisioned account resolves to nothing, so login is rejected (no
- *   auto-provisioning). Better Auth's `disableImplicitSignUp` is the second gate.
  * - **Method exclusivity**: only `discord` accounts may be bound for login; only
  *   `password_totp` accounts may attach an **identity-only** Discord link
  *   (`linkIdentityOnly`), which never creates an `account` link and so never
@@ -146,34 +143,11 @@ export class DiscordAccountService {
   }
 
   /**
-   * Resolve the account a Discord identity may log in as. Returns null when the
-   * identity is not bound to a provisioned Discord account (invite-only: reject).
-   * An identity-only link on a password account has no `account` row, so it never
-   * resolves here — it cannot be used to log in.
-   */
-  async resolveLoginUser(discordUserId: string): Promise<{ id: string } | null> {
-    const account = await this.prisma.account.findFirst({
-      where: { providerId: DISCORD_PROVIDER_ID, accountId: discordUserId },
-      select: { userId: true },
-    });
-    if (!account) {
-      return null;
-    }
-    const user = await this.prisma.user.findUnique({
-      where: { id: account.userId },
-      select: { id: true, authMethod: true },
-    });
-    if (!user || user.authMethod !== "discord") {
-      return null;
-    }
-    return { id: user.id };
-  }
-
-  /**
-   * Attach an identity-only Discord link to a password account for
-   * recognizability / @mention mapping. Never creates an `account` link, so it
-   * does not grant Discord login (ADR-0009). Rejects Discord-login accounts and
-   * a Discord id already in use.
+   * Attach a Discord identity to a password account for recognizability /
+   * @mention mapping, and grant it as an additional login method by
+   * creating (or re-pointing) the Better Auth `account` link (ADR-0011): the
+   * account can then log in with either its password + TOTP or Discord.
+   * Rejects Discord-login accounts and a Discord id already in use.
    */
   async linkIdentityOnly(input: LinkIdentityInput): Promise<void> {
     await this.prisma.$transaction(async (transaction) => {
@@ -212,6 +186,29 @@ export class DiscordAccountService {
         where: { id: input.userId },
         data: { discordUserId: input.discordUserId, discordUsername: input.discordUsername },
       });
+
+      // Discord login is modelled by the account row Better Auth resolves on
+      // social sign-in (ADR-0011). Create it (or re-point it) so linking grants
+      // login in addition to the account's password + TOTP.
+      const existingLink = await transaction.account.findFirst({
+        where: { userId: input.userId, providerId: DISCORD_PROVIDER_ID },
+        select: { id: true, accountId: true },
+      });
+      if (!existingLink) {
+        await transaction.account.create({
+          data: {
+            id: randomUUID(),
+            userId: input.userId,
+            providerId: DISCORD_PROVIDER_ID,
+            accountId: input.discordUserId,
+          },
+        });
+      } else if (existingLink.accountId !== input.discordUserId) {
+        await transaction.account.update({
+          where: { id: existingLink.id },
+          data: { accountId: input.discordUserId },
+        });
+      }
     });
   }
 

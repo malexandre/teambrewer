@@ -110,7 +110,7 @@ describe("DiscordOAuthService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it("completes an identity-only link for a password account without granting login", async () => {
+  it("completes an identity-only link for a password account, also granting Discord login", async () => {
     const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
     const service = createService(prisma, {
       discordUserId: "discord-9100",
@@ -121,10 +121,13 @@ describe("DiscordOAuthService", () => {
 
     const result = await service.handleCallback({ code: "c", state, cookieNonce: started.nonce });
     expect(result.kind).toBe("link");
+    // Linking now creates the Better Auth login account row too (ADR-0011,
+    // proven in detail by the binding service's own tests).
     const account = await prisma.account.findFirst({
       where: { userId: passwordUser.id, providerId: "discord" },
+      select: { accountId: true },
     });
-    expect(account).toBeNull();
+    expect(account?.accountId).toBe("discord-9100");
   });
 
   it("propagates method exclusivity: an account that set a password cannot be claimed for Discord", async () => {

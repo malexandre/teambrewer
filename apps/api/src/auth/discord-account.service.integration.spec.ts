@@ -36,6 +36,14 @@ describe("DiscordAccountService", () => {
     return rawToken;
   }
 
+  async function discordLoginAccountId(userId: string): Promise<string | null> {
+    const account = await prisma.account.findFirst({
+      where: { userId, providerId: "discord" },
+      select: { accountId: true },
+    });
+    return account?.accountId ?? null;
+  }
+
   describe("bindClaim", () => {
     it("binds a Discord identity to a provisioned account and enables Discord login", async () => {
       const user = await createUser(prisma, { authMethod: "discord" });
@@ -55,8 +63,7 @@ describe("DiscordAccountService", () => {
       expect(stored).toEqual({ discordUserId: "discord-1001", discordUsername: "Alpha" });
 
       // A login account link now exists, so a returning Discord login resolves.
-      const login = await service.resolveLoginUser("discord-1001");
-      expect(login?.id).toBe(user.id);
+      expect(await discordLoginAccountId(user.id)).toBe("discord-1001");
     });
 
     it("rejects an invalid or already-used claim token", async () => {
@@ -104,7 +111,7 @@ describe("DiscordAccountService", () => {
         select: { authMethod: true, discordUserId: true },
       });
       expect(stored).toEqual({ authMethod: "discord", discordUserId: "discord-1500" });
-      expect((await service.resolveLoginUser("discord-1500"))?.id).toBe(user.id);
+      expect(await discordLoginAccountId(user.id)).toBe("discord-1500");
     });
 
     it("rejects claiming with Discord once the account has set a password (one method per account)", async () => {
@@ -130,14 +137,8 @@ describe("DiscordAccountService", () => {
     });
   });
 
-  describe("resolveLoginUser", () => {
-    it("returns null for a Discord identity with no provisioned account (invite-only)", async () => {
-      await expect(service.resolveLoginUser("unknown-discord-id")).resolves.toBeNull();
-    });
-  });
-
   describe("identity link/unlink for password accounts", () => {
-    it("links an identity without granting Discord login", async () => {
+    it("links a Discord identity and enables Discord login", async () => {
       const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
 
       await service.linkIdentityOnly({
@@ -148,12 +149,11 @@ describe("DiscordAccountService", () => {
 
       const stored = await prisma.user.findUnique({
         where: { id: passwordUser.id },
-        select: { discordUserId: true },
+        select: { discordUserId: true, discordUsername: true },
       });
-      expect(stored?.discordUserId).toBe("discord-2001");
-      // Identity link must NOT create a login account link.
-      const login = await service.resolveLoginUser("discord-2001");
-      expect(login).toBeNull();
+      expect(stored).toEqual({ discordUserId: "discord-2001", discordUsername: "Identity" });
+      // Linking now creates the Better Auth login account row (one user, two accounts).
+      expect(await discordLoginAccountId(passwordUser.id)).toBe("discord-2001");
     });
 
     it("rejects linking an identity on a Discord-login account", async () => {
@@ -184,6 +184,45 @@ describe("DiscordAccountService", () => {
           discordUsername: "Thief",
         }),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it("is idempotent when re-linking the same Discord id (one account row)", async () => {
+      const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
+      await service.linkIdentityOnly({
+        userId: passwordUser.id,
+        discordUserId: "discord-2010",
+        discordUsername: "Same",
+      });
+      await service.linkIdentityOnly({
+        userId: passwordUser.id,
+        discordUserId: "discord-2010",
+        discordUsername: "Same",
+      });
+
+      const rows = await prisma.account.count({
+        where: { userId: passwordUser.id, providerId: "discord" },
+      });
+      expect(rows).toBe(1);
+    });
+
+    it("re-points the account row when re-linking a different Discord id", async () => {
+      const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
+      await service.linkIdentityOnly({
+        userId: passwordUser.id,
+        discordUserId: "discord-2011",
+        discordUsername: "First",
+      });
+      await service.linkIdentityOnly({
+        userId: passwordUser.id,
+        discordUserId: "discord-2012",
+        discordUsername: "Second",
+      });
+
+      expect(await discordLoginAccountId(passwordUser.id)).toBe("discord-2012");
+      const rows = await prisma.account.count({
+        where: { userId: passwordUser.id, providerId: "discord" },
+      });
+      expect(rows).toBe(1);
     });
 
     it("unlinks a password account's identity", async () => {
