@@ -36,7 +36,9 @@ test("log a game on a phone with default factors, see the weight, confirm isolat
 
   // Step 1 — Matchup.
   await page.locator("#game-format").selectOption({ label: E2E_REFERENCE.formatName });
-  await page.locator("#game-deck").selectOption({ label: deckName });
+  // The self-side subject is now an Ariakit combobox: open it, then pick the team deck.
+  await page.locator("#game-deck").click();
+  await page.getByRole("option", { name: deckName }).click();
   await page
     .getByRole("combobox", { name: "Hero", exact: true })
     .selectOption({ label: E2E_REFERENCE.heroName });
@@ -57,7 +59,7 @@ test("log a game on a phone with default factors, see the weight, confirm isolat
   const impressiveCardsSection = page.getByRole("group", { name: /impressive cards/i });
   await impressiveCardsSection.getByRole("combobox", { name: /search cards/i }).fill("Command");
   await impressiveCardsSection
-    .getByRole("button", { name: new RegExp(E2E_CARD_NAME, "i") })
+    .getByRole("option", { name: new RegExp(E2E_CARD_NAME, "i") })
     .click();
 
   // Submit via the keyboard: on the narrow phone viewport the wrapped segmented
