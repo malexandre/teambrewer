@@ -34,7 +34,13 @@ Zod · pnpm monorepo · Docker Compose · self-hosted. See [`docs/architecture/t
 
 ## License / attribution
 
+TeamBrewer is free software licensed under the **GNU Affero General Public License v3.0**
+(`AGPL-3.0-only`) — see [`LICENSE`](LICENSE). Because it is network-served, anyone who runs a modified
+version as a service must make their source available to its users (AGPL §13).
+
 Card data is sourced from sanctioned open datasets (e.g.
-[the-fab-cube/flesh-and-blood-cards](https://github.com/the-fab-cube/flesh-and-blood-cards)) and must be
-attributed per their terms. TeamBrewer is an unofficial fan tool, not affiliated with Legend Story Studios
-or Riot Games.
+[the-fab-cube/flesh-and-blood-cards](https://github.com/the-fab-cube/flesh-and-blood-cards)) and synced at
+runtime into each deployment's own database — none of it is redistributed in this repository. Card names,
+text, and artwork remain the intellectual property of their respective owners (Legend Story Studios for
+Flesh and Blood; Riot Games for Riftbound). TeamBrewer is an unofficial fan tool, not affiliated with,
+endorsed by, or sponsored by either. Full attribution is in [`NOTICE`](NOTICE) and surfaced in-app.

@@ -164,6 +164,36 @@ function DiscordIdentityCard() {
   );
 }
 
+function DataSourcesCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>About &amp; data sources</CardTitle>
+        <CardDescription>Where TeamBrewer&rsquo;s card data comes from.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+          <p>
+            Flesh and Blood card data is synced from{" "}
+            <a
+              href="https://github.com/the-fab-cube/flesh-and-blood-cards"
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary underline underline-offset-2"
+            >
+              the-fab-cube/flesh-and-blood-cards
+            </a>
+            . Card names, text, and artwork are the intellectual property of Legend Story Studios.
+            TeamBrewer is an unofficial fan tool, not affiliated with, endorsed by, or sponsored by
+            Legend Story Studios.
+          </p>
+          <p>TeamBrewer is free software licensed under the GNU AGPL-3.0.</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   const { data: user } = useCurrentUser();
   const isPasswordAccount = user?.authMethod === "password_totp";
@@ -173,6 +203,7 @@ export function SettingsPage() {
       <SessionsCard />
       {isPasswordAccount ? <ChangePasswordCard /> : null}
       {isPasswordAccount ? <DiscordIdentityCard /> : null}
+      <DataSourcesCard />
     </div>
   );
 }

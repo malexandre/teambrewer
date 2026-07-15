@@ -1,0 +1,33 @@
+TeamBrewer
+Copyright (C) 2026 Marc Alexandre and the TeamBrewer contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. See the LICENSE file for the full text.
+
+--------------------------------------------------------------------------------
+Third-party data & attribution
+--------------------------------------------------------------------------------
+
+TeamBrewer displays trading-card-game data that it syncs at runtime from
+sanctioned open sources. None of that data is redistributed in this source
+repository; it is fetched into each deployment's own database.
+
+Flesh and Blood card data
+  Source: the-fab-cube/flesh-and-blood-cards
+          https://github.com/the-fab-cube/flesh-and-blood-cards
+  Used under the permission the project grants in its README. Attribution is
+  provided here and in-app.
+
+  Flesh and Blood, its card names, rules text, artwork, and set names are the
+  intellectual property of Legend Story Studios. TeamBrewer is an unofficial fan
+  tool and is not affiliated with, endorsed, or sponsored by Legend Story
+  Studios. Asset usage follows the Legend Story Studios licensed-assets terms:
+  https://fabtcg.com/resources/terms-use-licensed-assets/
+
+Riftbound card data (planned)
+  Source: Riftcodex (https://riftcodex.com/), unofficial open API.
+  Riftbound is the intellectual property of Riot Games. TeamBrewer is not
+  affiliated with, endorsed, or sponsored by Riot Games. This attribution will
+  be finalised when the Riftbound adapter ships.
