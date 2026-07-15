@@ -42,13 +42,13 @@ describe("DeckCardObservationsSection", () => {
           card: { id: "card-cnc", name: "Command and Conquer", pitch: 1, imageUrl: null },
           impressiveCount: 2,
           underperformingCount: 1,
-          score: 0.7,
+          score: 0.64,
         },
         {
           card: { id: "card-sink", name: "Sink Below", pitch: 3, imageUrl: null },
           impressiveCount: 0,
           underperformingCount: 4,
-          score: 0.12,
+          score: -0.76,
         },
       ],
     });
@@ -58,12 +58,12 @@ describe("DeckCardObservationsSection", () => {
     // Both cards render, each with both counts shown separately (never netted).
     const cncRow = (await screen.findByText("Command and Conquer")).closest("tr");
     expect(cncRow).not.toBeNull();
-    expect(within(cncRow as HTMLElement).getByText("70%")).toBeInTheDocument();
+    expect(within(cncRow as HTMLElement).getByText("+64%")).toBeInTheDocument();
     expect(within(cncRow as HTMLElement).getByText("2")).toBeInTheDocument();
     expect(within(cncRow as HTMLElement).getByText("1")).toBeInTheDocument();
 
     const sinkRow = screen.getByText("Sink Below").closest("tr");
-    expect(within(sinkRow as HTMLElement).getByText("12%")).toBeInTheDocument();
+    expect(within(sinkRow as HTMLElement).getByText("-76%")).toBeInTheDocument();
     expect(within(sinkRow as HTMLElement).getByText("0")).toBeInTheDocument();
     expect(within(sinkRow as HTMLElement).getByText("4")).toBeInTheDocument();
 

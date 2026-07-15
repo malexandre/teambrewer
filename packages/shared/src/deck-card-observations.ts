@@ -25,10 +25,10 @@ export const deckCardObservationSchema = z.object({
   impressiveCount: z.number().int(),
   underperformingCount: z.number().int(),
   /**
-   * A 0–1 "keep/cut" score: a confidence-weighted mean of each relevant game's signal
-   * (+1 impressive / −1 underperforming / 0 neutral), shrunk toward 0.5. See
-   * {@link deriveCardObservationScore}. 1 = always impressive in weighty games, 0 = the
-   * opposite, 0.5 = neutral / too little (or too low-weight) evidence to tell.
+   * A signed −1…+1 "keep/cut" score: a confidence-weighted mean of each relevant game's
+   * signal (+1 impressive / −1 underperforming / 0 neutral), shrunk toward 0. See
+   * {@link deriveCardObservationScore}. +1 = always impressive in weighty games, −1 = the
+   * opposite, 0 = neutral / too little (or too low-weight) evidence to tell.
    */
   score: z.number(),
 });
@@ -42,18 +42,18 @@ export type DeckCardObservation = z.infer<typeof deckCardObservationSchema>;
 export const CARD_OBSERVATION_SCORE_PRIOR = 2;
 
 /**
- * A card's 0–1 observation score for a deck. It is a **confidence-weighted mean of each
- * relevant game's signal** — `+1` when the card was impressive, `−1` when it
- * underperformed, `0` otherwise — over **all** the deck's relevant games, mapped to
- * `[0, 1]` and shrunk toward `0.5` by a neutral prior:
+ * A card's signed −1…+1 observation score for a deck. It is a **confidence-weighted mean
+ * of each relevant game's signal** — `+1` when the card was impressive, `−1` when it
+ * underperformed, `0` otherwise — over **all** the deck's relevant games, shrunk toward
+ * `0` by a neutral prior:
  *
- *     score = 0.5 + 0.5 · (impressiveWeight − underperformingWeight)
- *                        / (totalGameWeight + CARD_OBSERVATION_SCORE_PRIOR)
+ *     score = (impressiveWeight − underperformingWeight)
+ *             / (totalGameWeight + CARD_OBSERVATION_SCORE_PRIOR)
  *
  * where the weights are sums of the games' confidence weights. So a card impressive in
  * heavy (tournament) games scores higher than one impressive only in low-weight games,
- * a rarely-flagged card trends to ~0.5 (its impact is spread thin over many games), and
- * thin evidence can't reach the extremes. Clamped to `[0, 1]`; the single source of truth.
+ * a rarely-flagged card trends to ~0 (its impact is spread thin over many games), and
+ * thin evidence can't reach the extremes. Clamped to `[-1, 1]`; the single source of truth.
  */
 export function deriveCardObservationScore(input: {
   impressiveWeight: number;
@@ -61,10 +61,9 @@ export function deriveCardObservationScore(input: {
   totalGameWeight: number;
 }): number {
   const denominator = input.totalGameWeight + CARD_OBSERVATION_SCORE_PRIOR;
-  const meanSignal =
+  const score =
     denominator > 0 ? (input.impressiveWeight - input.underperformingWeight) / denominator : 0;
-  const score = 0.5 + 0.5 * meanSignal;
-  const clamped = Math.min(1, Math.max(0, score));
+  const clamped = Math.min(1, Math.max(-1, score));
   return Math.round(clamped * 10000) / 10000;
 }
 

@@ -21,16 +21,23 @@ function CountCell({ value, tone }: { value: number; tone: string }) {
   );
 }
 
-/** Format a 0–1 score as a whole percentage. */
+/** Format a signed −1…+1 score as a signed whole percentage (+64%, 0%, −38%). */
 function formatScore(score: number): string {
-  return `${Math.round(score * 100)}%`;
+  const percent = Math.round(score * 100);
+  return percent > 0 ? `+${percent}%` : `${percent}%`;
 }
 
-/** Color the score by verdict: green ≥55% (keep), red ≤45% (cut), neutral in between. */
-function scoreToneClass(score: number): string {
-  if (score >= 0.55) return "text-success-foreground";
-  if (score <= 0.45) return "text-danger-foreground";
-  return "text-muted-foreground";
+/**
+ * Color the signed score on a diverging 5-level scale: strong keep (green, bold) →
+ * keep (green) → neutral (muted) → cut (red) → strong cut (red, bold). Green/red carry
+ * the sign; weight adds the extra levels, all from design tokens.
+ */
+function scoreClass(score: number): string {
+  if (score >= 0.4) return "font-bold text-success-foreground";
+  if (score >= 0.15) return "font-semibold text-success-foreground";
+  if (score <= -0.4) return "font-bold text-danger-foreground";
+  if (score <= -0.15) return "font-semibold text-danger-foreground";
+  return "font-medium text-muted-foreground";
 }
 
 /** One card row: the card (art + name + pitch), its keep/cut score, and its two counts. */
@@ -44,8 +51,8 @@ function ObservationRow({ observation }: { observation: DeckCardObservation }) {
       </td>
       <td
         className={cn(
-          "py-2 pr-3 text-right align-middle font-semibold whitespace-nowrap tabular-nums",
-          scoreToneClass(observation.score),
+          "py-2 pr-3 text-right align-middle whitespace-nowrap tabular-nums",
+          scoreClass(observation.score),
         )}
       >
         {formatScore(observation.score)}

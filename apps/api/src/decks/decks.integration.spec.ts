@@ -965,15 +965,15 @@ describe("Decks endpoints (integration)", () => {
           card: { id: impressive.id, name: "Command and Conquer", pitch: null, imageUrl: null },
           impressiveCount: 2,
           underperformingCount: 0,
-          // 2 impressive of weight 1 over 3 weight-1 games: 0.5 + 0.5·2/(3+2) = 0.7.
-          score: 0.7,
+          // 2 impressive of weight 1 over 3 weight-1 games: 2/(3+2) = +0.4.
+          score: 0.4,
         },
         {
           card: { id: flopped.id, name: "Sink Below", pitch: null, imageUrl: null },
           impressiveCount: 0,
           underperformingCount: 1,
-          // 1 underperforming of weight 1 over 3 weight-1 games: 0.5 − 0.5·1/(3+2) = 0.4.
-          score: 0.4,
+          // 1 underperforming of weight 1 over 3 weight-1 games: −1/(3+2) = −0.2.
+          score: -0.2,
         },
       ]);
     });
@@ -1021,9 +1021,9 @@ describe("Decks endpoints (integration)", () => {
       );
       // Same single impression, but the heavy-game card outscores the casual-game one …
       expect(scoreById.get(strong.id)!).toBeGreaterThan(scoreById.get(weak.id)!);
-      // … both positive cards sit above neutral, the underperformer below it.
-      expect(scoreById.get(weak.id)!).toBeGreaterThan(0.5);
-      expect(scoreById.get(bad.id)!).toBeLessThan(0.5);
+      // … both positive cards sit above neutral (0), the underperformer below it.
+      expect(scoreById.get(weak.id)!).toBeGreaterThan(0);
+      expect(scoreById.get(bad.id)!).toBeLessThan(0);
     });
 
     it("keeps impressive and underperforming counts separate for a card that is both", async () => {
