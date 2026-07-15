@@ -66,10 +66,14 @@ export function SegmentedControl<Value extends string>({
               )}
               onClick={() => onChange(option.value)}
             >
-              {option.tone && isActive ? (
-                <Check className="size-3.5 shrink-0" aria-hidden="true" />
-              ) : null}
-              {option.label}
+              {/* One inline run so the check prepends to the label and wraps with it,
+                  rather than sitting as a separate centred column beside the text. */}
+              <span>
+                {option.tone && isActive ? (
+                  <Check className="mr-1 inline-block size-3.5 align-[-2px]" aria-hidden="true" />
+                ) : null}
+                {option.label}
+              </span>
             </Button>
           );
         })}
