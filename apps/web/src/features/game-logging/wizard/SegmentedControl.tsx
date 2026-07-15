@@ -11,7 +11,7 @@ export type SegmentedTone = "sideA" | "sideB" | "neutral";
  * the same ring regardless of the button's own colour, so "which is picked" never
  * reads as "which colour".
  */
-function sideToneClassName(tone: SegmentedTone, isActive: boolean): string {
+export function sideToneClassName(tone: SegmentedTone, isActive: boolean): string {
   const ring = isActive ? "ring-2 ring-primary" : "";
   if (tone === "sideA") {
     return cn("border-info-border bg-info text-info-foreground hover:bg-info", ring);

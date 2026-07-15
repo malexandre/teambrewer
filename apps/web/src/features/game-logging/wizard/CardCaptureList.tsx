@@ -3,6 +3,8 @@ import { type CardSummary, type GameLogCardInput, type GameSide } from "@teambre
 import { Button } from "@/components/ui/button";
 import { CardPicker } from "@/features/cards/CardPicker";
 
+import { sideToneClassName } from "./SegmentedControl";
+
 /** Names + tags a set of captured cards for one role (impressive/underperforming). */
 export function CardCaptureList({
   teamId,
@@ -44,18 +46,25 @@ export function CardCaptureList({
           <li key={entry.cardId} className="flex items-center justify-between gap-2 text-sm">
             <span>{nameOf(entry.cardId)}</span>
             <span className="flex items-center gap-1">
-              {(["A", "B"] as GameSide[]).map((side) => (
-                <Button
-                  key={side}
-                  type="button"
-                  size="sm"
-                  variant={entry.side === side ? "default" : "outline"}
-                  aria-pressed={entry.side === side}
-                  onClick={() => setSide(entry.cardId, side)}
-                >
-                  {sideNames[side]}
-                </Button>
-              ))}
+              {/* Reuse the form's side colour code (blue Deck A / red Deck B) so the
+                  owner is unambiguous even in a mirror where both labels read the same;
+                  the active button also gets the primary ring. Mirrors StepResult. */}
+              {(["A", "B"] as GameSide[]).map((side) => {
+                const isActive = entry.side === side;
+                return (
+                  <Button
+                    key={side}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    aria-pressed={isActive}
+                    className={sideToneClassName(side === "A" ? "sideA" : "sideB", isActive)}
+                    onClick={() => setSide(entry.cardId, side)}
+                  >
+                    {sideNames[side]}
+                  </Button>
+                );
+              })}
               <Button type="button" size="sm" variant="ghost" onClick={() => remove(entry.cardId)}>
                 Remove
               </Button>

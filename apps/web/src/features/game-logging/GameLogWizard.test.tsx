@@ -297,11 +297,12 @@ describe("GameLogWizard", () => {
     // The side toggle names the real subjects (Deck A "Our Deck" / Deck B "Dorinthea"),
     // not "Our card"/"Their card", and defaults to side A (the card's own side).
     const sideAButton = within(capturedEntry).getByRole("button", { name: "Our Deck" });
+    const sideBButton = within(capturedEntry).getByRole("button", { name: "Dorinthea" });
     expect(sideAButton).toHaveAttribute("aria-pressed", "true");
-    expect(within(capturedEntry).getByRole("button", { name: "Dorinthea" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
+    expect(sideBButton).toHaveAttribute("aria-pressed", "false");
+    // Reuse the form's side colour code so a mirror stays legible: blue Deck A, red Deck B.
+    expect(sideAButton.className).toContain("bg-info");
+    expect(sideBButton.className).toContain("bg-danger");
 
     await user.click(screen.getByRole("button", { name: /^save$/i }));
 
