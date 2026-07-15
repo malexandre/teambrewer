@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createMetaSchema, updateMetaSchema } from "./metas.js";
+import { createMetaSchema, metaSummarySchema, updateMetaSchema } from "./metas.js";
 
 describe("createMetaSchema", () => {
   it("accepts an ordered window and defaults the description", () => {
@@ -56,6 +56,109 @@ describe("createMetaSchema", () => {
         endDate: "2026-07-01",
       }).success,
     ).toBe(false);
+  });
+});
+
+const baseMeta = {
+  name: "Season",
+  formatId: "format_cc",
+  startDate: "2026-07-01",
+  endDate: "2026-09-30",
+} as const;
+
+describe("createMetaSchema change reason", () => {
+  it("accepts a ban-list reason with no extra data", () => {
+    const parsed = createMetaSchema.parse({ ...baseMeta, changeReason: "ban_list" });
+    expect(parsed.changeReason).toBe("ban_list");
+  });
+
+  it("accepts a living-legend reason with a hero", () => {
+    const parsed = createMetaSchema.parse({
+      ...baseMeta,
+      changeReason: "living_legend",
+      changeReasonHeroId: "hero_dorinthea",
+    });
+    expect(parsed.changeReasonHeroId).toBe("hero_dorinthea");
+  });
+
+  it("accepts a product-release reason with an https image URL", () => {
+    const parsed = createMetaSchema.parse({
+      ...baseMeta,
+      changeReason: "product_release",
+      changeReasonImageUrl: "https://fabtcg.com/marketing/heavy-hitters.png",
+    });
+    expect(parsed.changeReasonImageUrl).toBe("https://fabtcg.com/marketing/heavy-hitters.png");
+  });
+
+  it("rejects an unknown reason", () => {
+    expect(createMetaSchema.safeParse({ ...baseMeta, changeReason: "errata" }).success).toBe(false);
+  });
+
+  it("rejects a hero when the reason is not living_legend", () => {
+    expect(
+      createMetaSchema.safeParse({
+        ...baseMeta,
+        changeReason: "ban_list",
+        changeReasonHeroId: "hero_dorinthea",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an image URL when the reason is not product_release", () => {
+    expect(
+      createMetaSchema.safeParse({
+        ...baseMeta,
+        changeReason: "ban_list",
+        changeReasonImageUrl: "https://fabtcg.com/x.png",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a non-http(s) image URL", () => {
+    expect(
+      createMetaSchema.safeParse({
+        ...baseMeta,
+        changeReason: "product_release",
+        changeReasonImageUrl: "ftp://fabtcg.com/x.png",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("updateMetaSchema change reason", () => {
+  it("accepts clearing the reason with null", () => {
+    expect(updateMetaSchema.safeParse({ changeReason: null }).success).toBe(true);
+  });
+
+  it("rejects an image URL without the product-release reason", () => {
+    expect(
+      updateMetaSchema.safeParse({
+        changeReason: "living_legend",
+        changeReasonImageUrl: "https://fabtcg.com/x.png",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("metaSummarySchema change reason", () => {
+  it("carries the nullable change-reason fields", () => {
+    const parsed = metaSummarySchema.parse({
+      id: "meta_1",
+      name: "Season",
+      formatId: "format_cc",
+      formatName: "Classic Constructed",
+      startDate: "2026-07-01T00:00:00.000Z",
+      endDate: "2026-09-30T00:00:00.000Z",
+      archivedAt: null,
+      createdAt: "2026-07-01T00:00:00.000Z",
+      updatedAt: "2026-07-01T00:00:00.000Z",
+      changeReason: "living_legend",
+      changeReasonHeroId: "hero_dorinthea",
+      changeReasonImageUrl: null,
+    });
+    expect(parsed.changeReason).toBe("living_legend");
+    expect(parsed.changeReasonHeroId).toBe("hero_dorinthea");
+    expect(parsed.changeReasonImageUrl).toBeNull();
   });
 });
 

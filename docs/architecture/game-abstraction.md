@@ -69,6 +69,17 @@ interface GameAdapter {
   work should be a new adapter + its reference data, not core changes. If core changes are needed, that's
   a signal the abstraction leaked — fix the boundary.
 
+### Accepted exception: the meta change-reason imagery
+
+The `Meta.changeReason` enum (`ban_list | living_legend | product_release`) is a deliberate,
+user-accepted exception to the first guardrail: `living_legend` is FaB vocabulary, and the reasons as a
+set are FaB-shaped. It earns the exception because the imagery it drives (a hero's art, a pasted product
+image, a ban glyph) is a genuinely high-value FaB feature, and it is contained so it does **not** leak
+into other games: the fields are all **optional/nullable** (a Riftbound meta simply leaves them unset),
+the reason labels live in the web layer, and nothing in the game-agnostic read paths branches on the
+reason. A future game that wants its own reasons would extend the enum and add labels — not restructure
+core. See [`../features/metas.md`](../features/metas.md).
+
 See [`../domain/flesh-and-blood.md`](../domain/flesh-and-blood.md),
 [`../domain/riftbound.md`](../domain/riftbound.md), and
 [`../domain/card-data-sources.md`](../domain/card-data-sources.md).

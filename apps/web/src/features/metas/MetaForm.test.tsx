@@ -100,6 +100,9 @@ describe("MetaForm", () => {
         archivedAt: null,
         createdAt: "2026-07-01T00:00:00.000Z",
         updatedAt: "2026-07-01T00:00:00.000Z",
+        changeReason: null,
+        changeReasonHeroId: null,
+        changeReasonImageUrl: null,
       });
     });
     const saved: unknown[] = [];
@@ -119,5 +122,122 @@ describe("MetaForm", () => {
       startDate: "2026-07-01",
       endDate: "2026-08-31",
     });
+  });
+
+  const heroesPayload = {
+    data: [
+      {
+        id: "hero-dori",
+        name: "Dorinthea",
+        classes: ["Warrior"],
+        talents: [],
+        startingLife: 20,
+        imageUrl: "https://img.example/dori.png",
+        legalFormatKeys: ["cc"],
+      },
+    ],
+  };
+  const gameConfigPayload = { gameId: "flesh-and-blood", identityLabel: "Hero", defaultBestOf: 3 };
+
+  function mockMetaFetch(bodies: unknown[]) {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/formats")) return json(formatsPayload);
+      if (url.includes("/api/heroes")) return json(heroesPayload);
+      if (url.includes("/api/game-config")) return json(gameConfigPayload);
+      bodies.push(init?.body ? JSON.parse(init.body as string) : undefined);
+      return json({
+        id: "meta-1",
+        name: "Summer Season",
+        formatId: "fmt-cc",
+        formatName: "Classic Constructed",
+        startDate: "2026-07-01T00:00:00.000Z",
+        endDate: "2026-08-31T00:00:00.000Z",
+        description: "",
+        archivedAt: null,
+        createdAt: "2026-07-01T00:00:00.000Z",
+        updatedAt: "2026-07-01T00:00:00.000Z",
+        changeReason: null,
+        changeReasonHeroId: null,
+        changeReasonImageUrl: null,
+      });
+    });
+  }
+
+  async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText(/name/i), "Summer Season");
+    await user.selectOptions(await screen.findByLabelText(/format/i), "fmt-cc");
+    await user.type(screen.getByLabelText(/start date/i), "2026-07-01");
+    await user.type(screen.getByLabelText(/end date/i), "2026-08-31");
+  }
+
+  it("shows the hero picker for a Living Legend reason and submits the hero", async () => {
+    const bodies: unknown[] = [];
+    mockMetaFetch(bodies);
+    const user = userEvent.setup();
+    renderWithClient(<MetaForm teamId="team-1" onSaved={() => undefined} />);
+
+    await fillRequiredFields(user);
+    await user.selectOptions(screen.getByLabelText(/why a new meta/i), "living_legend");
+    await user.selectOptions(await screen.findByLabelText(/retiring hero/i), "hero-dori");
+    await user.click(screen.getByRole("button", { name: /create meta/i }));
+
+    await vi.waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({
+      changeReason: "living_legend",
+      changeReasonHeroId: "hero-dori",
+    });
+  });
+
+  it("shows a URL field for a product-release reason and submits the pasted URL", async () => {
+    const bodies: unknown[] = [];
+    mockMetaFetch(bodies);
+    const user = userEvent.setup();
+    renderWithClient(<MetaForm teamId="team-1" onSaved={() => undefined} />);
+
+    await fillRequiredFields(user);
+    await user.selectOptions(screen.getByLabelText(/why a new meta/i), "product_release");
+    await user.type(
+      await screen.findByLabelText(/marketing image url/i),
+      "https://fabtcg.com/heavy-hitters.png",
+    );
+    await user.click(screen.getByRole("button", { name: /create meta/i }));
+
+    await vi.waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({
+      changeReason: "product_release",
+      changeReasonImageUrl: "https://fabtcg.com/heavy-hitters.png",
+    });
+  });
+
+  it("submits a ban-list reason with no extra detail", async () => {
+    const bodies: unknown[] = [];
+    mockMetaFetch(bodies);
+    const user = userEvent.setup();
+    renderWithClient(<MetaForm teamId="team-1" onSaved={() => undefined} />);
+
+    await fillRequiredFields(user);
+    await user.selectOptions(screen.getByLabelText(/why a new meta/i), "ban_list");
+    await user.click(screen.getByRole("button", { name: /create meta/i }));
+
+    await vi.waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({ changeReason: "ban_list" });
+    expect(screen.queryByLabelText(/retiring hero/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/marketing image url/i)).not.toBeInTheDocument();
+  });
+
+  it("rejects a non-http(s) product image URL before calling the API", async () => {
+    const bodies: unknown[] = [];
+    mockMetaFetch(bodies);
+    const user = userEvent.setup();
+    renderWithClient(<MetaForm teamId="team-1" onSaved={() => undefined} />);
+
+    await fillRequiredFields(user);
+    await user.selectOptions(screen.getByLabelText(/why a new meta/i), "product_release");
+    await user.type(await screen.findByLabelText(/marketing image url/i), "ftp://fabtcg.com/x.png");
+    await user.click(screen.getByRole("button", { name: /create meta/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/http/i);
+    expect(bodies).toHaveLength(0);
   });
 });

@@ -1,19 +1,34 @@
-import { type CreateMetaInput, type MetaDetail, type UpdateMetaInput } from "@teambrewer/shared";
+import {
+  type CreateMetaInput,
+  type MetaChangeReason,
+  type MetaDetail,
+  type UpdateMetaInput,
+} from "@teambrewer/shared";
 import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useFormats } from "@/features/cards/use-formats";
+import { HeroPicker } from "@/features/decks/HeroPicker";
 import { ApiError } from "@/lib/api-client";
 
 import { SELECT_CLASS, toDateInputValue } from "./meta-display";
 import { useCreateMeta, useUpdateMeta } from "./use-meta-mutations";
 
+/** The change-reason detail carried alongside a create/update, normalized to the chosen reason. */
+type ChangeReasonFields = {
+  changeReason: MetaChangeReason | null;
+  changeReasonHeroId?: string | null;
+  changeReasonImageUrl?: string | null;
+};
+
 /**
- * Create or edit a meta: a name, the format it covers, a start/end date window, and an
- * optional prose description. The format is required; the window ordering is validated
- * client-side before submit; the API re-checks both authoritatively.
+ * Create or edit a meta: a name, the format it covers, a start/end date window, an optional
+ * prose description, and an optional **reason** (a ban-list update, heroes going Living Legend,
+ * or a new product release) that drives the list card's imagery. The format is required; the
+ * window ordering and the product-image URL are validated client-side before submit; the API
+ * re-checks everything authoritatively.
  */
 export function MetaForm({
   teamId,
@@ -32,6 +47,11 @@ export function MetaForm({
   const [startDate, setStartDate] = useState(toDateInputValue(meta?.startDate));
   const [endDate, setEndDate] = useState(toDateInputValue(meta?.endDate));
   const [description, setDescription] = useState(meta?.description ?? "");
+  const [changeReason, setChangeReason] = useState<MetaChangeReason | "">(meta?.changeReason ?? "");
+  const [changeReasonHeroId, setChangeReasonHeroId] = useState(meta?.changeReasonHeroId ?? "");
+  const [changeReasonImageUrl, setChangeReasonImageUrl] = useState(
+    meta?.changeReasonImageUrl ?? "",
+  );
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const { data: formatData } = useFormats(teamId);
@@ -65,6 +85,25 @@ export function MetaForm({
       setValidationError("The end date must be on or after the start date.");
       return;
     }
+    const trimmedImageUrl = changeReasonImageUrl.trim();
+    if (
+      changeReason === "product_release" &&
+      trimmedImageUrl.length > 0 &&
+      !/^https?:\/\//i.test(trimmedImageUrl)
+    ) {
+      setValidationError("The marketing image URL must start with http:// or https://.");
+      return;
+    }
+
+    // Send only the detail that matches the chosen reason; the API normalizes the rest away.
+    const changeReasonValue: MetaChangeReason | null = changeReason === "" ? null : changeReason;
+    const changeReasonFields: ChangeReasonFields = { changeReason: changeReasonValue };
+    if (changeReasonValue === "living_legend") {
+      changeReasonFields.changeReasonHeroId = changeReasonHeroId || null;
+    }
+    if (changeReasonValue === "product_release") {
+      changeReasonFields.changeReasonImageUrl = trimmedImageUrl || null;
+    }
 
     if (isEditing && meta) {
       const input: UpdateMetaInput = {
@@ -73,6 +112,7 @@ export function MetaForm({
         startDate,
         endDate,
         description,
+        ...changeReasonFields,
       };
       updateMeta.mutate(input, { onSuccess: onSaved });
       return;
@@ -84,6 +124,7 @@ export function MetaForm({
       startDate,
       endDate,
       description,
+      ...changeReasonFields,
     };
     createMeta.mutate(input, { onSuccess: onSaved });
   }
@@ -148,6 +189,53 @@ export function MetaForm({
           onChange={(changeEvent) => setDescription(changeEvent.target.value)}
         />
       </div>
+
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="meta-change-reason">Why a new meta? (optional)</Label>
+        <select
+          id="meta-change-reason"
+          className={SELECT_CLASS}
+          value={changeReason}
+          onChange={(changeEvent) =>
+            setChangeReason(changeEvent.target.value as MetaChangeReason | "")
+          }
+          aria-label="Why a new meta?"
+        >
+          <option value="">— No specific reason —</option>
+          <option value="ban_list">Ban list update</option>
+          <option value="living_legend">Heroes to Living Legend</option>
+          <option value="product_release">New product release</option>
+        </select>
+      </div>
+
+      {changeReason === "living_legend" ? (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="meta-change-reason-hero">Retiring hero</Label>
+          <HeroPicker
+            id="meta-change-reason-hero"
+            teamId={teamId}
+            formatId={formatId || undefined}
+            value={changeReasonHeroId}
+            onChange={setChangeReasonHeroId}
+          />
+        </div>
+      ) : null}
+
+      {changeReason === "product_release" ? (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="meta-change-reason-image">Marketing image URL</Label>
+          <Input
+            id="meta-change-reason-image"
+            type="url"
+            value={changeReasonImageUrl}
+            onChange={(changeEvent) => setChangeReasonImageUrl(changeEvent.target.value)}
+            placeholder="https://fabtcg.com/…"
+          />
+          <p className="text-xs text-muted-foreground">
+            Paste the marketing image URL (e.g. from fabtcg.com). We only link to it, never copy it.
+          </p>
+        </div>
+      ) : null}
 
       {validationError ? (
         <p role="alert" className="text-sm text-destructive">

@@ -49,6 +49,9 @@ const summer = {
   archivedAt: null,
   createdAt: "2026-06-01T00:00:00.000Z",
   updatedAt: "2026-06-01T00:00:00.000Z",
+  changeReason: null,
+  changeReasonHeroId: null,
+  changeReasonImageUrl: null,
 };
 const spring = {
   id: "meta-spring",
@@ -60,14 +63,30 @@ const spring = {
   archivedAt: null,
   createdAt: "2026-03-01T00:00:00.000Z",
   updatedAt: "2026-03-01T00:00:00.000Z",
+  changeReason: null,
+  changeReasonHeroId: null,
+  changeReasonImageUrl: null,
 };
 
-function mockMetas() {
+const heroesPayload = {
+  data: [
+    {
+      id: "hero-dori",
+      name: "Dorinthea",
+      classes: ["Warrior"],
+      talents: [],
+      startingLife: 20,
+      imageUrl: "https://img.example/dori.png",
+      legalFormatKeys: ["cc"],
+    },
+  ],
+};
+
+function mockMetas(metas: unknown[] = [summer, spring]) {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = typeof input === "string" ? input : input.toString();
-    if (url.includes("/api/metas")) {
-      return json({ data: [summer, spring], nextCursor: null });
-    }
+    if (url.includes("/api/heroes")) return json(heroesPayload);
+    if (url.includes("/api/metas")) return json({ data: metas, nextCursor: null });
     return json({}, 404);
   });
 }
@@ -85,5 +104,51 @@ describe("MetaList", () => {
     expect(await screen.findByText("Spring Season")).toBeInTheDocument();
     // Each card shows the meta's format name.
     expect(screen.getAllByText(/Classic Constructed/).length).toBeGreaterThan(0);
+  });
+
+  it("shows the pasted marketing image for a product-release meta", async () => {
+    mockMetas([
+      {
+        ...summer,
+        name: "Heavy Hitters",
+        changeReason: "product_release",
+        changeReasonImageUrl: "https://fabtcg.com/heavy-hitters.png",
+      },
+    ]);
+    renderInApp(<MetaList teamId="team-1" />);
+
+    const image = await screen.findByRole("img", { name: "Heavy Hitters" });
+    expect(image).toHaveAttribute("src", "https://fabtcg.com/heavy-hitters.png");
+  });
+
+  it("shows the retiring hero's art for a Living Legend meta", async () => {
+    mockMetas([
+      {
+        ...summer,
+        name: "Dorinthea's Farewell",
+        changeReason: "living_legend",
+        changeReasonHeroId: "hero-dori",
+      },
+    ]);
+    renderInApp(<MetaList teamId="team-1" />);
+
+    const image = await screen.findByRole("img", { name: "Dorinthea" });
+    expect(image).toHaveAttribute("src", "https://img.example/dori.png");
+  });
+
+  it("shows a ban glyph for a ban-list meta", async () => {
+    mockMetas([{ ...summer, name: "B&R Update", changeReason: "ban_list" }]);
+    renderInApp(<MetaList teamId="team-1" />);
+
+    expect(await screen.findByText("B&R Update")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /ban list update/i })).toBeInTheDocument();
+  });
+
+  it("falls back to a neutral glyph for a meta with no reason", async () => {
+    mockMetas([summer]);
+    renderInApp(<MetaList teamId="team-1" />);
+
+    expect(await screen.findByText("Summer Season")).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 });

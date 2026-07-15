@@ -7,6 +7,7 @@ import {
   type LinkCandidatesResponse,
   type LinkGamesResult,
   type LinkGamesToEntryInput,
+  type MetaChangeReason,
   type MetaDeckEntry,
   type MetaDeckEntryList,
   type MetaDetail,
@@ -36,10 +37,36 @@ interface MetaRow {
   startDate: Date;
   endDate: Date;
   description: string;
+  changeReason: MetaChangeReason | null;
+  changeReasonHeroId: string | null;
+  changeReasonImageUrl: string | null;
   archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   format: { name: string };
+}
+
+/**
+ * The DB-writable change-reason triple, with only the field matching the reason kept. A hero
+ * qualifies a `living_legend` meta and an image URL a `product_release` meta; everything else is
+ * cleared. This is the authoritative consistency guard (the shared schema also refines it).
+ */
+function normalizeChangeReason(input: {
+  changeReason?: MetaChangeReason | null | undefined;
+  changeReasonHeroId?: string | null | undefined;
+  changeReasonImageUrl?: string | null | undefined;
+}): {
+  changeReason: MetaChangeReason | null;
+  changeReasonHeroId: string | null;
+  changeReasonImageUrl: string | null;
+} {
+  const reason = input.changeReason ?? null;
+  return {
+    changeReason: reason,
+    changeReasonHeroId: reason === "living_legend" ? (input.changeReasonHeroId ?? null) : null,
+    changeReasonImageUrl:
+      reason === "product_release" ? (input.changeReasonImageUrl ?? null) : null,
+  };
 }
 
 /** Prisma args that join the format name every meta read needs for its response. */
@@ -131,6 +158,10 @@ export class MetasService {
   /** Create a meta; stamps teamId from context and validates the format is in the team's game. */
   async create(team: TeamContext, input: CreateMetaInput): Promise<MetaDetail> {
     await this.assertFormatInTeamGame(team.gameId, input.formatId);
+    const changeReason = normalizeChangeReason(input);
+    if (changeReason.changeReasonHeroId) {
+      await this.assertHeroInTeamGame(team.gameId, changeReason.changeReasonHeroId);
+    }
     const created = (await this.scoped.db.meta.create({
       data: {
         // Stamped from the verified context (TeamScopedPrisma re-stamps the same
@@ -141,6 +172,9 @@ export class MetasService {
         startDate: new Date(input.startDate),
         endDate: new Date(input.endDate),
         description: input.description,
+        changeReason: changeReason.changeReason,
+        changeReasonHeroId: changeReason.changeReasonHeroId,
+        changeReasonImageUrl: changeReason.changeReasonImageUrl,
       },
     })) as MetaRow;
 
@@ -176,6 +210,17 @@ export class MetasService {
     if (input.startDate !== undefined) data["startDate"] = mergedStart;
     if (input.endDate !== undefined) data["endDate"] = mergedEnd;
     if (input.description !== undefined) data["description"] = input.description;
+    // `changeReason` present (a value or explicit null) rewrites the whole triple; the form always
+    // sends the reason alongside its detail. `undefined` leaves the stored imagery untouched.
+    if (input.changeReason !== undefined) {
+      const changeReason = normalizeChangeReason(input);
+      if (changeReason.changeReasonHeroId) {
+        await this.assertHeroInTeamGame(team.gameId, changeReason.changeReasonHeroId);
+      }
+      data["changeReason"] = changeReason.changeReason;
+      data["changeReasonHeroId"] = changeReason.changeReasonHeroId;
+      data["changeReasonImageUrl"] = changeReason.changeReasonImageUrl;
+    }
 
     await this.scoped.db.meta.updateMany({ where: { id: metaId }, data });
     await this.recordMetaActivity(team, metaId, "meta_updated");
@@ -405,6 +450,26 @@ export class MetasService {
     }
   }
 
+  /**
+   * Reject a change-reason hero that does not belong to the team's game (→ 422). Heroes are
+   * global, per-game reference data, so a wrong-game id is a domain-rule violation, not a
+   * tenancy leak (mirrors {@link resolveDeckEntryTarget}'s hero check).
+   */
+  private async assertHeroInTeamGame(gameId: string, heroId: string): Promise<void> {
+    const hero = await this.scoped.db.hero.findFirst({
+      where: { id: heroId, gameId, archivedAt: null },
+      select: { id: true },
+    });
+    if (!hero) {
+      throw new UnprocessableEntityException({
+        error: {
+          code: errorCode.domainRuleViolation,
+          message: "The hero does not belong to this team's game.",
+        },
+      });
+    }
+  }
+
   /** Load a deck entry that belongs to the meta, or throw 404. */
   private async requireDeckEntry(metaId: string, entryId: string): Promise<MetaDeckEntryRow> {
     const row = (await this.scoped.db.metaDeckEntry.findFirst({
@@ -542,6 +607,9 @@ function toMetaSummary(meta: MetaRow): MetaSummary {
     archivedAt: meta.archivedAt ? meta.archivedAt.toISOString() : null,
     createdAt: meta.createdAt.toISOString(),
     updatedAt: meta.updatedAt.toISOString(),
+    changeReason: meta.changeReason,
+    changeReasonHeroId: meta.changeReasonHeroId,
+    changeReasonImageUrl: meta.changeReasonImageUrl,
   };
 }
 

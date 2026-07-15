@@ -302,6 +302,108 @@ describe("Metas endpoints (integration)", () => {
     });
   });
 
+  describe("Change-reason imagery", () => {
+    it("creates a living-legend meta with a hero and returns it", async () => {
+      const response = await asMemberA(http().post("/api/metas")).send({
+        ...validMeta(),
+        changeReason: "living_legend",
+        changeReasonHeroId: fabHeroId,
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.changeReason).toBe("living_legend");
+      expect(response.body.changeReasonHeroId).toBe(fabHeroId);
+      expect(response.body.changeReasonImageUrl).toBeNull();
+    });
+
+    it("creates a product-release meta with a pasted https image URL", async () => {
+      const response = await asMemberA(http().post("/api/metas")).send({
+        ...validMeta(),
+        changeReason: "product_release",
+        changeReasonImageUrl: "https://fabtcg.com/marketing/heavy-hitters.png",
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.changeReason).toBe("product_release");
+      expect(response.body.changeReasonImageUrl).toBe(
+        "https://fabtcg.com/marketing/heavy-hitters.png",
+      );
+      expect(response.body.changeReasonHeroId).toBeNull();
+    });
+
+    it("creates a ban-list meta with neither a hero nor an image", async () => {
+      const response = await asMemberA(http().post("/api/metas")).send({
+        ...validMeta(),
+        changeReason: "ban_list",
+      });
+      expect(response.status).toBe(201);
+      expect(response.body.changeReason).toBe("ban_list");
+      expect(response.body.changeReasonHeroId).toBeNull();
+      expect(response.body.changeReasonImageUrl).toBeNull();
+    });
+
+    it("rejects a living-legend hero from another game with 422", async () => {
+      const response = await asMemberA(http().post("/api/metas")).send({
+        ...validMeta(),
+        changeReason: "living_legend",
+        changeReasonHeroId: riftHeroId,
+      });
+      expect(response.status).toBe(422);
+    });
+
+    it("rejects a hero paired with a non-living-legend reason with 400", async () => {
+      const response = await asMemberA(http().post("/api/metas")).send({
+        ...validMeta(),
+        changeReason: "ban_list",
+        changeReasonHeroId: fabHeroId,
+      });
+      expect(response.status).toBe(400);
+    });
+
+    it("normalizes away stale detail when the reason changes on update", async () => {
+      const created = await asMemberA(http().post("/api/metas")).send({
+        ...validMeta(),
+        changeReason: "living_legend",
+        changeReasonHeroId: fabHeroId,
+      });
+      const updated = await asMemberA(http().patch(`/api/metas/${created.body.id}`)).send({
+        changeReason: "ban_list",
+      });
+      expect(updated.status).toBe(200);
+      expect(updated.body.changeReason).toBe("ban_list");
+      expect(updated.body.changeReasonHeroId).toBeNull();
+
+      const persisted = await prisma.meta.findUnique({ where: { id: created.body.id } });
+      expect(persisted?.changeReasonHeroId).toBeNull();
+    });
+
+    it("clears the reason and its detail when set to null on update", async () => {
+      const created = await asMemberA(http().post("/api/metas")).send({
+        ...validMeta(),
+        changeReason: "product_release",
+        changeReasonImageUrl: "https://fabtcg.com/x.png",
+      });
+      const updated = await asMemberA(http().patch(`/api/metas/${created.body.id}`)).send({
+        changeReason: null,
+      });
+      expect(updated.status).toBe(200);
+      expect(updated.body.changeReason).toBeNull();
+      expect(updated.body.changeReasonImageUrl).toBeNull();
+    });
+
+    it("keeps the change reason out of another team's reach", async () => {
+      const created = await asMemberA(http().post("/api/metas")).send({
+        ...validMeta(),
+        changeReason: "living_legend",
+        changeReasonHeroId: fabHeroId,
+      });
+      const asMemberB = http()
+        .get(`/api/metas/${created.body.id}`)
+        .set("x-test-user-id", memberB.id)
+        .set("x-team-id", teamB.id);
+      const response = await asMemberB;
+      expect(response.status).toBe(404);
+    });
+  });
+
   describe("Deck entries", () => {
     it("adds a hero-qualified entry and a label-only entry with derived snapshot labels", async () => {
       const meta = await createMeta(prisma, { teamId: teamA.id });

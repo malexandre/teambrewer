@@ -299,6 +299,7 @@ model Hero {
   gameLogsAsOpponentHero GameLog[]        @relation("GameLogOpponentHero")
   matchupGamePlans      MatchupGamePlan[]
   metaDeckEntries       MetaDeckEntry[]
+  metasAsChangeReasonHero Meta[]          @relation("MetaChangeReasonHero")
 
   @@unique([gameId, externalId])
   @@index([gameId, name])
@@ -857,6 +858,16 @@ enum MetaTier {
   fringe
 }
 
+/// Why a new meta exists — a deliberately FAB-flavored, optional signal that drives the meta
+/// list card's imagery (a ban-list update, heroes going Living Legend, or a new product release).
+/// Optional/nullable on Meta so games that don't share these concepts simply leave it unset.
+/// See docs/architecture/game-abstraction.md.
+enum MetaChangeReason {
+  ban_list
+  living_legend
+  product_release
+}
+
 /// A team's metagame window for a specific format: a named, dated span with a tiered
 /// opponent-deck list. Every default that once resolved to a "current meta" now
 /// resolves to the most recent meta (max startDate, non-archived) of the relevant
@@ -869,12 +880,20 @@ model Meta {
   startDate   DateTime  @map("start_date")
   endDate     DateTime  @map("end_date")
   description String    @default("")
+  /// Why this meta exists (optional, FAB-flavored) and the imagery it drives on the list card:
+  /// `living_legend` uses `changeReasonHeroId` (hero art, resolved client-side); `product_release`
+  /// uses the user-pasted `changeReasonImageUrl`; `ban_list` needs neither (a built-in icon). Only
+  /// the field matching the reason is populated (normalized server-side).
+  changeReason         MetaChangeReason? @map("change_reason")
+  changeReasonHeroId   String?           @map("change_reason_hero_id")
+  changeReasonImageUrl String?           @map("change_reason_image_url")
   archivedAt  DateTime? @map("archived_at")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  format Format @relation(fields: [formatId], references: [id])
+  team             Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  format           Format @relation(fields: [formatId], references: [id])
+  changeReasonHero Hero?  @relation("MetaChangeReasonHero", fields: [changeReasonHeroId], references: [id], onDelete: SetNull)
 
   metaDeckEntries MetaDeckEntry[]
   deckMetas       DeckMeta[]

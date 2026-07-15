@@ -30,10 +30,21 @@ against the current meta's deck list (see [confidence-and-matchups.md](confidenc
 Uses these entities from [data-model.md](../architecture/data-model.md). Every row is team-scoped with a
 non-null `teamId` (except the `DeckMeta` join, scoped through its parents).
 
-- **Meta** `{ id, teamId, name, startDate, endDate, description, archivedAt? }`
+- **Meta** `{ id, teamId, name, startDate, endDate, description, changeReason?, changeReasonHeroId?,
+  changeReasonImageUrl?, archivedAt? }`
   - **Current meta** = the meta whose `[startDate, endDate]` contains today; on overlap, the one with the
     latest `startDate`. Resolved server-side (no stored "is current" flag).
   - `endDate` must be on or after `startDate`.
+  - **Change reason (optional imagery)** — a deliberately **FAB-flavored** signal of *why* the meta exists,
+    used to give each meta a meaningful image on the list card instead of the neutral icon:
+    `changeReason ∈ ban_list | living_legend | product_release`. `living_legend` carries a
+    `changeReasonHeroId` (the retiring hero, whose art is shown, resolved client-side like the meta board's
+    hero squares); `product_release` carries a user-pasted `changeReasonImageUrl` (an http(s) marketing-image
+    URL — we **only link to it**, never fetch or host it, per the no-scraping data-source rule); `ban_list`
+    needs neither (a built-in ban glyph). All three fields are nullable; only the field matching the reason
+    is stored (the API normalizes the rest away), and a meta with no reason keeps the neutral Target icon.
+    This is a FAB-specific extension kept optional so other games simply leave it unset — see
+    [game-abstraction.md](../architecture/game-abstraction.md).
 - **MetaDeckEntry** `{ id, metaId, teamId, tier, label, heroId?, opponentSnapshotLabel, notes }` — one
   tiered entry in a meta's deck list (the reshaped gauntlet), modelled as a **matchup subject**: a
   **required free-text `label`** (the human archetype name) plus an **optional `heroId`** qualifier.
@@ -52,8 +63,13 @@ non-null `teamId` (except the `DeckMeta` join, scoped through its parents).
   entry; there is no per-row owner.
 - A meta deck entry is **fully editable** — `tier`, `label`, `heroId`, and `notes` may all be changed in
   place.
-- Cross-game / cross-team foreign keys are rejected (a hero, when set, must belong to the team's game and
-  team). Cross-tenant reads return `404`.
+- Cross-game / cross-team foreign keys are rejected (a hero, when set — as a deck-entry qualifier or a
+  `living_legend` change-reason hero — must belong to the team's game; a cross-game hero is a `422`).
+  Cross-tenant reads return `404`.
+- A meta's **change reason is normalized to its detail**: changing the reason (or clearing it) clears the
+  non-matching detail server-side, so a `ban_list` meta never keeps a stale hero or image URL. The shared
+  schema also rejects a detail field that contradicts the reason (a hero without `living_legend`, an image
+  URL without `product_release`) as a `400`.
 - `DELETE` on a meta archives it (`archivedAt`); archived metas are excluded from default lists.
 
 ## API surface
