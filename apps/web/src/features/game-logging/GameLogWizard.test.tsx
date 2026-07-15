@@ -12,6 +12,12 @@ function renderWithClient(ui: ReactNode) {
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
+/** Opens the self-side (Deck A) subject combobox and picks the seeded team deck. */
+async function pickOurDeck(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("combobox", { name: "Deck A" }));
+  await user.click(await screen.findByRole("option", { name: "Our Deck" }));
+}
+
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
@@ -182,8 +188,7 @@ describe("GameLogWizard", () => {
     // Step 1 → Next → Step 2 shows the result control; Single game is active.
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
-    await screen.findAllByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText(/deck a/i), "deck:deck-ours");
+    await pickOurDeck(user);
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -202,8 +207,7 @@ describe("GameLogWizard", () => {
     // step 1
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
-    await screen.findAllByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText(/deck a/i), "deck:deck-ours");
+    await pickOurDeck(user);
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -231,8 +235,7 @@ describe("GameLogWizard", () => {
     // Our side is a valid team deck, but the opponent archetype label is empty.
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
-    await screen.findAllByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText("Deck A"), "deck:deck-ours");
+    await pickOurDeck(user);
     await user.click(screen.getByRole("button", { name: /next/i }));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     // Still on step 1: the result control has not appeared.
@@ -246,8 +249,7 @@ describe("GameLogWizard", () => {
     // Fill step 1 and advance to step 2.
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
-    await screen.findAllByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText("Deck A"), "deck:deck-ours");
+    await pickOurDeck(user);
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -255,7 +257,7 @@ describe("GameLogWizard", () => {
     await screen.findByRole("button", { name: /single game/i });
     await user.click(screen.getByRole("button", { name: /^back$/i }));
     // Back on step 1, with the previously entered values intact.
-    expect(await screen.findByLabelText("Deck A")).toHaveValue("deck:deck-ours");
+    expect(await screen.findByRole("combobox", { name: "Deck A" })).toHaveTextContent("Our Deck");
     expect(screen.getByRole("combobox", { name: "Hero" })).toHaveValue("hero-dori");
   });
 
@@ -268,8 +270,7 @@ describe("GameLogWizard", () => {
     // Step 1 — the matchup.
     await screen.findByRole("option", { name: "Classic Constructed" });
     await user.selectOptions(screen.getByLabelText(/^format$/i), "fmt-cc");
-    await screen.findAllByRole("option", { name: "Our Deck" });
-    await user.selectOptions(screen.getByLabelText(/deck a/i), "deck:deck-ours");
+    await pickOurDeck(user);
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.click(screen.getByRole("button", { name: /next/i }));

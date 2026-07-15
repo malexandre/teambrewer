@@ -126,7 +126,8 @@ describe("MatchupSubjectPicker", () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("self");
-    await user.selectOptions(screen.getByLabelText("Deck A"), "deck:deck-ours");
+    await user.click(screen.getByRole("combobox", { name: "Deck A" }));
+    await user.click(await screen.findByRole("option", { name: "Our Deck" }));
     expect(emitted()).toEqual({ deckId: "deck-ours", playerCategory: "teammate" });
   });
 
@@ -134,16 +135,28 @@ describe("MatchupSubjectPicker", () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("self");
-    await screen.findByRole("option", { name: "Dorinthea · Aggro Red" });
-    await user.selectOptions(screen.getByLabelText("Deck A"), "meta:entry-1");
+    await user.click(screen.getByRole("combobox", { name: "Deck A" }));
+    await user.click(await screen.findByRole("option", { name: "Dorinthea · Aggro Red" }));
     expect(emitted()).toEqual({ metaDeckEntryId: "entry-1", playerCategory: "teammate" });
+  });
+
+  it("filters the grouped options with the typeahead search", async () => {
+    const user = userEvent.setup();
+    mockApi();
+    renderHarness("self");
+    await user.click(screen.getByRole("combobox", { name: "Deck A" }));
+    await screen.findByRole("option", { name: "Dorinthea · Aggro Red" });
+    await user.type(screen.getByRole("combobox", { name: /search decks/i }), "our");
+    expect(screen.getByRole("option", { name: "Our Deck" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Dorinthea · Aggro Red" })).not.toBeInTheDocument();
   });
 
   it("choosing Other requires a hero and emits it alone (label optional, not pre-filled)", async () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("opponent");
-    await user.selectOptions(screen.getByLabelText("Deck B"), "other");
+    await user.click(screen.getByRole("combobox", { name: "Deck B" }));
+    await user.click(await screen.findByRole("option", { name: /^Other/ }));
     // Before a hero is picked the subject is incomplete.
     expect(emitted()).toBeNull();
     await screen.findByRole("option", { name: "Dorinthea" });
@@ -156,7 +169,8 @@ describe("MatchupSubjectPicker", () => {
     const user = userEvent.setup();
     mockApi();
     renderHarness("opponent");
-    await user.selectOptions(screen.getByLabelText("Deck B"), "other");
+    await user.click(screen.getByRole("combobox", { name: "Deck B" }));
+    await user.click(await screen.findByRole("option", { name: /^Other/ }));
     await screen.findByRole("option", { name: "Dorinthea" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Hero" }), "hero-dori");
     await user.type(screen.getByLabelText(/archetype label/i), "Aggro Red");

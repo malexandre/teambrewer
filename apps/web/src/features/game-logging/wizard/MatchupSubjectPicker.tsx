@@ -1,15 +1,28 @@
 import { type PlayerCategory, PLAYER_CATEGORIES, PLAYER_CATEGORY_LABELS } from "@teambrewer/shared";
 import type { DeckSummary } from "@teambrewer/shared";
+import { useState } from "react";
 
+import {
+  Combobox,
+  ComboboxGroup,
+  ComboboxGroupLabel,
+  ComboboxItem,
+  ComboboxList,
+  SelectItem,
+  SelectPopover,
+  SelectTrigger,
+  useComboboxStore,
+  useSelectStore,
+} from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { useHeroes } from "@/features/cards/use-heroes";
 import { HeroPicker } from "@/features/decks/HeroPicker";
 import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { matchupSubjectDisplayName } from "@/features/metas/meta-display";
 import { useMetaDeckEntries } from "@/features/metas/use-metas";
 
-import { SELECT_CLASS } from "../game-display";
 import { type MatchupSubjectState } from "./matchup-subject";
 import { SegmentedControl } from "./SegmentedControl";
 
@@ -101,46 +114,94 @@ export function MatchupSubjectPicker({
     return matchupSubjectDisplayName(heroName, entry.label) || entry.opponentSnapshotLabel;
   }
 
+  // Transient search text for the typeahead; the subject itself stays fully controlled.
+  const [searchValue, setSearchValue] = useState("");
+  const combobox = useComboboxStore({
+    value: searchValue,
+    setValue: setSearchValue,
+    resetValueOnHide: true,
+  });
+  const currentValue = selectValueFor(state);
+  const select = useSelectStore({
+    combobox,
+    value: currentValue,
+    setValue: (value) => patch(subjectPatchFromSelectValue(value)),
+  });
+
+  const query = searchValue.trim().toLowerCase();
+  const matchesQuery = (text: string) => query.length === 0 || text.toLowerCase().includes(query);
+  const shownDecks = deckOptions.filter((deck) => matchesQuery(deck.name));
+  const shownMetaEntries = metaEntries.filter((entry) => matchesQuery(metaEntryDisplayName(entry)));
+
+  const selectedDeck = deckOptions.find((deck) => `deck:${deck.id}` === currentValue);
+  const selectedMetaEntry = metaEntries.find((entry) => `meta:${entry.id}` === currentValue);
+  const triggerLabel =
+    currentValue === OTHER_OPTION_VALUE
+      ? "Other…"
+      : selectedDeck
+        ? selectedDeck.name
+        : selectedMetaEntry
+          ? metaEntryDisplayName(selectedMetaEntry)
+          : "Select a deck…";
+
   return (
     <fieldset className={`flex min-w-0 flex-col gap-3 rounded-lg border p-3 ${panelClassName}`}>
       <div className="flex min-w-0 flex-col gap-1">
         {/* No visible "Deck A"/"Deck B" label — the panel colour is the side cue; the
-            name stays as the select's accessible name. `w-full min-w-0` keeps a long
-            deck name from stretching the select past the card (it truncates instead). */}
-        <select
+            name stays as the trigger's accessible name. `w-full min-w-0` keeps a long
+            deck name from stretching the trigger past the card (it truncates instead). */}
+        <SelectTrigger
+          store={select}
           id={subjectSelectId}
           aria-label={deckSideName}
-          className={`${SELECT_CLASS} w-full min-w-0`}
-          value={selectValueFor(state)}
-          onChange={(event) => patch(subjectPatchFromSelectValue(event.target.value))}
+          className={cn("w-full min-w-0", currentValue === "" && "text-muted-foreground")}
         >
-          <option value="">Select a deck…</option>
-          {deckOptions.length > 0 ? (
-            <optgroup label="Team decks">
-              {deckOptions.map((deck) => {
-                // If this team deck is the team's build of a meta deck in the game's
-                // meta, mark it so it's easy to identify (per-meta link).
-                const linked = deck.linkedMetaEntries.find((link) => link.metaId === metaId);
-                return (
-                  <option key={deck.id} value={`deck:${deck.id}`}>
-                    {deck.name}
-                    {linked ? ` — ≈ ${linked.label} (meta)` : ""}
-                  </option>
-                );
-              })}
-            </optgroup>
-          ) : null}
-          {metaEntries.length > 0 ? (
-            <optgroup label="Meta decks">
-              {metaEntries.map((entry) => (
-                <option key={entry.id} value={`meta:${entry.id}`}>
-                  {metaEntryDisplayName(entry)}
-                </option>
-              ))}
-            </optgroup>
-          ) : null}
-          <option value={OTHER_OPTION_VALUE}>Other…</option>
-        </select>
+          {triggerLabel}
+        </SelectTrigger>
+        <SelectPopover store={select} className="gap-1">
+          <Combobox store={combobox} aria-label="Search decks" placeholder="Search…" />
+          <ComboboxList store={combobox}>
+            {shownDecks.length > 0 ? (
+              <ComboboxGroup>
+                <ComboboxGroupLabel>Team decks</ComboboxGroupLabel>
+                {shownDecks.map((deck) => {
+                  // If this team deck is the team's build of a meta deck in the game's
+                  // meta, mark it so it's easy to identify (per-meta link).
+                  const linked = deck.linkedMetaEntries.find((link) => link.metaId === metaId);
+                  return (
+                    <SelectItem
+                      key={deck.id}
+                      store={select}
+                      value={`deck:${deck.id}`}
+                      render={<ComboboxItem />}
+                    >
+                      {deck.name}
+                      {linked ? ` — ≈ ${linked.label} (meta)` : ""}
+                    </SelectItem>
+                  );
+                })}
+              </ComboboxGroup>
+            ) : null}
+            {shownMetaEntries.length > 0 ? (
+              <ComboboxGroup>
+                <ComboboxGroupLabel>Meta decks</ComboboxGroupLabel>
+                {shownMetaEntries.map((entry) => (
+                  <SelectItem
+                    key={entry.id}
+                    store={select}
+                    value={`meta:${entry.id}`}
+                    render={<ComboboxItem />}
+                  >
+                    {metaEntryDisplayName(entry)}
+                  </SelectItem>
+                ))}
+              </ComboboxGroup>
+            ) : null}
+            <SelectItem store={select} value={OTHER_OPTION_VALUE} render={<ComboboxItem />}>
+              Other…
+            </SelectItem>
+          </ComboboxList>
+        </SelectPopover>
       </div>
 
       {state.mode === "hero_label" ? (
