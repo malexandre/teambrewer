@@ -11,3 +11,9 @@ apps/api/src/generated
 **/.env
 **/.env.*
 !**/.env.example
+# Non-build inputs — keep them out of the context so a docs/config edit never
+# invalidates a build layer (and the context stays small).
+docs
+.claude
+.github
+**/*.md

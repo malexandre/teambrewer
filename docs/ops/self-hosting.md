@@ -11,14 +11,24 @@ runbook for phase-13; the security rationale lives in
 | Service | Image | Network | Published? |
 |---------|-------|---------|------------|
 | `postgres` | `postgres:17-alpine` | internal only | **No** — never exposed publicly |
-| `api` | built from `apps/api/Dockerfile` | internal only | No |
-| `web` | Nginx, built from `apps/web/Dockerfile` | internal + host | **Yes**, on `WEB_PORT` (default 8080) |
+| `api` | built from the root [`Dockerfile`](../../Dockerfile) (`target: api`) | internal only | No |
+| `web` | Nginx, built from the root [`Dockerfile`](../../Dockerfile) (`target: web`) | internal + host | **Yes**, on `WEB_PORT` (default 8080) |
 
 Only the `web` (Nginx) service is published. It serves the built SPA and
 reverse-proxies `/api` to the API. Postgres and the API stay on the private
 Docker network. The API applies pending Prisma migrations on start
 (`prisma migrate deploy`, idempotent), so a fresh volume is provisioned
 automatically.
+
+Both services build from the single root [`Dockerfile`](../../Dockerfile)
+(distinct `target`s), so one `docker compose build` shares the dependency
+install and the `@teambrewer/shared` build between them. Dependency manifests
+are installed before source is copied, so **a code-only change rebuilds without
+reinstalling dependencies** — subsequent builds are much faster. This relies on
+**BuildKit** (default in Docker 23+/Compose v2) for the `# syntax` directive and
+the pnpm-store cache mount; on older Docker, export `DOCKER_BUILDKIT=1`. The API
+runtime image is pruned to production dependencies (`pnpm deploy --prod`), so it
+carries no source tree or dev tooling.
 
 ## 1. Configuration (`.env`)
 

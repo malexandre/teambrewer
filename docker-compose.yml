@@ -21,7 +21,8 @@ services:
   api:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: Dockerfile
+      target: api
     environment:
       NODE_ENV: production
       API_PORT: 3000
@@ -50,7 +51,8 @@ services:
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: Dockerfile
+      target: web
     ports:
       - "${WEB_PORT:-8080}:80"
     depends_on:
