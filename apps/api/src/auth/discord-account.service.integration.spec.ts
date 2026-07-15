@@ -225,7 +225,7 @@ describe("DiscordAccountService", () => {
       expect(rows).toBe(1);
     });
 
-    it("unlinks a password account's identity", async () => {
+    it("unlinks a password account's identity and revokes Discord login", async () => {
       const passwordUser = await createUser(prisma, { authMethod: "password_totp" });
       await service.linkIdentityOnly({
         userId: passwordUser.id,
@@ -240,6 +240,7 @@ describe("DiscordAccountService", () => {
         select: { discordUserId: true, discordUsername: true },
       });
       expect(stored).toEqual({ discordUserId: null, discordUsername: null });
+      expect(await discordLoginAccountId(passwordUser.id)).toBeNull();
     });
   });
 });

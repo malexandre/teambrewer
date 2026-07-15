@@ -215,26 +215,33 @@ export class DiscordAccountService {
 
   /** Remove a password account's identity-only Discord link. */
   async unlinkIdentity(userId: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, authMethod: true },
-    });
-    if (!user) {
-      throw new NotFoundException({
-        error: { code: errorCode.notFound, message: "Account not found." },
+    await this.prisma.$transaction(async (transaction) => {
+      const user = await transaction.user.findUnique({
+        where: { id: userId },
+        select: { id: true, authMethod: true },
       });
-    }
-    if (user.authMethod !== "password_totp") {
-      throw new UnprocessableEntityException({
-        error: {
-          code: errorCode.loginMethodMismatch,
-          message: "This account uses Discord to log in; its identity cannot be unlinked here.",
-        },
+      if (!user) {
+        throw new NotFoundException({
+          error: { code: errorCode.notFound, message: "Account not found." },
+        });
+      }
+      if (user.authMethod !== "password_totp") {
+        throw new UnprocessableEntityException({
+          error: {
+            code: errorCode.loginMethodMismatch,
+            message: "This account uses Discord to log in; its identity cannot be unlinked here.",
+          },
+        });
+      }
+      // Remove the Discord login account row (revokes Discord sign-in). The
+      // password credential remains, so the account keeps a login method.
+      await transaction.account.deleteMany({
+        where: { userId, providerId: DISCORD_PROVIDER_ID },
       });
-    }
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { discordUserId: null, discordUsername: null },
+      await transaction.user.update({
+        where: { id: userId },
+        data: { discordUserId: null, discordUsername: null },
+      });
     });
   }
 }
