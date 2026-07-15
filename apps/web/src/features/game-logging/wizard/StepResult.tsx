@@ -61,8 +61,8 @@ export function StepResult({
           value={gamesWonA > gamesWonB ? "win" : gamesWonA < gamesWonB ? "loss" : "draw"}
           options={[
             { value: "win", label: sideAName, tone: "sideA" },
+            { value: "draw", label: "Draw", tone: "neutral" },
             { value: "loss", label: sideBName, tone: "sideB" },
-            { value: "draw", label: "Draw" },
           ]}
           onChange={(next) => setSingleGameOutcome(next as "win" | "loss" | "draw")}
         />

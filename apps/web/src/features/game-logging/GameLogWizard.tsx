@@ -148,7 +148,9 @@ export function GameLogWizard({
     if (isEditing || configDefaultSupersededRef.current || defaultBestOf === undefined) return;
     setBestOf(defaultBestOf);
     if (defaultBestOf === 1) {
-      setGamesWonA(1);
+      // A single game defaults to a draw (0–0) — the neutral starting point now that
+      // neither side is presumed to be "us", so the member consciously picks the winner.
+      setGamesWonA(0);
       setGamesWonB(0);
     } else {
       setGamesWonA(Math.ceil(defaultBestOf / 2));
@@ -209,9 +211,10 @@ export function GameLogWizard({
     configDefaultSupersededRef.current = true;
     setBestOf(next);
     // Reset the result to a valid default for the new best-of so the form never
-    // sits in an inconsistent state.
+    // sits in an inconsistent state. A single game defaults to a draw (0–0), the
+    // neutral starting point; a match seeds a minimal decisive score.
     if (next === 1) {
-      setGamesWonA(1);
+      setGamesWonA(0);
       setGamesWonB(0);
     } else {
       setGamesWonA(Math.ceil(next / 2));
