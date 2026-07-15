@@ -21,6 +21,16 @@ const DEFAULT_RIFTBOUND_CARDS_URL = "https://api.riftcodex.com";
 /** The dataset version label recorded as `sourceVersion` (no upstream tag exists). */
 const DEFAULT_RIFTBOUND_CARDS_REF = "riftcodex-2026-07";
 
+/**
+ * How we identify ourselves to the Riftcodex API. The default `fetch` (undici) sends no
+ * `User-Agent`, which Cloudflare Bot Fight Mode blocks (403) from datacenter IPs even
+ * though Riftcodex's FAQ opens the API to programmatic use. So we send an honest,
+ * app-identifying UA (never a spoofed browser) — good-citizen practice per data-sources.md.
+ * Operators can override it (e.g. to add a contact) with `RIFTBOUND_CARDS_USER_AGENT`.
+ */
+const DEFAULT_RIFTBOUND_CARDS_USER_AGENT =
+  "TeamBrewer/1.0 (+https://github.com/malexandre/teambrewer) card-sync";
+
 /** Riftcodex caps page size at 100. */
 const PAGE_SIZE = 100;
 
@@ -40,13 +50,21 @@ export class RiftcodexCardSourceClient {
     return process.env["RIFTBOUND_CARDS_URL"] ?? DEFAULT_RIFTBOUND_CARDS_URL;
   }
 
+  /** The `User-Agent` we identify with so bot protection lets a legitimate client through. */
+  get userAgent(): string {
+    return process.env["RIFTBOUND_CARDS_USER_AGENT"] ?? DEFAULT_RIFTBOUND_CARDS_USER_AGENT;
+  }
+
   async fetchRawCards(): Promise<RawCardRecord[]> {
     const baseUrl = this.sourceUrl;
     this.logger.log(`Fetching Riftbound card data from ${baseUrl}/cards`);
+    // Identify ourselves honestly: the default undici request (no User-Agent) is 403'd by
+    // Cloudflare Bot Fight Mode from datacenter IPs. See DEFAULT_RIFTBOUND_CARDS_USER_AGENT.
+    const headers = { "User-Agent": this.userAgent, Accept: "application/json" };
     const records: RawCardRecord[] = [];
     for (let page = 1; page <= MAX_PAGES; page += 1) {
       const url = `${baseUrl}/cards?size=${PAGE_SIZE}&page=${page}`;
-      const response = await fetch(url);
+      const response = await fetch(url, { headers });
       if (!response.ok) {
         throw new Error(`Failed to fetch Riftbound card data (${response.status} from ${url}).`);
       }
