@@ -86,6 +86,34 @@ describe("CardPicker", () => {
     expect(input).toHaveValue("");
   });
 
+  it("shows a thumbnail image for a result when the card has one", async () => {
+    mockCardSearch([
+      { id: "cnc", name: "Command and Conquer", pitch: 1, imageUrl: "https://cards.test/cnc.webp" },
+    ]);
+    const user = userEvent.setup();
+
+    renderWithClient(<CardPicker teamId="team-1" />);
+    await user.type(screen.getByRole("combobox", { name: /search cards/i }), "command");
+
+    const option = await screen.findByRole("option", { name: /Command and Conquer/i });
+    const thumbnail = option.querySelector("img");
+    expect(thumbnail).toHaveAttribute("src", "https://cards.test/cnc.webp");
+    // Decorative: the option's text already names the card, so the image is not
+    // re-announced to screen readers.
+    expect(thumbnail).toHaveAttribute("alt", "");
+  });
+
+  it("renders a result without an image and no broken thumbnail", async () => {
+    mockCardSearch([{ id: "cnc", name: "Command and Conquer", pitch: 1, imageUrl: null }]);
+    const user = userEvent.setup();
+
+    renderWithClient(<CardPicker teamId="team-1" />);
+    await user.type(screen.getByRole("combobox", { name: /search cards/i }), "command");
+
+    const option = await screen.findByRole("option", { name: /Command and Conquer/i });
+    expect(option.querySelector("img")).toBeNull();
+  });
+
   it("does not search on an empty query", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     renderWithClient(<CardPicker teamId="team-1" />);

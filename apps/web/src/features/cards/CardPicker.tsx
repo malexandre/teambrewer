@@ -63,8 +63,22 @@ export function CardPicker({ teamId, onSelect, placeholder }: CardPickerProps) {
                       setQuery("");
                     }}
                   >
-                    <span>{card.name}</span>
-                    {pitch && <span className="text-xs text-muted-foreground">{pitch}</span>}
+                    <span className="flex min-w-0 items-center gap-2">
+                      {card.imageUrl ? (
+                        // A small card image so visual users can recognise the card at a
+                        // glance. Decorative (alt=""): the name text names it for readers.
+                        <img
+                          src={card.imageUrl}
+                          alt=""
+                          loading="lazy"
+                          className="h-14 w-auto max-w-12 shrink-0 rounded-sm border border-border"
+                        />
+                      ) : null}
+                      <span className="truncate">{card.name}</span>
+                    </span>
+                    {pitch && (
+                      <span className="shrink-0 text-xs text-muted-foreground">{pitch}</span>
+                    )}
                   </ComboboxItem>
                 );
               })}
