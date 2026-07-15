@@ -2,7 +2,7 @@ import { parseCardTokens, tokenizeCardBody } from "@teambrewer/shared";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { pitchDisplay } from "@/features/cards/pitch";
+import { CardResultRow } from "@/features/cards/CardResultRow";
 import { useCardSearch } from "@/features/cards/use-card-search";
 import { useCardsById } from "@/features/cards/use-cards-by-id";
 import { useDebouncedValue } from "@/features/cards/use-debounced-value";
@@ -338,25 +338,21 @@ export function MentionComposer({
             className="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-md border border-border bg-popover text-sm shadow"
             aria-label="Card suggestions"
           >
-            {cardSuggestions.map((card) => {
-              const pitch = pitchDisplay(card.pitch);
-              return (
-                <li key={card.id}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between gap-2 px-2 py-1 text-left hover:bg-muted"
-                    // onMouseDown so onBlur does not clear the suggestion first.
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      insertCardMention(card.id, card.name);
-                    }}
-                  >
-                    <span className="font-medium">{card.name}</span>
-                    {pitch ? <span className="text-muted-foreground">{pitch}</span> : null}
-                  </button>
-                </li>
-              );
-            })}
+            {cardSuggestions.map((card) => (
+              <li key={card.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 px-2 py-1 text-left hover:bg-muted"
+                  // onMouseDown so onBlur does not clear the suggestion first.
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    insertCardMention(card.id, card.name);
+                  }}
+                >
+                  <CardResultRow card={card} />
+                </button>
+              </li>
+            ))}
           </ul>
         ) : null}
       </div>

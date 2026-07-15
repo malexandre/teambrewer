@@ -89,6 +89,35 @@ describe("MentionComposer", () => {
     expect(onSubmit).toHaveBeenCalledWith("try +[[cnc]]");
   });
 
+  it("shows a card art thumbnail in the +card suggestions", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/members")) return json(members);
+      if (url.includes("/api/cards"))
+        return json({
+          data: [
+            {
+              id: "cnc",
+              name: "Command and Conquer",
+              pitch: 1,
+              imageUrl: "https://cards.test/cnc.webp",
+            },
+          ],
+          nextCursor: null,
+        });
+      return json({}, 404);
+    });
+    renderComposer({ enableCardMentions: true });
+
+    typeInEditor("try +comm");
+
+    const suggestions = await screen.findByRole("list", { name: /card suggestions/i });
+    const thumbnail = suggestions.querySelector("img");
+    expect(thumbnail).toHaveAttribute("src", "https://cards.test/cnc.webp");
+    // Decorative: the suggestion text already names the card.
+    expect(thumbnail).toHaveAttribute("alt", "");
+  });
+
   it("keeps @member mentions inserting a bare @username", async () => {
     mockApi();
     const user = userEvent.setup();
