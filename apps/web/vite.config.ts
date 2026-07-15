@@ -12,6 +12,14 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
+        // The SPA navigation fallback must NOT swallow backend routes. Without
+        // this, Workbox's NavigationRoute serves the precached index.html for
+        // every top-level navigation — including the Discord OAuth redirects
+        // (`GET /api/discord/callback`, `GET /api/discord/claim/:token/start`),
+        // which are real server navigations. That made linking/claiming render
+        // the SPA's "Not Found" instead of reaching NestJS. Deny `/api/` so those
+        // navigations fall through to the network.
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             // Card art (cross-origin CDN) has a unique URL per card, so it caches
