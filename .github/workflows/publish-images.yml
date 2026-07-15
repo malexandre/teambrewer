@@ -156,7 +156,13 @@ jobs:
         run: |
           set -euo pipefail
           docker pull "${{ steps.refs.outputs.web }}"
-          docker run -d --name teambrewer-web -p 8080:80 "${{ steps.refs.outputs.web }}"
+          # The image's nginx resolves its `proxy_pass http://api:3000` upstream at
+          # startup, so with no api container in this isolated check it would abort
+          # with "host not found in upstream". Map `api` to loopback so nginx boots;
+          # the /api proxy path itself is exercised by the full docker compose stack
+          # (where the `api` service name resolves) — this step only asserts the SPA
+          # is served.
+          docker run -d --name teambrewer-web --add-host api:127.0.0.1 -p 8080:80 "${{ steps.refs.outputs.web }}"
           served=""
           for _ in $(seq 1 15); do
             body="$(curl -fsS http://localhost:8080/ || true)"
@@ -165,6 +171,8 @@ jobs:
             esac
             sleep 2
           done
+          echo "----- web logs -----"
+          docker logs teambrewer-web 2>&1 || true
           echo "----- web response status -----"
           curl -sI http://localhost:8080/ | head -1 || true
           test "$served" = 1
