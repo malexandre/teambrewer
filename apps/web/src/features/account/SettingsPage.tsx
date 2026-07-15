@@ -124,7 +124,7 @@ function ChangePasswordCard() {
   );
 }
 
-function DiscordIdentityCard() {
+export function DiscordIdentityCard() {
   const queryClient = useQueryClient();
   const { data: user } = useCurrentUser();
 
@@ -143,17 +143,23 @@ function DiscordIdentityCard() {
       <CardHeader>
         <CardTitle>Discord identity</CardTitle>
         <CardDescription>
-          Link Discord for recognition and @mentions (not for login).
+          Link Discord to also sign in with Discord, and for recognition and @mentions.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-3">
         {user?.discordUsername ? (
-          <div className="flex items-center justify-between text-sm">
-            <span>Linked as {user.discordUsername}</span>
-            <Button type="button" size="sm" variant="outline" onClick={() => unlink.mutate()}>
-              Unlink
-            </Button>
-          </div>
+          <>
+            <div className="flex items-center justify-between text-sm">
+              <span>Linked as {user.discordUsername}</span>
+              <Button type="button" size="sm" variant="outline" onClick={() => unlink.mutate()}>
+                Unlink
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Discord sign-in is not protected by your authenticator app, so please enable
+              two-factor authentication on your Discord account. Unlinking removes Discord sign-in.
+            </p>
+          </>
         ) : (
           <Button type="button" variant="outline" onClick={() => void link()}>
             Link Discord
