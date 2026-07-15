@@ -357,14 +357,12 @@ export class DecksService {
       },
     })) as GameLogReadinessRow[];
 
-    // A matchup game-plan covers an entry either by matching its normalized
-    // opponentRef (a hero+label / label-only subject) or by an explicit attachment
-    // through GamePlanMetaDeckEntry. Both are loaded from the team-scoped plans.
+    // A matchup game-plan covers an entry via its explicit attachments through
+    // GamePlanMetaDeckEntry (the "Covers matchups" selection). Loaded team-scoped.
     const plans = (await this.scoped.db.matchupGamePlan.findMany({
       where: { ourDeckId: deckId, formatId: deck.formatId, archivedAt: null },
-      select: { opponentRef: true, metaDeckEntries: { select: { metaDeckEntryId: true } } },
-    })) as { opponentRef: string; metaDeckEntries: { metaDeckEntryId: string }[] }[];
-    const planRefs = new Set(plans.map((plan) => plan.opponentRef));
+      select: { metaDeckEntries: { select: { metaDeckEntryId: true } } },
+    })) as { metaDeckEntries: { metaDeckEntryId: string }[] }[];
     const plannedEntryIds = new Set(
       plans.flatMap((plan) => plan.metaDeckEntries.map((link) => link.metaDeckEntryId)),
     );
@@ -390,7 +388,6 @@ export class DecksService {
         .filter((game) => gameMatchesEntry(game, entry, linkedDecksByEntry.get(entry.id)))
         .map(toMatchupGame);
       const aggregate = aggregateMatchup(matched);
-      const opponentRef = deriveMatchupSubjectRef({ heroId: entry.heroId, label: entry.label });
       return {
         metaDeckEntryId: entry.id,
         tier: entry.tier,
@@ -401,7 +398,7 @@ export class DecksService {
         rawSampleCount: aggregate.rawSampleCount,
         effectiveSample: aggregate.effectiveSample,
         trustIndicator: aggregate.trustIndicator,
-        hasGamePlan: planRefs.has(opponentRef) || plannedEntryIds.has(entry.id),
+        hasGamePlan: plannedEntryIds.has(entry.id),
       } satisfies DeckMetaReadinessRow;
     });
 

@@ -12,7 +12,6 @@ import { queryKeys } from "@/lib/query-keys";
 /** The filters the game-plan list supports (a subset of the API query params). */
 export interface GamePlanFilters {
   ourDeckId?: string;
-  opponentRef?: string;
   formatId?: string;
 }
 
@@ -20,7 +19,6 @@ export interface GamePlanFilters {
 function toKeyFilters(filters: GamePlanFilters): Record<string, string> {
   const keyFilters: Record<string, string> = {};
   if (filters.ourDeckId) keyFilters["ourDeckId"] = filters.ourDeckId;
-  if (filters.opponentRef) keyFilters["opponentRef"] = filters.opponentRef;
   if (filters.formatId) keyFilters["formatId"] = filters.formatId;
   return keyFilters;
 }
@@ -28,7 +26,6 @@ function toKeyFilters(filters: GamePlanFilters): Record<string, string> {
 function toQueryString(filters: GamePlanFilters): string {
   const params = new URLSearchParams();
   if (filters.ourDeckId) params.set("ourDeckId", filters.ourDeckId);
-  if (filters.opponentRef) params.set("opponentRef", filters.opponentRef);
   if (filters.formatId) params.set("formatId", filters.formatId);
   const query = params.toString();
   return query ? `?${query}` : "";

@@ -10,7 +10,7 @@ ends in a confident deck choice and a durable review.
 
 ## Goals & value
 
-- Capture the **written plan** for each `(our deck × opponent archetype)` matchup so knowledge survives
+- Capture the **written plan** for a matchup so knowledge survives
   past a single conversation (playtesting-methodology §4: tech + plans win close matchups).
 - Let each member **commit** to what they will bring to an event, with reasoning, and let the team-admin
   **lock** the roster once the choice is made.
@@ -30,18 +30,16 @@ ends in a confident deck choice and a durable review.
 Exact entities from [data-model.md](../architecture/data-model.md) (all team-scoped, non-null `teamId`).
 
 ### `MatchupGamePlan`
-`{ id, teamId, ourDeckId (→ Deck), opponentArchetypeLabel, opponentHeroId?, opponentRef (derived),
-formatId, body, updatedBy }`
+`{ id, teamId, ourDeckId (→ Deck), formatId, name, body, updatedBy }`
 
-- A written, living guide for **one matchup**. FaB has **no MTG-style sideboards**; a game-plan captures
-  the equipment/weapon/card choices, mulligan priorities, sequencing, and lines for that pairing (see
+- A written, living guide for a matchup. FaB has **no MTG-style sideboards**; a game-plan captures
+  the equipment/weapon/card choices, mulligan priorities, sequencing, and lines (see
   [flesh-and-blood.md](../domain/flesh-and-blood.md)).
-- The opponent is a **matchup subject** mirroring `MetaDeckEntry`: a **required `opponentArchetypeLabel`**
-  (the human archetype name) with an **optional `opponentHeroId`** qualifier. The normalized `opponentRef`
-  key is `hero:<id>|label:<lowercased>` when hero-qualified, or `label:<lowercased>` otherwise — derived by
-  the shared `deriveMatchupSubjectRef` (the single source of truth for matchup-subject refs).
-- A game-plan may also **attach to specific meta deck entries** via the `GamePlanMetaDeckEntry` join;
-  create/update accept `metaDeckEntryIds`.
+- A plan is titled by a **free-text `name`** (editable on create and edit). Names are free-form: a deck
+  may have several plans and **duplicate names are allowed** (no uniqueness constraint).
+- A game-plan **covers specific meta deck entries** via the `GamePlanMetaDeckEntry` join (the "Covers
+  matchups" selection); create/update accept `metaDeckEntryIds`. This coverage is what feeds a deck's
+  readiness "planned" state.
 - **Key cards (meta-pivot redesign, WS-4):** referenced **inline in `body`** as `+[[cardId]]` tokens (the
   shared `+card` mention model — see `packages/shared/src/card-tokens.ts`), not a structured chip list. They
   resolve against the global card database (link-only decks mean we reference cards, never a stored list —
@@ -62,8 +60,9 @@ formatId, body, updatedBy }`
 ## Behavior & rules
 
 ### Game-plans
-- One canonical game-plan per `(ourDeckId, opponentRef, formatId)`; editing updates it in place and stamps
-  `updatedBy`. Any member may create or edit; team-admins may edit or archive any.
+- A plan has a free-text `name` (no uniqueness — a deck may have several, duplicates allowed); editing
+  updates `name`/`body`/covered decks in place and stamps `updatedBy`. Any member may create or edit;
+  team-admins may edit or archive any.
 - `body` is markdown; card references validated against the active team's game (`gameId`).
 - Game-plans are collaboration subjects: comments/@mentions attach via `subjectType: 'matchup_game_plan'`
   ([collaboration-core.md](collaboration-core.md)).
@@ -93,7 +92,7 @@ REST per [api-conventions.md](../architecture/api-conventions.md); `teamId` from
 
 ```
 # Game-plans
-GET    /api/game-plans?ourDeckId=&opponentRef=&formatId=
+GET    /api/game-plans?ourDeckId=&formatId=
 POST   /api/game-plans
 GET    /api/game-plans/:gamePlanId
 PATCH  /api/game-plans/:gamePlanId
@@ -113,7 +112,7 @@ PATCH  /api/events/:eventId/retrospective/:retrospectiveId
 
 ## UI / UX (mobile-first)
 
-- **Game-plan view:** matchup header (our deck vs opponent archetype), the body rendered with inline
+- **Game-plan view:** the plan's name header, the body rendered with inline
   `+[[cardId]]` card chips (hover/press card previews), and an inline comment thread. Reachable from the
   deck page.
 - **Deck selection:** on the event page, a compact "My pick" card (deck autocomplete + reasoning) plus a
@@ -135,8 +134,8 @@ team-admin only; members edit only their own selection.
 - **Plan later tied to a formalized meta deck entry:** attach the plan to the matching `MetaDeckEntry` via
   `metaDeckEntryIds` (the `GamePlanMetaDeckEntry` join) without losing the body.
 - **Member changes deck after lock:** blocked with 422; message explains a team-admin must unlock.
-- **Duplicate game-plan** for the same `(ourDeckId, opponentRef, formatId)`: treated as an edit of the
-  existing one (409 on a create attempt), not a second row.
+- **Several plans per deck:** allowed — names are free-form with no uniqueness, so a deck can hold
+  multiple plans (there is no duplicate-matchup 409).
 - **Event with no format-matching decks:** deck-selection picker warns if the chosen deck's `formatId`
   differs from the event's format (warning, not a hard block — humans own the list).
 
@@ -150,7 +149,8 @@ Per [testing-strategy.md](../architecture/testing-strategy.md):
 - **Permissions:** members can edit only their own `DeckSelection`; lock/unlock rejected for non-admins
   (403); locked selection edits rejected (422).
 - **Validation:** markdown/body required; card references resolve within the team's game.
-- **Behavior:** lock → unlock → edit transitions; single canonical game-plan per matchup key.
+- **Behavior:** lock → unlock → edit transitions; game-plans are free-form (name + covered decks + body),
+  no per-matchup uniqueness.
 
 ## Out of scope
 

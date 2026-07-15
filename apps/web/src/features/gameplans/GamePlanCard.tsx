@@ -19,13 +19,13 @@ const PLAN_CLAMP_CHARACTER_LIMIT = 240;
 const PLAN_CLAMP_LINE_LIMIT = 3;
 
 /**
- * A single matchup game-plan as a discussion-first card: the "vs opponent" header with a
+ * A single matchup game-plan as a discussion-first card: the plan's name header with a
  * live count + last-activity, the plan itself demoted to a compact pinned note (its body
  * rendered with inline `+[[cardId]]` card chips via {@link CardRichText}), and the
- * always-visible discussion thread as the body. Any member may edit in place (matchup key
- * immutable); only a team-admin may archive (server-enforced), so Archive shows for admins.
- * Meta-entry coverage is edited via the editor's multi-select, so it is intentionally not
- * shown here.
+ * always-visible discussion thread as the body. Any member may edit in place (name, body,
+ * and covered decks); only a team-admin may archive (server-enforced), so Archive shows for
+ * admins. Meta-entry coverage is edited via the editor's multi-select, so it is
+ * intentionally not shown here.
  */
 export function GamePlanCard({
   teamId,
@@ -114,7 +114,7 @@ export function GamePlanCard({
               <ChevronDown className="size-4 shrink-0 text-accent-foreground" aria-hidden="true" />
             )}
             <span className="truncate text-sm font-semibold text-accent-foreground">
-              vs {gamePlan.opponentSnapshotLabel}
+              {gamePlan.name}
             </span>
           </button>
         </h4>

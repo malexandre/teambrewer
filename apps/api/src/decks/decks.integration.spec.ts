@@ -663,15 +663,15 @@ describe("Decks endpoints (integration)", () => {
         gamesWonA: 2,
         gamesWonB: 0,
       });
-      // A game-plan exists for the hero matchup only — its opponent subject (hero +
-      // the same "Dorinthea" label) normalizes to the same opponentRef as the entry.
+      // A game-plan covers the hero entry only (via its "Covers matchups" link), so
+      // that entry reports planned while the archetype entry does not.
       await createMatchupGamePlan(prisma, {
         teamId: teamA.id,
         ourDeckId: ourDeck.id,
         formatId: fabFormatId,
         updatedById: memberA.id,
-        opponentHeroId: fabHeroId,
-        opponentArchetypeLabel: "Dorinthea",
+        name: "vs Dorinthea",
+        metaDeckEntryIds: [heroEntry.id],
       });
 
       const response = await asMemberA(

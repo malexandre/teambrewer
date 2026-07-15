@@ -11,7 +11,7 @@ import { useGamePlans } from "./use-game-plans";
 
 /**
  * The per-deck matchup game-plans, embedded on the deck detail page (the only surface
- * this phase). Lists the deck's plans (each a "vs opponent" card with its body, key
+ * this phase). Lists the deck's plans (each a named card with its body, key
  * cards, and discussion) and offers an inline editor to write a new one. Any member may
  * add a plan unless the deck is archived (matching the server rule that blocks creating
  * against an archived deck).

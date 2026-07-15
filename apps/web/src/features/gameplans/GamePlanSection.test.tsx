@@ -40,10 +40,7 @@ function planWith(metaDeckEntryIds: string[]) {
     ourDeckId: "deck-1",
     ourDeckName: "Aggro Dori",
     formatId: "format-1",
-    opponentHeroId: "hero-1",
-    opponentArchetypeLabel: "Briar",
-    opponentRef: "hero:hero-1|label:briar",
-    opponentSnapshotLabel: "Briar",
+    name: "vs Briar",
     body: "Race the clock; keep +[[card-1]] for the on-hit.",
     metaDeckEntryIds,
     updatedBy: { userId: "user-1", username: "alice", displayName: "Alice" },
@@ -247,7 +244,7 @@ describe("GamePlanSection", () => {
     expect(screen.getByText(/last reply/)).toBeInTheDocument();
   });
 
-  it("reveals the editor with the plan body composer and the opponent subject fields when writing", async () => {
+  it("reveals the editor with the name field and the plan body composer when writing", async () => {
     mockApi();
     renderSection(
       <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
@@ -258,8 +255,28 @@ describe("GamePlanSection", () => {
 
     // The body is a +card-enabled composer (type + to link a card inline).
     expect(screen.getByLabelText("Plan")).toBeInTheDocument();
-    // The opponent subject is a required archetype label with an optional hero qualifier.
-    expect(screen.getByLabelText("Archetype label")).toBeInTheDocument();
+    // A plan is titled by a free-text name.
+    expect(screen.getByLabelText("Name")).toBeInTheDocument();
+  });
+
+  it("shows the current name in edit mode and renames the plan on save", async () => {
+    const user = userEvent.setup();
+    const patchBodies: unknown[] = [];
+    mockApi(patchBodies);
+    renderSection(
+      <GamePlanSection teamId="team-1" deckId="deck-1" formatId="format-1" deckArchived={false} />,
+    );
+
+    await screen.findByText("vs Briar");
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    // The name field is pre-filled with the plan's current name (visible + editable).
+    const nameField = screen.getByLabelText("Name");
+    expect(nameField).toHaveValue("vs Briar");
+    await user.clear(nameField);
+    await user.type(nameField, "vs Control");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(patchBodies.at(-1)).toMatchObject({ name: "vs Control" }));
   });
 
   it("hides the write action when the deck is archived", async () => {

@@ -339,6 +339,7 @@ export {
 } from "./activity.js";
 
 export {
+  gamePlanNameSchema,
   gamePlanBodySchema,
   gamePlanMetaDeckEntryIdsSchema,
   deriveMatchupSubjectRef,

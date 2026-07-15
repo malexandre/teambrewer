@@ -297,7 +297,6 @@ model Hero {
   decks                 Deck[]
   gameLogsAsSelfHero    GameLog[]         @relation("GameLogSelfHero")
   gameLogsAsOpponentHero GameLog[]        @relation("GameLogOpponentHero")
-  matchupGamePlans      MatchupGamePlan[]
   metaDeckEntries       MetaDeckEntry[]
   metasAsChangeReasonHero Meta[]          @relation("MetaChangeReasonHero")
 
@@ -775,53 +774,42 @@ model ActivityEvent {
 //
 // MatchupGamePlan carries teamId and is team-scoped by construction. Key cards are
 // no longer a structured child table (meta-pivot redesign, WS-4): they live inline
-// in the plan `body` as
-// +[[cardId]] tokens (see packages/shared/src/card-tokens.ts). The opponent is a
-// **matchup subject**: a required `opponentArchetypeLabel` with an optional
-// `opponentHeroId` qualifier (mirroring MetaDeckEntry). opponentSnapshotLabel is a
-// server-derived human label resolved at write time that survives deletion of the
-// referenced hero, and opponentRef is a normalized key
-// (hero:<id>|label:<lowercased> for a hero-qualified subject, label:<lowercased>
-// otherwise) so the one-canonical-plan uniqueness can be enforced across the
-// polymorphic target and repeated-hero subjects stay distinct. A plan may also be
-// explicitly attached to specific MetaDeckEntry rows via GamePlanMetaDeckEntry.
+// in the plan `body` as +[[cardId]] tokens (see packages/shared/src/card-tokens.ts).
+// A plan is a free-text `name` (its title) + the meta decks it covers (via
+// GamePlanMetaDeckEntry, which also drive deck readiness) + the `body`. Names are
+// free-form: a deck may have several plans and duplicate names are allowed (no
+// uniqueness constraint).
 // ---------------------------------------------------------------------------
 
-/// A written, living guide for one matchup (our deck × an opponent archetype) —
-/// FaB's equivalent of a sideboard guide. One canonical plan per
-/// (teamId, ourDeckId, opponentRef, formatId). Soft-deleted via archivedAt.
+/// A written, living guide for a matchup — FaB's equivalent of a sideboard guide.
+/// A free-text name, the meta decks it covers, and a body. Soft-deleted via archivedAt.
 model MatchupGamePlan {
-  id                     String    @id @default(cuid())
-  teamId                 String    @map("team_id")
-  ourDeckId              String    @map("our_deck_id")
-  formatId               String    @map("format_id")
-  opponentHeroId         String?   @map("opponent_hero_id")
-  opponentArchetypeLabel String    @map("opponent_archetype_label")
-  opponentRef            String    @map("opponent_ref")
-  opponentSnapshotLabel  String    @map("opponent_snapshot_label")
-  body                   String
-  updatedById            String    @map("updated_by_id")
-  archivedAt             DateTime? @map("archived_at")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
+  id          String    @id @default(cuid())
+  teamId      String    @map("team_id")
+  ourDeckId   String    @map("our_deck_id")
+  formatId    String    @map("format_id")
+  name        String
+  body        String
+  updatedById String    @map("updated_by_id")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   team            Team                    @relation(fields: [teamId], references: [id], onDelete: Cascade)
   ourDeck         Deck                    @relation(fields: [ourDeckId], references: [id], onDelete: Cascade)
   format          Format                  @relation(fields: [formatId], references: [id])
-  opponentHero    Hero?                   @relation(fields: [opponentHeroId], references: [id], onDelete: SetNull)
   updatedBy       User                    @relation("MatchupGamePlanUpdatedBy", fields: [updatedById], references: [id], onDelete: Cascade)
   metaDeckEntries GamePlanMetaDeckEntry[]
 
-  @@unique([teamId, ourDeckId, opponentRef, formatId])
   @@index([teamId])
   @@index([teamId, ourDeckId])
   @@map("matchup_game_plan")
 }
 
-/// Explicit join attaching a game-plan to specific meta deck entries (so a plan can
-/// be pinned to the exact archetypes-to-beat it addresses, beyond the implicit
-/// opponentRef match). No teamId — it is reached only through its team-scoped
-/// parents (the plan / the entry), which are validated same-team at write time.
+/// Join attaching a game-plan to the meta deck entries it covers (the archetypes-to-beat
+/// it addresses); this is what feeds a deck's readiness "planned" state. No teamId — it
+/// is reached only through its team-scoped parents (the plan / the entry), which are
+/// validated same-team at write time.
 model GamePlanMetaDeckEntry {
   id              String   @id @default(cuid())
   gamePlanId      String   @map("game_plan_id")

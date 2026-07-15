@@ -45,7 +45,6 @@ describe("Game-plans endpoints (integration)", () => {
   let fabFormatId: string;
   let fabHeroId: string;
   let riftFormatId: string;
-  let riftHeroId: string;
   let deckA: TestDeck;
   let deckB: TestDeck;
   let cardA: TestCard;
@@ -96,7 +95,6 @@ describe("Game-plans endpoints (integration)", () => {
     riftFormatId = (
       await createFormat(prisma, { gameId: "riftbound", key: "std", name: "Standard" })
     ).id;
-    riftHeroId = (await createHero(prisma, { gameId: "riftbound", name: "Rift Legend" })).id;
 
     deckA = await createDeck(prisma, {
       teamId: teamA.id,
@@ -126,54 +124,38 @@ describe("Game-plans endpoints (integration)", () => {
   const validBody = () => ({
     ourDeckId: deckA.id,
     formatId: fabFormatId,
-    opponentHeroId: fabHeroId,
-    opponentArchetypeLabel: "Draconic Dorinthea",
+    name: "vs Draconic Dorinthea",
     // Key cards are referenced inline in the body as +[[cardId]] tokens (WS-4).
     body: `Mulligan for +[[${cardA.id}]]; sequence attacks before defense reactions.`,
   });
 
   describe("POST /api/game-plans", () => {
-    it("creates a plan, stamping teamId/updatedBy server-side and resolving the opponent subject", async () => {
+    it("creates a plan, stamping teamId/updatedBy server-side", async () => {
       const response = await asMemberA(http().post("/api/game-plans")).send({
         ...validBody(),
         teamId: teamB.id,
         updatedById: memberB.id,
       });
       expect(response.status).toBe(201);
-      expect(response.body.opponentHeroId).toBe(fabHeroId);
-      expect(response.body.opponentArchetypeLabel).toBe("Draconic Dorinthea");
-      expect(response.body.opponentSnapshotLabel).toBe("Draconic Dorinthea");
-      // The ref encodes hero + lowercased label so repeated heroes stay distinct.
-      expect(response.body.opponentRef).toBe(`hero:${fabHeroId}|label:draconic dorinthea`);
+      expect(response.body.name).toBe("vs Draconic Dorinthea");
       expect(response.body.metaDeckEntryIds).toEqual([]);
       expect(response.body.updatedBy.userId).toBe(memberA.id);
       // The body carries the inline card token verbatim (resolved to a chip in the UI).
       expect(response.body.body).toContain(`+[[${cardA.id}]]`);
+      // The old opponent subject is gone from the contract.
+      expect(response.body).not.toHaveProperty("opponentRef");
     });
 
-    it("accepts a label-only opponent subject", async () => {
-      const { opponentHeroId, ...labelOnly } = validBody();
-      void opponentHeroId;
-      const response = await asMemberA(http().post("/api/game-plans")).send({
-        ...labelOnly,
-        opponentArchetypeLabel: "Aggro Fai",
-      });
-      expect(response.status).toBe(201);
-      expect(response.body.opponentHeroId).toBeNull();
-      expect(response.body.opponentRef).toBe("label:aggro fai");
-    });
-
-    it("rejects a second create for the same matchup key with 409", async () => {
+    it("allows a second plan with the same name (no uniqueness constraint)", async () => {
       await asMemberA(http().post("/api/game-plans")).send(validBody());
-      const dup = await asMemberA2(http().post("/api/game-plans")).send(validBody());
-      expect(dup.status).toBe(409);
-      expect(dup.body.error.code).toBe("CONFLICT");
+      const second = await asMemberA2(http().post("/api/game-plans")).send(validBody());
+      expect(second.status).toBe(201);
     });
 
-    it("rejects a plan with no opponent label (400)", async () => {
-      const { opponentArchetypeLabel, ...withoutLabel } = validBody();
-      void opponentArchetypeLabel;
-      const response = await asMemberA(http().post("/api/game-plans")).send(withoutLabel);
+    it("rejects a plan with no name (400)", async () => {
+      const { name, ...withoutName } = validBody();
+      void name;
+      const response = await asMemberA(http().post("/api/game-plans")).send(withoutName);
       expect(response.status).toBe(400);
     });
 
@@ -200,7 +182,6 @@ describe("Game-plans endpoints (integration)", () => {
       });
       const rejected = await asMemberA(http().post("/api/game-plans")).send({
         ...validBody(),
-        opponentArchetypeLabel: "Another Matchup",
         metaDeckEntryIds: [foreignEntry.id],
       });
       expect(rejected.status).toBe(422);
@@ -213,14 +194,6 @@ describe("Game-plans endpoints (integration)", () => {
       });
       expect(response.status).toBe(422);
       expect(response.body.error.code).toBe("DOMAIN_RULE_VIOLATION");
-    });
-
-    it("rejects a hero from another game (→ 404)", async () => {
-      const response = await asMemberA(http().post("/api/game-plans")).send({
-        ...validBody(),
-        opponentHeroId: riftHeroId,
-      });
-      expect(response.status).toBe(404);
     });
 
     it("rejects a format from another game (→ 404)", async () => {
@@ -257,6 +230,15 @@ describe("Game-plans endpoints (integration)", () => {
       expect(updated.body.body).toContain(`+[[${cardA2.id}]]`);
       expect(updated.body.updatedBy.userId).toBe(memberA2.id);
     });
+
+    it("renames the plan", async () => {
+      const created = await asMemberA(http().post("/api/game-plans")).send(validBody());
+      const updated = await asMemberA2(http().patch(`/api/game-plans/${created.body.id}`)).send({
+        name: "vs Control",
+      });
+      expect(updated.status).toBe(200);
+      expect(updated.body.name).toBe("vs Control");
+    });
   });
 
   describe("DELETE /api/game-plans/:gamePlanId", () => {
@@ -283,7 +265,6 @@ describe("Game-plans endpoints (integration)", () => {
         ourDeckId: deckB.id,
         formatId: fabFormatId,
         updatedById: memberB.id,
-        opponentHeroId: fabHeroId,
       });
       const response = await asMemberA(http().get(`/api/game-plans/${foreign.id}`));
       expect(response.status).toBe(404);
@@ -303,7 +284,6 @@ describe("Game-plans endpoints (integration)", () => {
         ourDeckId: deckB.id,
         formatId: fabFormatId,
         updatedById: memberB.id,
-        opponentHeroId: fabHeroId,
       });
       const response = await asMemberB(http().get("/api/game-plans"));
       expect(response.status).toBe(200);

@@ -11,26 +11,30 @@ describe("createMatchupGamePlanSchema", () => {
   const base = {
     ourDeckId: "deck_1",
     formatId: "format_1",
-    opponentArchetypeLabel: "Aggro Fai",
+    name: "vs Defensive",
     body: "Mulligan for Command and Conquer; sequence attacks before defense reactions.",
   };
 
-  it("accepts a label-only opponent subject", () => {
+  it("accepts a free-text name", () => {
     const parsed = createMatchupGamePlanSchema.parse(base);
-    expect(parsed.opponentArchetypeLabel).toBe("Aggro Fai");
-    expect(parsed.opponentHeroId).toBeUndefined();
+    expect(parsed.name).toBe("vs Defensive");
   });
 
-  it("accepts a label with an optional hero qualifier", () => {
-    const parsed = createMatchupGamePlanSchema.parse({ ...base, opponentHeroId: "hero_1" });
-    expect(parsed.opponentHeroId).toBe("hero_1");
-    expect(parsed.opponentArchetypeLabel).toBe("Aggro Fai");
+  it("requires a non-empty name", () => {
+    const { name, ...withoutName } = base;
+    void name;
+    expect(createMatchupGamePlanSchema.safeParse(withoutName).success).toBe(false);
+    expect(createMatchupGamePlanSchema.safeParse({ ...base, name: "   " }).success).toBe(false);
   });
 
-  it("requires the opponent label", () => {
-    const { opponentArchetypeLabel, ...withoutLabel } = base;
-    void opponentArchetypeLabel;
-    expect(createMatchupGamePlanSchema.safeParse(withoutLabel).success).toBe(false);
+  it("no longer accepts a hero/archetype opponent subject (stripped or rejected)", () => {
+    const parsed = createMatchupGamePlanSchema.parse({
+      ...base,
+      opponentHeroId: "hero_1",
+      opponentArchetypeLabel: "Aggro Fai",
+    } as Record<string, unknown>);
+    expect(parsed).not.toHaveProperty("opponentHeroId");
+    expect(parsed).not.toHaveProperty("opponentArchetypeLabel");
   });
 
   it("accepts an optional set of attached meta deck entries and rejects duplicates", () => {
@@ -64,6 +68,10 @@ describe("updateMatchupGamePlanSchema", () => {
     expect(updateMatchupGamePlanSchema.parse({ body: "Revised line." }).body).toBe("Revised line.");
   });
 
+  it("accepts a name-only update (the name is editable)", () => {
+    expect(updateMatchupGamePlanSchema.parse({ name: "vs Control" }).name).toBe("vs Control");
+  });
+
   it("accepts a metaDeckEntryIds-only update (replacement set)", () => {
     expect(
       updateMatchupGamePlanSchema.parse({ metaDeckEntryIds: ["entry_1"] }).metaDeckEntryIds,
@@ -74,7 +82,7 @@ describe("updateMatchupGamePlanSchema", () => {
     expect(() => updateMatchupGamePlanSchema.parse({})).toThrow();
   });
 
-  it("rejects mutating the immutable opponent subject / ourDeckId / formatId", () => {
+  it("rejects unknown keys (ourDeckId / formatId / opponent subject are not updatable here)", () => {
     expect(() => updateMatchupGamePlanSchema.parse({ opponentHeroId: "hero_2" })).toThrow();
     expect(() => updateMatchupGamePlanSchema.parse({ ourDeckId: "deck_2" })).toThrow();
     expect(() => updateMatchupGamePlanSchema.parse({ formatId: "format_2" })).toThrow();

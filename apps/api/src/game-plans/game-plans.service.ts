@@ -1,5 +1,4 @@
 import {
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -8,7 +7,6 @@ import {
 
 import {
   type CreateMatchupGamePlanInput,
-  deriveMatchupSubjectRef,
   errorCode,
   type MatchupGamePlan,
   type MatchupGamePlanListQuery,
@@ -18,7 +16,7 @@ import {
 
 import { CollaborationActivityService } from "../collaboration/activity.service.js";
 import { decodeKeysetCursor, encodeKeysetCursor } from "../common/keyset-cursor.js";
-import { assertFormatInGame, assertHeroInGame } from "../common/reference-data-guards.js";
+import { assertFormatInGame } from "../common/reference-data-guards.js";
 import type { TeamContext } from "../tenancy/team-context.js";
 import { TeamScopedPrisma } from "../tenancy/team-scoped-prisma.js";
 
@@ -35,10 +33,7 @@ interface GamePlanRow {
   teamId: string;
   ourDeckId: string;
   formatId: string;
-  opponentHeroId: string | null;
-  opponentArchetypeLabel: string;
-  opponentRef: string;
-  opponentSnapshotLabel: string;
+  name: string;
   body: string;
   archivedAt: Date | null;
   createdAt: Date;
@@ -46,14 +41,6 @@ interface GamePlanRow {
   ourDeck: { name: string };
   updatedBy: UserRow;
   metaDeckEntries: { metaDeckEntryId: string }[];
-}
-
-/** The resolved opponent columns + normalized key + human snapshot label, ready to persist. */
-interface ResolvedOpponent {
-  opponentHeroId: string | null;
-  opponentArchetypeLabel: string;
-  opponentRef: string;
-  opponentSnapshotLabel: string;
 }
 
 const GAME_PLAN_INCLUDE = {
@@ -64,13 +51,12 @@ const GAME_PLAN_INCLUDE = {
 
 /**
  * Team-scoped matchup game-plans (docs/features/gameplans-and-deck-selection.md) — a
- * written, living guide for one (our deck × opponent archetype) matchup. Every query
- * goes through {@link TeamScopedPrisma} so it is filtered by the verified `teamId`; a
- * cross-tenant id yields no row (→ 404, never leaking existence). Game-plans are shared
- * team knowledge (no owner): any member may create or edit, and editing updates the one
- * canonical plan in place while stamping `updatedBy`; only a team-admin may archive. The
- * opponent is resolved once into a normalized `opponentRef` key (so the one-canonical
- * plan uniqueness holds across the polymorphic target) plus a durable snapshot label.
+ * written, living guide for a matchup: a free-text `name`, the meta decks it covers,
+ * and a body. Every query goes through {@link TeamScopedPrisma} so it is filtered by the
+ * verified `teamId`; a cross-tenant id yields no row (→ 404, never leaking existence).
+ * Game-plans are shared team knowledge (no owner): any member may create or edit (name,
+ * body, and covered meta decks are all editable) while `updatedBy` is stamped; only a
+ * team-admin may archive. Names are free-form — duplicates are allowed.
  */
 @Injectable()
 export class GamePlansService {
@@ -80,15 +66,14 @@ export class GamePlansService {
   ) {}
 
   /**
-   * List the team's plans with `ourDeckId`/`opponentRef`/`formatId` filters + keyset
-   * pagination (newest first). Archived plans are excluded.
+   * List the team's plans with `ourDeckId`/`formatId` filters + keyset pagination
+   * (newest first). Archived plans are excluded.
    */
   async list(query: MatchupGamePlanListQuery): Promise<MatchupGamePlanListResponse> {
     const cursor = query.cursor ? decodeKeysetCursor(query.cursor) : null;
 
     const andClauses: Record<string, unknown>[] = [];
     if (query.ourDeckId) andClauses.push({ ourDeckId: query.ourDeckId });
-    if (query.opponentRef) andClauses.push({ opponentRef: query.opponentRef });
     if (query.formatId) andClauses.push({ formatId: query.formatId });
     if (cursor) {
       andClauses.push({
@@ -121,17 +106,14 @@ export class GamePlansService {
   }
 
   /**
-   * Create a game-plan. Validates our deck + format belong to the team's game and
-   * resolves the single opponent target into its columns + normalized key + snapshot
-   * label. Enforces one canonical plan per `(team, ourDeckId, opponentRef, formatId)`
-   * — a duplicate is a 409. Stamps `updatedById` from the verified context. Key cards
+   * Create a game-plan. Validates our deck + format belong to the team's game, then
+   * stores the free-text `name`, the body, and the covered meta decks. Names are
+   * free-form (no uniqueness). Stamps `updatedById` from the verified context. Key cards
    * live inline in the body as `+[[cardId]]` tokens (no structured child table).
    */
   async create(team: TeamContext, input: CreateMatchupGamePlanInput): Promise<MatchupGamePlan> {
     await this.assertTeamDeck(input.ourDeckId);
     await assertFormatInGame(this.scoped.db, team.gameId, input.formatId);
-    const opponent = await this.resolveOpponent(team.gameId, input);
-    await this.assertNoDuplicatePlan(input.ourDeckId, opponent.opponentRef, input.formatId);
     const entryIds = await this.assertTeamMetaDeckEntries(input.metaDeckEntryIds ?? []);
 
     const created = await this.scoped.db.matchupGamePlan.create({
@@ -142,10 +124,7 @@ export class GamePlansService {
         updatedById: team.userId,
         ourDeckId: input.ourDeckId,
         formatId: input.formatId,
-        opponentHeroId: opponent.opponentHeroId,
-        opponentArchetypeLabel: opponent.opponentArchetypeLabel,
-        opponentRef: opponent.opponentRef,
-        opponentSnapshotLabel: opponent.opponentSnapshotLabel,
+        name: input.name,
         body: input.body,
       },
       select: { id: true },
@@ -157,9 +136,9 @@ export class GamePlansService {
   }
 
   /**
-   * Edit a game-plan in place (any team member). The matchup key is immutable (rejected
-   * by the schema); the `body` updates (including its inline `+[[cardId]]` tokens) and
-   * `updatedBy` is re-stamped.
+   * Edit a game-plan in place (any team member). Any of `name`, `body`, or the covered
+   * meta decks (`metaDeckEntryIds`, a replacement set) can change; `updatedBy` is
+   * re-stamped. `ourDeckId`/`formatId` are fixed at creation.
    */
   async update(
     team: TeamContext,
@@ -176,6 +155,7 @@ export class GamePlansService {
         : null;
 
     const data: Record<string, unknown> = { updatedById: team.userId };
+    if (input.name !== undefined) data["name"] = input.name;
     if (input.body !== undefined) data["body"] = input.body;
     await this.scoped.db.matchupGamePlan.updateMany({ where: { id: gamePlanId }, data });
     if (entryIds !== null) {
@@ -226,33 +206,6 @@ export class GamePlansService {
   }
 
   /**
-   * Resolve the opponent matchup subject (a required label + an optional hero
-   * qualifier) into its persisted columns, a normalized `opponentRef` key (so
-   * uniqueness holds across the polymorphic target and repeated heroes under
-   * different labels stay distinct — see {@link deriveMatchupSubjectRef}), and a
-   * human `opponentSnapshotLabel` (the label, which survives hero deletion). A hero,
-   * when provided, must belong to the team's game (→ 404).
-   */
-  private async resolveOpponent(
-    gameId: string,
-    input: {
-      opponentHeroId?: string | undefined;
-      opponentArchetypeLabel: string;
-    },
-  ): Promise<ResolvedOpponent> {
-    const heroId = input.opponentHeroId ?? null;
-    if (heroId !== null) {
-      await assertHeroInGame(this.scoped.db, gameId, heroId);
-    }
-    return {
-      opponentHeroId: heroId,
-      opponentArchetypeLabel: input.opponentArchetypeLabel,
-      opponentRef: deriveMatchupSubjectRef({ heroId, label: input.opponentArchetypeLabel }),
-      opponentSnapshotLabel: input.opponentArchetypeLabel,
-    };
-  }
-
-  /**
    * Validate that every attached meta-deck-entry id belongs to the team (a
    * cross-team/missing id is a domain-rule 422; the team-scoped read never leaks
    * existence). Returns the distinct ids to persist.
@@ -290,27 +243,6 @@ export class GamePlansService {
     }
   }
 
-  /** Enforce the one-canonical-plan-per-matchup rule (→ 409 on a create collision). */
-  private async assertNoDuplicatePlan(
-    ourDeckId: string,
-    opponentRef: string,
-    formatId: string,
-  ): Promise<void> {
-    const existing = await this.scoped.db.matchupGamePlan.findFirst({
-      where: { ourDeckId, opponentRef, formatId },
-      select: { id: true },
-    });
-    if (existing) {
-      throw new ConflictException({
-        error: {
-          code: errorCode.conflict,
-          message:
-            "A game-plan for this deck, opponent, and format already exists. Edit it instead of creating a new one.",
-        },
-      });
-    }
-  }
-
   /** Reject an `ourDeckId` that does not belong to the team (cross-team FK → 422). */
   private async assertTeamDeck(deckId: string): Promise<void> {
     const deck = await this.scoped.db.deck.findFirst({
@@ -340,10 +272,7 @@ function toMatchupGamePlan(row: GamePlanRow): MatchupGamePlan {
     ourDeckId: row.ourDeckId,
     ourDeckName: row.ourDeck.name,
     formatId: row.formatId,
-    opponentHeroId: row.opponentHeroId,
-    opponentArchetypeLabel: row.opponentArchetypeLabel,
-    opponentRef: row.opponentRef,
-    opponentSnapshotLabel: row.opponentSnapshotLabel,
+    name: row.name,
     body: row.body,
     metaDeckEntryIds: row.metaDeckEntries.map((link) => link.metaDeckEntryId),
     updatedBy: {

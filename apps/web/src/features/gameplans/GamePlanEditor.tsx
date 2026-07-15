@@ -3,12 +3,11 @@ import { META_TIER_LABELS } from "@teambrewer/shared";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { useHeroes } from "@/features/cards/use-heroes";
 import { MentionComposer } from "@/features/collaboration/MentionComposer";
-import { HeroPicker } from "@/features/decks/HeroPicker";
-import { useIdentityLabel } from "@/features/game-logging/use-game-config";
 import { META_TIER_TONE } from "@/features/metas/meta-display";
 import { ApiError } from "@/lib/api-client";
 
@@ -16,13 +15,12 @@ import { metaEntryDisplayName } from "./gameplan-display";
 import { useCreateGamePlan, useUpdateGamePlan } from "./use-game-plan-mutations";
 
 /**
- * Create/edit form for a matchup game-plan, surfaced from the deck detail page. On
- * create it names the opponent as a matchup subject — a required free-text archetype
- * label with an optional hero qualifier — plus the body. On edit the matchup key is
- * immutable (server-enforced), so only the body changes. Key cards are referenced
- * inline in the body via the shared {@link MentionComposer} with `+card` mentions on
- * (type `+` to link a card) — there is no separate structured key-card strip (WS-4).
- * The composer's submit is the form's submit; the body carries the plan.
+ * Create/edit form for a matchup game-plan, surfaced from the deck detail page. A plan
+ * is a free-text **name** (the title, editable on create and edit), the meta decks it
+ * **covers** (which drive deck readiness), and the body. Key cards are referenced inline
+ * in the body via the shared {@link MentionComposer} with `+card` mentions on (type `+`
+ * to link a card) — there is no separate structured key-card strip (WS-4). The
+ * composer's submit is the form's submit; the body carries the plan.
  */
 export function GamePlanEditor({
   teamId,
@@ -44,9 +42,7 @@ export function GamePlanEditor({
   onDone: () => void;
 }) {
   const isEdit = existing !== undefined;
-  const identityLabel = useIdentityLabel(teamId);
-  const [heroId, setHeroId] = useState("");
-  const [archetypeLabel, setArchetypeLabel] = useState("");
+  const [name, setName] = useState(existing?.name ?? "");
   const [validationError, setValidationError] = useState<string | null>(null);
   // The set of meta deck entries this plan covers (edited via the multi-select). Seeded
   // from the existing assignment on edit; the whole set is sent on save (replace semantics).
@@ -95,17 +91,17 @@ export function GamePlanEditor({
   function handleSubmit(body: string) {
     setValidationError(null);
 
-    if (isEdit) {
-      update.mutate(
-        { body, metaDeckEntryIds: coveredEntryIds },
-        { onSuccess: onDone, onError: () => restoreComposer(body) },
-      );
+    if (name.trim().length === 0) {
+      setValidationError("Enter a name for the game-plan.");
+      restoreComposer(body);
       return;
     }
 
-    if (archetypeLabel.trim().length === 0) {
-      setValidationError("Enter an archetype label for the matchup.");
-      restoreComposer(body);
+    if (isEdit) {
+      update.mutate(
+        { name: name.trim(), body, metaDeckEntryIds: coveredEntryIds },
+        { onSuccess: onDone, onError: () => restoreComposer(body) },
+      );
       return;
     }
 
@@ -113,9 +109,8 @@ export function GamePlanEditor({
       {
         ourDeckId: deckId,
         formatId,
+        name: name.trim(),
         body,
-        opponentArchetypeLabel: archetypeLabel.trim(),
-        ...(heroId ? { opponentHeroId: heroId } : {}),
         ...(coveredEntryIds.length > 0 ? { metaDeckEntryIds: coveredEntryIds } : {}),
       },
       { onSuccess: onDone, onError: () => restoreComposer(body) },
@@ -129,27 +124,15 @@ export function GamePlanEditor({
       className="flex flex-col gap-3 rounded-md border border-border p-3"
       aria-label={isEdit ? "Edit game-plan" : "New game-plan"}
     >
-      {!isEdit ? (
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Opponent</span>
-          <input
-            type="text"
-            aria-label="Archetype label"
-            className="w-full rounded-md border border-input bg-background p-2 text-sm"
-            value={archetypeLabel}
-            onChange={(event) => setArchetypeLabel(event.target.value)}
-            placeholder="e.g. Aggro Fai"
-          />
-          <span className="text-xs text-muted-foreground">{identityLabel} (optional)</span>
-          <HeroPicker
-            teamId={teamId}
-            formatId={formatId}
-            value={heroId}
-            onChange={setHeroId}
-            id="game-plan-hero"
-          />
-        </div>
-      ) : null}
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="game-plan-name">Name</Label>
+        <Input
+          id="game-plan-name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="e.g. vs Aggro Fai"
+        />
+      </div>
 
       {coverageOptions.length > 0 ? (
         <div className="flex flex-col gap-1">

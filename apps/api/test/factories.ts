@@ -590,44 +590,41 @@ export interface CreateMatchupGamePlanOptions {
   ourDeckId: string;
   formatId: string;
   updatedById: string;
-  opponentHeroId?: string | null;
-  opponentArchetypeLabel?: string | null;
-  opponentRef?: string;
-  opponentSnapshotLabel?: string;
+  name?: string;
   body?: string;
+  /** Meta deck entries this plan covers (drives readiness "planned"). */
+  metaDeckEntryIds?: string[];
   archivedAt?: Date | null;
 }
 
 export async function createMatchupGamePlan(
   prisma: PrismaClient,
   options: CreateMatchupGamePlanOptions,
-): Promise<{ id: string; teamId: string; ourDeckId: string; opponentRef: string }> {
-  const label = options.opponentArchetypeLabel ?? "Aggro Red";
-  const normalizedLabel = label.trim().toLowerCase();
-  const opponentRef =
-    options.opponentRef ??
-    (options.opponentHeroId
-      ? `hero:${options.opponentHeroId}|label:${normalizedLabel}`
-      : `label:${normalizedLabel}`);
+): Promise<{ id: string; teamId: string; ourDeckId: string; name: string }> {
   const created = await prisma.matchupGamePlan.create({
     data: {
       teamId: options.teamId,
       ourDeckId: options.ourDeckId,
       formatId: options.formatId,
       updatedById: options.updatedById,
-      opponentHeroId: options.opponentHeroId ?? null,
-      opponentArchetypeLabel: label,
-      opponentRef,
-      opponentSnapshotLabel: options.opponentSnapshotLabel ?? label,
+      name: options.name ?? "vs Aggro Red",
       body: options.body ?? "Mulligan aggressively; race the clock.",
       archivedAt: options.archivedAt ?? null,
     },
   });
+  if (options.metaDeckEntryIds && options.metaDeckEntryIds.length > 0) {
+    await prisma.gamePlanMetaDeckEntry.createMany({
+      data: options.metaDeckEntryIds.map((metaDeckEntryId) => ({
+        gamePlanId: created.id,
+        metaDeckEntryId,
+      })),
+    });
+  }
   return {
     id: created.id,
     teamId: created.teamId,
     ourDeckId: created.ourDeckId,
-    opponentRef: created.opponentRef,
+    name: created.name,
   };
 }
 

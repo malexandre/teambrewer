@@ -112,23 +112,17 @@ Related: [multi-tenancy](multi-tenancy.md) · [game-abstraction](game-abstractio
   still reads meaningfully.
 
 ### Game-plans
-- **MatchupGamePlan** `{ id, teamId, ourDeckId, opponentArchetypeLabel, opponentHeroId?,
-  opponentRef (derived), formatId, body, updatedBy, archivedAt? }` — one canonical plan per
-  `(teamId, ourDeckId, opponentRef, formatId)`. The opponent is a **matchup subject** mirroring
-  `MetaDeckEntry`: a **required `opponentArchetypeLabel`** with an **optional `opponentHeroId`** qualifier.
-  **Implementation note:** `opponentRef` is a derived, normalized key string
-  (`hero:<id>|label:<lowercased>` when hero-qualified, else `label:<lowercased>`) — produced by the shared
-  `deriveMatchupSubjectRef` (single source of truth) — so the uniqueness constraint holds across the
-  polymorphic target (Postgres treats NULLs as distinct); a derived `opponentSnapshotLabel` survives
-  deletion of the referenced hero. A duplicate create → `409`;
-  editing updates in place and re-stamps `updatedBy`. Shared team knowledge (no owner): any member
-  creates/edits; **archive is team-admin only**. **Key cards (meta-pivot redesign, WS-4):** the structured
+- **MatchupGamePlan** `{ id, teamId, ourDeckId, formatId, name, body, updatedBy, archivedAt? }` — a plan is
+  a free-text `name` (its title), the meta decks it covers (`GamePlanMetaDeckEntry`), and a body. Names are
+  free-form: **no uniqueness constraint**, so a deck may have several plans and duplicate names are allowed.
+  Editing updates `name`/`body`/covered decks in place and re-stamps `updatedBy`. Shared team knowledge (no
+  owner): any member creates/edits; **archive is team-admin only**. **Key cards (meta-pivot redesign, WS-4):** the structured
   `MatchupGamePlanCard` child table was dropped — key cards now live inline in `body` as `+[[cardId]]`
   tokens (the shared `+card` mention model; see `packages/shared/src/card-tokens.ts`), resolved to card
   chips at render time. A collaboration subject (`subjectType: 'matchup_game_plan'`).
-- **GamePlanMetaDeckEntry** `{ id, gamePlanId, metaDeckEntryId }` — join attaching a `MatchupGamePlan` to
-  specific meta deck entries; create/update on a game-plan accept `metaDeckEntryIds`. Scoped transitively
-  through its parents (no `teamId` of its own).
+- **GamePlanMetaDeckEntry** `{ id, gamePlanId, metaDeckEntryId }` — join recording the meta deck entries a
+  `MatchupGamePlan` covers; create/update on a game-plan accept `metaDeckEntryIds`. This coverage is what
+  drives a deck's readiness "planned" state. Scoped transitively through its parents (no `teamId` of its own).
 
 ### Collaboration (polymorphic — see collaboration-core spec)
 - **Comment** `{ id, teamId, authorId, subjectType, subjectId, body, parentCommentId?, archivedAt? }`

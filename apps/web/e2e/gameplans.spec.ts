@@ -21,16 +21,15 @@ test("write a matchup game-plan on a deck with an inline +card reference", async
   await expect(page.getByTestId("backup-codes")).toBeVisible();
   await page.getByRole("button", { name: "Continue to app" }).click();
 
-  // 2. Open the seeded deck and write a game-plan vs an archetype.
+  // 2. Open the seeded deck and write a game-plan.
   await page.getByRole("link", { name: "Decks", exact: true }).click();
   await page.getByRole("link", { name: new RegExp(E2E_GAMEPLAN_DECK_NAME) }).click();
   await expect(page.getByRole("heading", { name: E2E_GAMEPLAN_DECK_NAME })).toBeVisible();
 
-  // Game-plans live under the deck's "Plan" tab. The opponent is named by a free-text
-  // archetype label (with an optional hero qualifier).
+  // Game-plans live under the deck's "Plan" tab. A plan is titled by a free-text name.
   await page.getByRole("tab", { name: "Plan" }).click();
   await page.getByRole("button", { name: "Write a game-plan" }).click();
-  await page.getByLabel("Archetype label").fill("Aggro Fai");
+  await page.getByLabel("Name").fill("vs Aggro Fai");
 
   // The plan body carries key cards inline via the +card composer (no structured
   // key-card strip anymore — meta-pivot). Type prose then a +card token and pick it.
