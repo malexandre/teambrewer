@@ -396,6 +396,8 @@ export {
 export {
   deckCardObservationSchema,
   deckCardObservationsResponseSchema,
+  deriveCardObservationScore,
+  CARD_OBSERVATION_SCORE_PRIOR,
   type DeckCardObservation,
   type DeckCardObservationsResponse,
 } from "./deck-card-observations.js";

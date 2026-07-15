@@ -21,7 +21,19 @@ function CountCell({ value, tone }: { value: number; tone: string }) {
   );
 }
 
-/** One card row: the card (art + name + pitch) and its two separate observation counts. */
+/** Format a 0–1 score as a whole percentage. */
+function formatScore(score: number): string {
+  return `${Math.round(score * 100)}%`;
+}
+
+/** Color the score by verdict: green ≥55% (keep), red ≤45% (cut), neutral in between. */
+function scoreToneClass(score: number): string {
+  if (score >= 0.55) return "text-success-foreground";
+  if (score <= 0.45) return "text-danger-foreground";
+  return "text-muted-foreground";
+}
+
+/** One card row: the card (art + name + pitch), its keep/cut score, and its two counts. */
 function ObservationRow({ observation }: { observation: DeckCardObservation }) {
   return (
     <tr className="border-b border-border/60 last:border-0">
@@ -29,6 +41,14 @@ function ObservationRow({ observation }: { observation: DeckCardObservation }) {
         <span className="flex items-center justify-between gap-2">
           <CardResultRow card={observation.card} />
         </span>
+      </td>
+      <td
+        className={cn(
+          "py-2 pr-3 text-right align-middle font-semibold whitespace-nowrap tabular-nums",
+          scoreToneClass(observation.score),
+        )}
+      >
+        {formatScore(observation.score)}
       </td>
       <CountCell value={observation.impressiveCount} tone="text-success-foreground" />
       <CountCell value={observation.underperformingCount} tone="text-danger-foreground" />
@@ -74,11 +94,12 @@ export function DeckCardObservationsSection({
         </p>
       ) : (
         <div className="overflow-x-auto">
-          {/* Card column soaks up the width (w-full); the two count columns hug their content. */}
+          {/* Card column soaks up the width (w-full); the score + count columns hug their content. */}
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                 <th className="w-full py-2 pr-3 font-medium">Card</th>
+                <th className="whitespace-nowrap py-2 pr-3 text-right font-medium">Score</th>
                 <th className="whitespace-nowrap py-2 pr-3 text-right font-medium">Impressive</th>
                 <th className="whitespace-nowrap py-2 pr-3 text-right font-medium">
                   Underperforming

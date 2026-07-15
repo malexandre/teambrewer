@@ -965,13 +965,65 @@ describe("Decks endpoints (integration)", () => {
           card: { id: impressive.id, name: "Command and Conquer", pitch: null, imageUrl: null },
           impressiveCount: 2,
           underperformingCount: 0,
+          // 2 impressive of weight 1 over 3 weight-1 games: 0.5 + 0.5·2/(3+2) = 0.7.
+          score: 0.7,
         },
         {
           card: { id: flopped.id, name: "Sink Below", pitch: null, imageUrl: null },
           impressiveCount: 0,
           underperformingCount: 1,
+          // 1 underperforming of weight 1 over 3 weight-1 games: 0.5 − 0.5·1/(3+2) = 0.4.
+          score: 0.4,
         },
       ]);
+    });
+
+    it("scores cards higher for impressions in heavy games and below 50% for underperformers", async () => {
+      const deck = await ownDeck();
+      const strong = await createCard(prisma, { name: "Strong In Big Games" });
+      const weak = await createCard(prisma, { name: "Strong Only In Casual" });
+      const bad = await createCard(prisma, { name: "Liability" });
+      // A heavy (tournament-serious, weight 1.0) game where "strong" impressed.
+      const heavyGame = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: deck.id,
+        confidenceWeight: 1,
+      });
+      await captureCard(heavyGame.id, strong.id, "impressive", "A");
+      // A low-weight (casual) game where "weak" impressed.
+      const lightGame = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: deck.id,
+        confidenceWeight: 0.4,
+      });
+      await captureCard(lightGame.id, weak.id, "impressive", "A");
+      // A heavy game where "bad" underperformed.
+      const badGame = await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: deck.id,
+        confidenceWeight: 1,
+      });
+      await captureCard(badGame.id, bad.id, "underperforming", "A");
+
+      const response = await asMemberA(http().get(`/api/decks/${deck.id}/card-observations`));
+      expect(response.status).toBe(200);
+      const scoreById = new Map<string, number>(
+        response.body.observations.map((observation: { card: { id: string }; score: number }) => [
+          observation.card.id,
+          observation.score,
+        ]),
+      );
+      // Same single impression, but the heavy-game card outscores the casual-game one …
+      expect(scoreById.get(strong.id)!).toBeGreaterThan(scoreById.get(weak.id)!);
+      // … both positive cards sit above neutral, the underperformer below it.
+      expect(scoreById.get(weak.id)!).toBeGreaterThan(0.5);
+      expect(scoreById.get(bad.id)!).toBeLessThan(0.5);
     });
 
     it("keeps impressive and underperforming counts separate for a card that is both", async () => {

@@ -47,7 +47,12 @@ they hang off events, carry a status lifecycle and visibility, and keep a manual
   linked to, a sibling team deck linked to the same entry, or a bare hero+label ref-matching a linked entry.
   So a game logged against the *meta* build of an archetype the deck represents still feeds the deck's card
   counts. `gamesConsidered` is the **total** relevant games the deck participated in (whether or not any
-  card was flagged), so a count reads against total games played (10 of 12 ≠ 10 of 150).
+  card was flagged), so a count reads against total games played (10 of 12 ≠ 10 of 150). Each card also
+  carries a 0–1 **score** (a keep/cut signal): a confidence-weighted mean of each relevant game's signal
+  (+1 impressive / −1 underperforming / 0 neutral) over all those games, shrunk toward 0.5 by a neutral
+  prior — so impressions in heavy (tournament) games count more than low-weight ones, a rarely-flagged
+  card trends to ~50%, and thin evidence can't reach the extremes. Single-sourced as
+  `deriveCardObservationScore` in `packages/shared`.
 - As a **member**, I can **"Add card idea"** from the deck page: it opens the shared **Task** form
   (see [tasks.md](tasks.md)) pre-linked to this deck with a card-test title/description scaffold ready for
   `+card` mentions — the same `POST /api/tasks` path as the tasks board, not a parallel one. The deck page

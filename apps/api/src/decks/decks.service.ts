@@ -7,6 +7,7 @@ import {
 
 import {
   aggregateMatchup,
+  type CardSummary,
   type CreateDeckInput,
   type DeckCardObservation,
   type DeckCardObservationsResponse,
@@ -22,6 +23,7 @@ import {
   type DeckStatus,
   type DeckSummary,
   deckOwnedGameSides,
+  deriveCardObservationScore,
   deriveGameOutcome,
   deriveMatchupSubjectRef,
   errorCode,
@@ -88,8 +90,9 @@ interface GameLogReadinessRow {
   opponentArchetypeLabel: string | null;
 }
 
-/** Both sides' subject identity + the captured cards of a game log, for card observations. */
+/** Both sides' subject identity + confidence weight + captured cards, for card observations. */
 interface GameLogCardObservationRow {
+  confidenceWeight: number;
   deckId: string | null;
   selfMetaDeckEntryId: string | null;
   selfHeroId: string | null;
@@ -104,6 +107,15 @@ interface GameLogCardObservationRow {
     side: GameSide;
     card: { id: string; name: string; pitch: number | null; imageUrl: string | null };
   }[];
+}
+
+/** Per-card tally while aggregating: raw counts (shown) + weighted mass per role (for the score). */
+interface CardObservationAccumulator {
+  card: CardSummary;
+  impressiveCount: number;
+  underperformingCount: number;
+  impressiveWeight: number;
+  underperformingWeight: number;
 }
 
 /** Fallback `source` label for a link no adapter recognized. */
@@ -533,6 +545,7 @@ export class DecksService {
         ],
       },
       select: {
+        confidenceWeight: true,
         deckId: true,
         selfMetaDeckEntryId: true,
         selfHeroId: true,
@@ -558,8 +571,10 @@ export class DecksService {
       siblingDeckIds,
       linkedEntrySubjectRefs,
     };
-    const byCard = new Map<string, DeckCardObservation>();
+    // Per card: raw counts (shown) + confidence-weighted mass per role (for the score).
+    const byCard = new Map<string, CardObservationAccumulator>();
     let gamesConsidered = 0;
+    let totalGameWeight = 0;
     for (const game of games) {
       const ownedSides = new Set(
         deckOwnedGameSides(
@@ -585,8 +600,10 @@ export class DecksService {
       }
       // Every relevant game the deck participated in counts toward the denominator,
       // whether or not any card was flagged — so a count reads against total games
-      // played (10 of 12 ≠ 10 of 150), not just against the games that had flags.
+      // played (10 of 12 ≠ 10 of 150), not just against the games that had flags, and
+      // the score's denominator is the total confidence-weighted game mass.
       gamesConsidered += 1;
+      totalGameWeight += game.confidenceWeight;
       for (const captured of game.cards) {
         if (!ownedSides.has(captured.side)) {
           continue; // the deck's own side only, never the opponent's cards
@@ -595,21 +612,36 @@ export class DecksService {
           card: captured.card,
           impressiveCount: 0,
           underperformingCount: 0,
+          impressiveWeight: 0,
+          underperformingWeight: 0,
         };
         if (captured.role === "impressive") {
           existing.impressiveCount += 1;
+          existing.impressiveWeight += game.confidenceWeight;
         } else {
           existing.underperformingCount += 1;
+          existing.underperformingWeight += game.confidenceWeight;
         }
         byCard.set(captured.cardId, existing);
       }
     }
 
-    const observations = [...byCard.values()].sort((a, b) => {
-      const totalDifference =
-        b.impressiveCount + b.underperformingCount - (a.impressiveCount + a.underperformingCount);
-      return totalDifference !== 0 ? totalDifference : a.card.name.localeCompare(b.card.name);
-    });
+    const observations = [...byCard.values()]
+      .map((accumulator): DeckCardObservation => ({
+        card: accumulator.card,
+        impressiveCount: accumulator.impressiveCount,
+        underperformingCount: accumulator.underperformingCount,
+        score: deriveCardObservationScore({
+          impressiveWeight: accumulator.impressiveWeight,
+          underperformingWeight: accumulator.underperformingWeight,
+          totalGameWeight,
+        }),
+      }))
+      .sort((a, b) => {
+        const totalDifference =
+          b.impressiveCount + b.underperformingCount - (a.impressiveCount + a.underperformingCount);
+        return totalDifference !== 0 ? totalDifference : a.card.name.localeCompare(b.card.name);
+      });
 
     return { deckId, gamesConsidered, observations };
   }
