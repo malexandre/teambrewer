@@ -1,5 +1,8 @@
 # TeamBrewer
 
+> _Personal note: beyond solving a real need for my team, this project is also my experiment in **pure
+> vibe coding** — building an app I genuinely need, driven end-to-end through AI-assisted development._
+
 A private, invite-only web app that helps a competitive **Trading Card Game team** work together to
 crack the meta and choose the best decks for each important tournament. Primary game: **Flesh and Blood**
 (Riftbound designed-for, built later). One instance hosts **multiple isolated teams (workspaces)**.
