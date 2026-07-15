@@ -30,6 +30,52 @@ the pnpm-store cache mount; on older Docker, export `DOCKER_BUILDKIT=1`. The API
 runtime image is pruned to production dependencies (`pnpm deploy --prod`), so it
 carries no source tree or dev tooling.
 
+## Deploy from pre-built images (GHCR)
+
+Building on the server is slow and memory-hungry. On a small/throttled VPS,
+**pull pre-built images instead of building**. The
+[`.github/workflows/publish-images.yml`](../../.github/workflows/publish-images.yml)
+workflow publishes both runtime images to GitHub Container Registry on every
+release tag (and a rolling tag on `main`):
+
+| Image | Dockerfile target |
+|-------|-------------------|
+| `ghcr.io/malexandre/teambrewer-api` | `api` |
+| `ghcr.io/malexandre/teambrewer-web` | `web` |
+
+**Tag scheme.** A release tag `vX.Y.Z` publishes `X.Y.Z`, `X.Y`, and `latest`; a
+push to `main` publishes `main` + `edge` (never `latest`); every build also gets
+a `sha-<commit>` tag. **Pin production to an exact `X.Y.Z`** — `latest` only ever
+points at the most recent real release, and `edge`/`main` track unreleased work.
+
+The images are **public**, so no registry login is needed to pull. They are
+**host-agnostic**: nothing host-specific is baked in at build time (the SPA calls
+`/api` same-origin; the API reads all config from the environment), so the *same*
+image runs on any host. Supply all configuration at runtime exactly as below.
+
+To consume them, point the `api` and `web` services at the published images
+instead of `build:` (the API still applies migrations on boot as usual). For
+example, an override that replaces the two `build:` blocks:
+
+```yaml
+# docker-compose.ghcr.yml — docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull \
+#                            && docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
+services:
+  api:
+    image: ghcr.io/malexandre/teambrewer-api:X.Y.Z # pin a real release
+    pull_policy: always
+  web:
+    image: ghcr.io/malexandre/teambrewer-web:X.Y.Z
+    pull_policy: always
+```
+
+The runtime `.env` (below) is unchanged — it is the single source of all
+host-specific configuration whether you build or pull.
+
+> If the packages are ever switched to **private**, the box needs a one-time
+> `docker login ghcr.io -u <github-user>` with a Personal Access Token that has
+> the `read:packages` scope before it can pull.
+
 ## 1. Configuration (`.env`)
 
 Copy [`.env.example`](../../.env.example) to `.env` and edit. The essentials:
