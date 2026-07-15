@@ -97,14 +97,16 @@ export function MatchupSubjectPicker({
   }
 
   return (
-    <fieldset className="flex flex-col gap-3">
+    <fieldset className="flex min-w-0 flex-col gap-3">
       <legend className="text-sm font-medium">{heading}</legend>
 
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         <Label htmlFor={subjectSelectId}>{isSelf ? "Your deck" : "Opponent deck"}</Label>
+        {/* `w-full min-w-0` keeps a long deck name from stretching the select (and its
+            flex-column ancestors) past the card; the native select truncates it instead. */}
         <select
           id={subjectSelectId}
-          className={SELECT_CLASS}
+          className={`${SELECT_CLASS} w-full min-w-0`}
           value={selectValueFor(state)}
           onChange={(event) => patch(subjectPatchFromSelectValue(event.target.value))}
         >

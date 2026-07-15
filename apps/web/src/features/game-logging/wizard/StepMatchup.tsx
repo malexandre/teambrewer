@@ -34,8 +34,8 @@ export function StepMatchup({
   metaId: string | undefined;
 }) {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-6">
+      <div className="flex min-w-0 flex-col gap-1">
         <Label htmlFor="game-format">Format</Label>
         <FormatPicker teamId={teamId} value={formatId} onChange={setFormatId} id="game-format" />
       </div>
