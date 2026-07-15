@@ -458,8 +458,10 @@ export class DecksService {
    * where a side is a meta deck entry the deck is linked to, where a side is a sibling
    * team deck linked to the same entry, or where a bare hero+label side ref-matches a
    * linked entry (`deckOwnedGameSides`). The impressive and underperforming counts are
-   * kept separate — a card can appear in both. Read-only; `GameLogCard` has no `teamId`
-   * and is reached only through its team-scoped parent `GameLog`.
+   * kept separate — a card can appear in both. `gamesConsidered` is the total relevant
+   * games (whether or not any card was flagged) so counts read against total games
+   * played. Read-only; `GameLogCard` has no `teamId` and is reached only through its
+   * team-scoped parent `GameLog`.
    */
   async getCardObservations(
     team: TeamContext,
@@ -507,7 +509,6 @@ export class DecksService {
     const games = (await this.scoped.db.gameLog.findMany({
       where: {
         archivedAt: null,
-        cards: { some: {} },
         OR: [
           { deckId },
           { opponentDeckId: deckId },
@@ -582,12 +583,14 @@ export class DecksService {
       if (ownedSides.size === 0) {
         continue; // false positive from the hero/label superset above
       }
-      let contributed = false;
+      // Every relevant game the deck participated in counts toward the denominator,
+      // whether or not any card was flagged — so a count reads against total games
+      // played (10 of 12 ≠ 10 of 150), not just against the games that had flags.
+      gamesConsidered += 1;
       for (const captured of game.cards) {
         if (!ownedSides.has(captured.side)) {
           continue; // the deck's own side only, never the opponent's cards
         }
-        contributed = true;
         const existing = byCard.get(captured.cardId) ?? {
           card: captured.card,
           impressiveCount: 0,
@@ -599,9 +602,6 @@ export class DecksService {
           existing.underperformingCount += 1;
         }
         byCard.set(captured.cardId, existing);
-      }
-      if (contributed) {
-        gamesConsidered += 1;
       }
     }
 

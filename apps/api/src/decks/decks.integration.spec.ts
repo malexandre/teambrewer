@@ -938,6 +938,14 @@ describe("Decks endpoints (integration)", () => {
         deckId: deck.id,
       });
       await captureCard(game2.id, impressive.id, "impressive", "A");
+      // A relevant game with NO flagged cards still counts toward the denominator, so a
+      // count reads against total games played (10 of 12 ≠ 10 of 150), not carded games.
+      await logGame({
+        teamId: teamA.id,
+        loggedById: memberA.id,
+        formatId: fabFormatId,
+        deckId: deck.id,
+      });
       // An archived game with the deck's card must not be counted.
       const archived = await logGame({
         teamId: teamA.id,
@@ -950,7 +958,8 @@ describe("Decks endpoints (integration)", () => {
 
       const response = await asMemberA(http().get(`/api/decks/${deck.id}/card-observations`));
       expect(response.status).toBe(200);
-      expect(response.body.gamesConsidered).toBe(2);
+      // 3 relevant non-archived games (two carded + one with no flags); archived excluded.
+      expect(response.body.gamesConsidered).toBe(3);
       expect(response.body.observations).toEqual([
         {
           card: { id: impressive.id, name: "Command and Conquer", pitch: null, imageUrl: null },

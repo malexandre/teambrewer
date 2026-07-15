@@ -28,10 +28,11 @@ export const deckCardObservationSchema = z.object({
 export type DeckCardObservation = z.infer<typeof deckCardObservationSchema>;
 
 /**
- * `GET /api/decks/:deckId/card-observations` response. `gamesConsidered` is the number
- * of relevant games that contributed at least one of the deck's own captured cards;
- * `observations` is sorted by total observations (impressive + underperforming) desc,
- * then card name asc.
+ * `GET /api/decks/:deckId/card-observations` response. `gamesConsidered` is the total
+ * number of relevant games the deck participated in (its own side matched) — whether or
+ * not any card was flagged in them — so a card's counts read against total games played
+ * (10 of 12 ≠ 10 of 150). `observations` is sorted by total observations (impressive +
+ * underperforming) desc, then card name asc.
  */
 export const deckCardObservationsResponseSchema = z.object({
   deckId: z.string(),
