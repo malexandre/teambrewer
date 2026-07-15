@@ -64,4 +64,20 @@ describe("Tabs", () => {
 
     expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
   });
+
+  it("mirrors the active tab in the mobile dropdown and switches the panel on select", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    // The dropdown is the phone-viewport stand-in for the tab strip; it reflects the
+    // active tab and drives the same state.
+    const dropdown = screen.getByRole("combobox", { name: "Deck sections" });
+    expect(dropdown).toHaveValue("general");
+
+    await user.selectOptions(dropdown, "plan");
+
+    expect(dropdown).toHaveValue("plan");
+    expect(screen.getByText("plan content")).toBeInTheDocument();
+    expect(screen.queryByText("general content")).not.toBeInTheDocument();
+  });
 });

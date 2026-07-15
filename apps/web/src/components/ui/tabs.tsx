@@ -65,10 +65,27 @@ export function Tabs({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Mobile: a single dropdown stands in for the tab strip so tabs never wrap onto
+          two lines. It shares the same active-tab state as the desktop tablist below. */}
+      <div className="sm:hidden">
+        <select
+          aria-label={ariaLabel}
+          value={activeTab?.id ?? ""}
+          onChange={(event) => onTabChange(event.target.value)}
+          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          {tabs.map((tab) => (
+            <option key={tab.id} value={tab.id}>
+              {tab.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div
         role="tablist"
         aria-label={ariaLabel}
-        className="flex flex-wrap gap-1 border-b border-border"
+        className="hidden flex-wrap gap-1 border-b border-border sm:flex"
       >
         {tabs.map((tab, index) => {
           const isActive = tab.id === activeTab?.id;
