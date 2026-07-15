@@ -1,5 +1,3 @@
-import { Check } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -7,27 +5,21 @@ import { cn } from "@/lib/utils";
 export type SegmentedTone = "sideA" | "sideB" | "neutral";
 
 /**
- * Classes for a toned option. Every option keeps its colour whether or not it is
- * selected (so the blue/red cue survives a mirror where both labels read the same).
- * Selection is a signal separate from the colour: the chosen option gets a filled
- * tint plus a ring (and a check, added below), while the rest are a plain outline —
- * so it never reads as "which colour" vs "which is picked". The neutral tone is the
- * draw: grey, so it stands apart from either side even when it is the selected one.
+ * Classes for a toned option. Every option is always tinted with its colour (blue /
+ * red / grey) so the side cue survives a mirror where both labels read the same.
+ * Selection is a separate signal: the chosen option gets a strong primary-blue ring —
+ * the same ring regardless of the button's own colour, so "which is picked" never
+ * reads as "which colour".
  */
 function sideToneClassName(tone: SegmentedTone, isActive: boolean): string {
+  const ring = isActive ? "ring-2 ring-primary" : "";
   if (tone === "sideA") {
-    return isActive
-      ? "border-info-border bg-info text-info-foreground ring-2 ring-info-border hover:bg-info"
-      : "border-info-border text-info-foreground hover:bg-info/50";
+    return cn("border-info-border bg-info text-info-foreground hover:bg-info", ring);
   }
   if (tone === "sideB") {
-    return isActive
-      ? "border-danger-border bg-danger text-danger-foreground ring-2 ring-danger-border hover:bg-danger"
-      : "border-danger-border text-danger-foreground hover:bg-danger/50";
+    return cn("border-danger-border bg-danger text-danger-foreground hover:bg-danger", ring);
   }
-  return isActive
-    ? "bg-secondary text-secondary-foreground ring-2 ring-border hover:bg-secondary"
-    : "text-muted-foreground hover:bg-muted/50";
+  return cn("bg-secondary text-secondary-foreground hover:bg-secondary", ring);
 }
 
 /** A row of mutually-exclusive buttons (the segmented-control idiom used across the app). */
@@ -66,14 +58,7 @@ export function SegmentedControl<Value extends string>({
               )}
               onClick={() => onChange(option.value)}
             >
-              {/* One inline run so the check prepends to the label and wraps with it,
-                  rather than sitting as a separate centred column beside the text. */}
-              <span>
-                {option.tone && isActive ? (
-                  <Check className="mr-1 inline-block size-3.5 align-[-2px]" aria-hidden="true" />
-                ) : null}
-                {option.label}
-              </span>
+              {option.label}
             </Button>
           );
         })}
