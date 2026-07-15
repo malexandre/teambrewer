@@ -34,10 +34,11 @@ export interface LinkIdentityInput {
  *   binds the returned Discord identity to a provisioned Discord account and
  *   creates the Better Auth `account` link that lets that user log in with
  *   Discord thereafter. `discordUserId` is globally unique.
- * - **Method exclusivity**: only `discord` accounts may be bound for login; only
- *   `password_totp` accounts may attach an **identity-only** Discord link
- *   (`linkIdentityOnly`), which never creates an `account` link and so never
- *   grants Discord login.
+ * - **Login methods**: the claim flow binds `discord` accounts for login; a
+ *   `password_totp` account MAY additionally link a Discord identity
+ *   (`linkIdentityOnly`), which creates a `discord` `account` row so that
+ *   account can ALSO sign in with Discord (ADR-0011). A Discord-login account
+ *   cannot add a password here.
  */
 @Injectable()
 export class DiscordAccountService {
