@@ -1,7 +1,13 @@
 import type { CardSummary } from "@teambrewer/shared";
 import { useState } from "react";
 
-import { Input } from "@/components/ui/input";
+import {
+  Combobox,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxPopover,
+  ComboboxProvider,
+} from "@/components/ui/combobox";
 
 import { pitchDisplay } from "./pitch";
 import { useCardSearch } from "./use-card-search";
@@ -17,7 +23,8 @@ interface CardPickerProps {
 
 /**
  * Debounced card autocomplete for the active team's game, reused wherever a card
- * is referenced. Shows name + pitch (with FaB color) for each result.
+ * is referenced. Shows name + pitch (with FaB color) for each result. Selecting a
+ * card clears the search so the next lookup starts fresh.
  */
 export function CardPicker({ teamId, onSelect, placeholder }: CardPickerProps) {
   const [query, setQuery] = useState("");
@@ -27,42 +34,44 @@ export function CardPicker({ teamId, onSelect, placeholder }: CardPickerProps) {
     { query: debouncedQuery },
     { enabled: debouncedQuery.length > 0 },
   );
-  const results = debouncedQuery.length > 0 ? (data?.data ?? []) : [];
+  // Gate on the live query too so clearing on select collapses the list immediately,
+  // without waiting for the debounce to catch up.
+  const results = query.trim().length > 0 && debouncedQuery.length > 0 ? (data?.data ?? []) : [];
 
   return (
-    <div className="relative">
-      <Input
-        type="search"
-        role="combobox"
-        aria-label="Search cards"
-        aria-expanded={results.length > 0}
-        aria-busy={isFetching}
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder={placeholder ?? "Search cards…"}
-      />
-      {results.length > 0 && (
-        <ul
-          role="listbox"
-          className="mt-1 max-h-72 overflow-auto rounded-md border border-border bg-card"
-        >
-          {results.map((card) => {
-            const pitch = pitchDisplay(card.pitch);
-            return (
-              <li key={card.id} role="option" aria-selected={false}>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
-                  onClick={() => onSelect?.(card)}
-                >
-                  <span>{card.name}</span>
-                  {pitch && <span className="text-xs text-muted-foreground">{pitch}</span>}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+    <ComboboxProvider value={query} setValue={setQuery}>
+      <div className="relative">
+        <Combobox
+          autoSelect
+          aria-label="Search cards"
+          aria-busy={isFetching}
+          placeholder={placeholder ?? "Search cards…"}
+        />
+        {results.length > 0 && (
+          <ComboboxPopover>
+            <ComboboxList>
+              {results.map((card) => {
+                const pitch = pitchDisplay(card.pitch);
+                return (
+                  <ComboboxItem
+                    key={card.id}
+                    value={card.id}
+                    setValueOnClick={false}
+                    className="justify-between"
+                    onClick={() => {
+                      onSelect?.(card);
+                      setQuery("");
+                    }}
+                  >
+                    <span>{card.name}</span>
+                    {pitch && <span className="text-xs text-muted-foreground">{pitch}</span>}
+                  </ComboboxItem>
+                );
+              })}
+            </ComboboxList>
+          </ComboboxPopover>
+        )}
+      </div>
+    </ComboboxProvider>
   );
 }

@@ -284,7 +284,7 @@ describe("GameLogWizard", () => {
     const impressiveSection = screen.getByRole("group", { name: /impressive cards/i });
     const cardSearch = within(impressiveSection).getByRole("combobox", { name: /search cards/i });
     await user.type(cardSearch, "Command");
-    const cardOption = await within(impressiveSection).findByRole("button", {
+    const cardOption = await within(impressiveSection).findByRole("option", {
       name: /command and conquer/i,
     });
     await user.click(cardOption);
