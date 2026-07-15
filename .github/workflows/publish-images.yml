@@ -131,33 +131,43 @@ jobs:
             -e BETTER_AUTH_URL='http://localhost:3000' \
             -e WEB_ORIGIN='http://localhost:8080' \
             "${{ steps.refs.outputs.api }}"
-          ok=""
+          # Capture output into variables and match with `case` — never pipe into
+          # `grep -q`, which closes the pipe early and SIGPIPEs the writer (exit 141
+          # under pipefail).
+          healthy=""
           for _ in $(seq 1 30); do
-            if curl -fsS http://localhost:3000/api/health | grep -q '"status":"ok"'; then
-              ok=1; break
-            fi
+            body="$(curl -fsS http://localhost:3000/api/health || true)"
+            case "$body" in
+              *'"status":"ok"'*) healthy=1; break ;;
+            esac
             sleep 2
           done
           echo "----- api logs -----"
-          docker logs teambrewer-api
-          test "$ok" = 1
+          logs="$(docker logs teambrewer-api 2>&1)"
+          printf '%s\n' "$logs"
+          test "$healthy" = 1
           # Prove `prisma migrate deploy` ran on boot (CMD in the Dockerfile).
-          docker logs teambrewer-api 2>&1 | grep -iq "migrat"
+          case "$logs" in
+            *migrat*) : ;;
+            *) echo "expected a migration log line, found none"; exit 1 ;;
+          esac
 
       - name: Web image serves the SPA
         run: |
           set -euo pipefail
           docker pull "${{ steps.refs.outputs.web }}"
           docker run -d --name teambrewer-web -p 8080:80 "${{ steps.refs.outputs.web }}"
-          ok=""
+          served=""
           for _ in $(seq 1 15); do
-            if curl -fsS http://localhost:8080/ | grep -q '<div id="root">'; then
-              ok=1; break
-            fi
+            body="$(curl -fsS http://localhost:8080/ || true)"
+            case "$body" in
+              *'<div id="root">'*) served=1; break ;;
+            esac
             sleep 2
           done
-          curl -sI http://localhost:8080/ | head -1
-          test "$ok" = 1
+          echo "----- web response status -----"
+          curl -sI http://localhost:8080/ | head -1 || true
+          test "$served" = 1
 
       - name: Tear down
         if: always()
