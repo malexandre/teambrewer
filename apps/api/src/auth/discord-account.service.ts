@@ -28,7 +28,8 @@ export interface LinkIdentityInput {
 
 /**
  * Owns the rules that keep Discord a first-class but strictly invite-only login
- * method with exactly one login method per account (ADR-0009):
+ * method. An account is claimed with one method; a password + TOTP account MAY
+ * additionally link Discord to also sign in with it (ADR-0011, refining ADR-0009):
  *
  * - **Claim binding** (`bindClaim`): consuming a single-use `discord_link` token
  *   binds the returned Discord identity to a provisioned Discord account and
@@ -213,7 +214,7 @@ export class DiscordAccountService {
     });
   }
 
-  /** Remove a password account's identity-only Discord link. */
+  /** Remove a password account's Discord identity link and revoke Discord login. */
   async unlinkIdentity(userId: string): Promise<void> {
     await this.prisma.$transaction(async (transaction) => {
       const user = await transaction.user.findUnique({
