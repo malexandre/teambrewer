@@ -12,6 +12,23 @@ export const MINIMUM_PASSWORD_LENGTH = 12;
 export const MAXIMUM_PASSWORD_LENGTH = 128;
 
 /**
+ * Discord is requested with the `identify` scope only (ADR-0009 — we never
+ * collect the user's email), so the OAuth profile carries no email. Better
+ * Auth's OAuth callback, however, rejects a social sign-in with `email_not_found`
+ * **before** it resolves the linked `account` row, so we synthesize a stable,
+ * non-routable placeholder email from the Discord user id. Login is still
+ * resolved by the account row (Better Auth matches the account before any
+ * email fallback), and this value is never written to the user (the account
+ * match wins and `overrideUserInfoOnSignIn` is off). The distinct
+ * `@discord.users.teambrewer.local` subdomain also guarantees it cannot collide
+ * with a provisioned user's `<username>@users.teambrewer.local` synthetic email,
+ * so the email fallback can never resolve a real account by this value.
+ */
+export function discordPlaceholderEmail(discordUserId: string): string {
+  return `${discordUserId}@discord.users.teambrewer.local`;
+}
+
+/**
  * Builds the Better Auth instance. TeamBrewer uses Better Auth only for auth
  * primitives — password hashing + credential accounts, secure session cookies,
  * mandatory TOTP + backup codes, and (phase-04) the Discord provider. It does
@@ -118,6 +135,12 @@ export function createAuth(prisma: PrismaClient) {
               scope: ["identify"],
               disableDefaultScope: true,
               disableImplicitSignUp: true,
+              // Identify-only scope returns no email; synthesize one so Better
+              // Auth's callback doesn't reject the sign-in with `email_not_found`
+              // before it resolves the linked account. See discordPlaceholderEmail.
+              mapProfileToUser: (profile: { id: string }) => ({
+                email: discordPlaceholderEmail(profile.id),
+              }),
               ...(discordRedirectUri ? { redirectURI: discordRedirectUri } : {}),
             },
           },
