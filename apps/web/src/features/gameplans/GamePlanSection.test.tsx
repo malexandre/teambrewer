@@ -283,8 +283,8 @@ describe("GamePlanSection", () => {
     await screen.findByText("vs Briar");
     // Assignment now lives in edit mode: open the editor, then the "Covers matchups" box.
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.click(await screen.findByRole("button", { name: "Covers matchups" }));
-    await user.click(screen.getByRole("checkbox", { name: /Oscilio/ }));
+    await user.click(await screen.findByRole("combobox", { name: "Covers matchups" }));
+    await user.click(screen.getByRole("option", { name: /Oscilio/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     // The PATCH sends the whole desired set (R-1 replace contract), alongside the body.
@@ -305,8 +305,8 @@ describe("GamePlanSection", () => {
     await screen.findByText("vs Briar");
     // The plan starts covering Oscilio; open the editor and untick it.
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.click(await screen.findByRole("button", { name: "Covers matchups" }));
-    await user.click(screen.getByRole("checkbox", { name: /Oscilio/ }));
+    await user.click(await screen.findByRole("combobox", { name: "Covers matchups" }));
+    await user.click(screen.getByRole("option", { name: /Oscilio/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     // The last PATCH replaces the set with an empty array (detached).

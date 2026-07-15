@@ -110,6 +110,21 @@ export function ComboboxItemCheck({
   );
 }
 
+/** The checkmark for a selected row in a Select+Combobox composition. */
+export function SelectItemCheck({
+  className,
+  ...props
+}: ComponentProps<typeof Ariakit.SelectItemCheck>) {
+  return (
+    <Ariakit.SelectItemCheck
+      className={cn("flex size-4 shrink-0 items-center justify-center text-primary", className)}
+      {...props}
+    >
+      <Check className="size-4" aria-hidden="true" />
+    </Ariakit.SelectItemCheck>
+  );
+}
+
 export function ComboboxGroup({
   className,
   ...props
