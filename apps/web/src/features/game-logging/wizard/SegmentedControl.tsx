@@ -15,7 +15,12 @@ export function SegmentedControl<Value extends string>({
   return (
     <fieldset className="flex flex-col gap-1">
       <legend className="text-sm font-medium">{label}</legend>
-      <div className="flex flex-wrap gap-2">
+      {/* Equal-width columns that fill the row so a group never wraps onto a second line
+          on phones; long labels wrap inside their own cell instead. */}
+      <div
+        className="grid gap-2"
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      >
         {options.map((option) => {
           const isActive = value === option.value;
           return (
@@ -25,6 +30,7 @@ export function SegmentedControl<Value extends string>({
               size="sm"
               variant={isActive ? "default" : "outline"}
               aria-pressed={isActive}
+              className="h-auto min-h-8 w-full py-1 text-center whitespace-normal"
               onClick={() => onChange(option.value)}
             >
               {option.label}
