@@ -42,7 +42,8 @@ test("create a deck, set its status, log an iteration, and confirm team isolatio
     page.getByRole("region", { name: "Overview" }).getByText("Testing", { exact: true }),
   ).toBeVisible();
 
-  // 5. Add an iteration-log entry and see it appear.
+  // 5. Add an iteration-log entry (under the Logs tab) and see it appear.
+  await page.getByRole("tab", { name: "Logs" }).click();
   const iteration = "Splashed extra reds after the last event.";
   await page.getByLabel("New iteration entry").fill(iteration);
   await page.getByRole("button", { name: "Add entry" }).click();
