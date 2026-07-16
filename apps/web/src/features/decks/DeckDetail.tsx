@@ -18,6 +18,7 @@ import { ApiError } from "@/lib/api-client";
 
 import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
 import { CommentThread } from "@/features/collaboration/CommentThread";
+import { useHighlightCommentId } from "@/features/collaboration/use-highlight-comment";
 
 import { GamePlanSection } from "@/features/gameplans/GamePlanSection";
 
@@ -31,6 +32,9 @@ import { DeckStatusControl } from "./DeckStatusControl";
 import { IterationLog } from "./IterationLog";
 import { useArchiveDeck, useChangeDeckStatus } from "./use-deck-mutations";
 
+/** The deck section ids, matching the tab definitions and the `/decks/:deckId/:deckTab` path. */
+const DECK_TAB_IDS = new Set(["general", "matchups", "plan", "cards", "card-ideas", "activity"]);
+
 /**
  * A deck's detail. A persistent header keeps the deck's identity in view — its name,
  * the Edit/Archive controls, the prominent link out to the external list (decks are
@@ -39,12 +43,21 @@ import { useArchiveDeck, useChangeDeckStatus } from "./use-deck-mutations";
  * Tasks, Activity) so a long deck page stays navigable. Editing opens the deck form in
  * a modal; an archived deck is read-only.
  */
-export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck: DeckDetailType }) {
+export function DeckDetail({
+  teamId,
+  deck,
+  activeTabId: activeTabIdProp,
+}: {
+  teamId: string | undefined;
+  deck: DeckDetailType;
+  /** The tab from the URL path; unknown/absent falls back to General. */
+  activeTabId?: string | undefined;
+}) {
   const { data: user } = useCurrentUser();
   const { activeTeam } = useActiveTeam();
   const navigate = useNavigate();
+  const highlightCommentId = useHighlightCommentId();
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [activeTabId, setActiveTabId] = useState("general");
 
   const changeStatus = useChangeDeckStatus(teamId, deck.id);
   const archiveDeck = useArchiveDeck(teamId, deck.id);
@@ -58,6 +71,18 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
     : null;
   const canModify = deck.ownerId === user?.id || activeTeam?.role === "team_admin";
   const isArchived = deck.archivedAt !== null;
+
+  // The active tab is URL-driven: read from the path, fall back to General for anything
+  // unknown, and change it by navigating so each section is shareable and back-navigable.
+  const activeTabId =
+    activeTabIdProp && DECK_TAB_IDS.has(activeTabIdProp) ? activeTabIdProp : "general";
+  function selectTab(tabId: string): void {
+    if (tabId === "general") {
+      void navigate({ to: "/decks/$deckId", params: { deckId: deck.id } });
+    } else {
+      void navigate({ to: "/decks/$deckId/$deckTab", params: { deckId: deck.id, deckTab: tabId } });
+    }
+  }
 
   function archive() {
     if (!window.confirm("Archive this deck? It will be hidden but its history is kept.")) return;
@@ -175,7 +200,13 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
       label: "Activity",
       panel: (
         <Section aria-label="Activity" bodyClassName="gap-4">
-          <CommentThread teamId={teamId} subjectType="deck" subjectId={deck.id} canComment />
+          <CommentThread
+            teamId={teamId}
+            subjectType="deck"
+            subjectId={deck.id}
+            canComment
+            highlightCommentId={highlightCommentId}
+          />
           <ActivityFeed
             teamId={teamId}
             filters={{ subjectType: "deck", subjectId: deck.id }}
@@ -238,7 +269,7 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
         ariaLabel="Deck sections"
         tabs={tabs}
         activeTabId={activeTabId}
-        onTabChange={setActiveTabId}
+        onTabChange={selectTab}
       />
 
       <Dialog open={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit deck">

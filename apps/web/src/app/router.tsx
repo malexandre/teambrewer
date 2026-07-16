@@ -93,6 +93,18 @@ const deckDetailRoute = createRoute({
   },
 });
 
+// The active tab lives in the path (`/decks/:deckId/activity`) so a deck section is
+// shareable and a notification can deep-link straight to it; `DeckDetail` validates the
+// segment and falls back to General for anything unknown.
+const deckDetailTabRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/decks/$deckId/$deckTab",
+  component: function DeckDetailTabRoute() {
+    const { deckId, deckTab } = deckDetailTabRoute.useParams();
+    return <DeckDetailPage deckId={deckId} activeTabId={deckTab} />;
+  },
+});
+
 const metasRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
   path: "/metas",
@@ -202,6 +214,7 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     decksRoute,
     deckDetailRoute,
+    deckDetailTabRoute,
     metasRoute,
     metaDetailRoute,
     eventsRoute,

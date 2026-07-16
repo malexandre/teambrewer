@@ -7,7 +7,14 @@ import { DeckDetail } from "./DeckDetail";
 import { useDeck } from "./use-decks";
 
 /** Detail route for a single deck; renders 404-safe states around {@link DeckDetail}. */
-export function DeckDetailPage({ deckId }: { deckId: string }) {
+export function DeckDetailPage({
+  deckId,
+  activeTabId,
+}: {
+  deckId: string;
+  /** The tab to open, from the `/decks/:deckId/:deckTab` path (undefined → General). */
+  activeTabId?: string | undefined;
+}) {
   const { activeTeam } = useActiveTeam();
   const teamId = activeTeam?.teamId;
   const { data: deck, isPending, error } = useDeck(teamId, deckId);
@@ -26,7 +33,7 @@ export function DeckDetailPage({ deckId }: { deckId: string }) {
             : "Could not load this deck."}
         </p>
       ) : deck ? (
-        <DeckDetail teamId={teamId} deck={deck} />
+        <DeckDetail teamId={teamId} deck={deck} activeTabId={activeTabId} />
       ) : null}
     </div>
   );

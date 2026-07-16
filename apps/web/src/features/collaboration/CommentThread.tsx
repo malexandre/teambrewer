@@ -49,7 +49,7 @@ export function CommentThread({
    * reacts (comment ids are globally unique), so every thread on a page can be handed
    * the same value.
    */
-  highlightCommentId?: string;
+  highlightCommentId?: string | undefined;
 }) {
   const { data } = useComments(teamId, subjectType, subjectId);
   const postComment = usePostComment(teamId, subjectType, subjectId);

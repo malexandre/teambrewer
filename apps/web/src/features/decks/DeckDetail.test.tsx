@@ -7,7 +7,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import type { DeckDetail as DeckDetailType } from "@teambrewer/shared";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -98,6 +98,39 @@ function mockApi(patchBodies: unknown[] = []): void {
     if (url.includes("/meta-readiness")) {
       return json({ deckId: "deck-1", metaId: "", metaName: "", rows: [] });
     }
+    if (url.includes("/api/members")) {
+      return json({
+        data: [
+          {
+            userId: "user-1",
+            username: "alice",
+            displayName: "Alice",
+            role: "member",
+            joinedAt: "x",
+          },
+          { userId: "user-2", username: "bob", displayName: "Bob", role: "member", joinedAt: "x" },
+        ],
+      });
+    }
+    if (url.includes("/api/comments") && method === "GET") {
+      return json({
+        data: [
+          {
+            id: "c1",
+            subjectType: "deck",
+            subjectId: "deck-1",
+            author: { userId: "user-2", username: "bob", displayName: "Bob" },
+            body: "hey @alice, look here",
+            parentCommentId: null,
+            archivedAt: null,
+            createdAt: "2026-07-12T00:00:00.000Z",
+            updatedAt: "2026-07-12T00:00:00.000Z",
+            replies: [],
+          },
+        ],
+      });
+    }
+    if (url.includes("/api/activity")) return json({ data: [], nextCursor: null });
     if (url.match(/\/api\/decks\/deck-1$/) && method === "PATCH") {
       const body = init?.body ? JSON.parse(init.body as string) : {};
       patchBodies.push(body);
@@ -109,24 +142,42 @@ function mockApi(patchBodies: unknown[] = []): void {
   });
 }
 
-/** Render inside a router (archive navigates; the edit modal portals to the body). */
-function renderDetail(deckToRender: DeckDetailType = deck) {
+/**
+ * Render inside a router whose deck routes mirror the app's (`/decks/:deckId` and
+ * `/decks/:deckId/:deckTab`) so the URL-driven tab, tab navigation, and `#comment`
+ * deep-link all exercise real routing. `initialEntry` seeds the starting URL.
+ */
+function renderDetail(deckToRender: DeckDetailType = deck, initialEntry = "/decks/deck-1") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const rootRoute = createRootRoute({
-    component: () => (
+  const rootRoute = createRootRoute();
+  function DeckWrapper({ activeTabId }: { activeTabId?: string }) {
+    return (
       <ActiveTeamProvider>
-        <DeckDetail teamId="team-1" deck={deckToRender} />
+        <DeckDetail teamId="team-1" deck={deckToRender} activeTabId={activeTabId} />
       </ActiveTeamProvider>
-    ),
-  });
+    );
+  }
   const decksRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/decks",
     component: () => null,
   });
+  const deckRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/decks/$deckId",
+    component: () => <DeckWrapper />,
+  });
+  const deckTabRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/decks/$deckId/$deckTab",
+    component: function DeckTab() {
+      const { deckTab } = deckTabRoute.useParams();
+      return <DeckWrapper activeTabId={deckTab} />;
+    },
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([decksRoute]),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    routeTree: rootRoute.addChildren([decksRoute, deckRoute, deckTabRoute]),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
   });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -194,6 +245,38 @@ describe("DeckDetail", () => {
     expect(patchBodies[0]).toEqual({
       notes: "Race fast, keep +[[card-1]] for reach. Mull aggressively.",
     });
+  });
+
+  it("opens the tab named in the URL path", async () => {
+    mockApi();
+    renderDetail(deck, "/decks/deck-1/activity");
+
+    expect(await screen.findByRole("tab", { name: "Activity" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("heading", { name: "Discussion" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("falls back to the General tab for an unknown tab segment", async () => {
+    mockApi();
+    renderDetail(deck, "/decks/deck-1/bogus");
+
+    expect(await screen.findByRole("tab", { name: "General" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("scrolls to and highlights the comment named in the #comment hash", async () => {
+    mockApi();
+    renderDetail(deck, "/decks/deck-1/activity#comment-c1");
+
+    await screen.findByText("hey @alice, look here");
+    await waitFor(() =>
+      expect(document.getElementById("comment-c1")?.className).toContain("ring-primary"),
+    );
   });
 
   it("opens the edit form in a modal dialog", async () => {
