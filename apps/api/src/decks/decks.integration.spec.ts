@@ -965,15 +965,17 @@ describe("Decks endpoints (integration)", () => {
           card: { id: impressive.id, name: "Command and Conquer", pitch: null, imageUrl: null },
           impressiveCount: 2,
           underperformingCount: 0,
-          // 2 impressive of weight 1 over 3 weight-1 games: 2/(3+2) = +0.4.
-          score: 0.4,
+          // Flagged impressive in 2 of the 3 weight-1 games; the 1 unflagged game is a
+          // discounted neutral: 2 / (2 + 0.1*1 + 2) = 2/4.1 = +0.4878.
+          score: 0.4878,
         },
         {
           card: { id: flopped.id, name: "Sink Below", pitch: null, imageUrl: null },
           impressiveCount: 0,
           underperformingCount: 1,
-          // 1 underperforming of weight 1 over 3 weight-1 games: −1/(3+2) = −0.2.
-          score: -0.2,
+          // Flagged underperforming in 1 of the 3 weight-1 games; the 2 unflagged games are
+          // discounted neutrals: −1 / (1 + 0.1*2 + 2) = −1/3.2 = −0.3125.
+          score: -0.3125,
         },
       ]);
     });

@@ -398,6 +398,7 @@ export {
   deckCardObservationsResponseSchema,
   deriveCardObservationScore,
   CARD_OBSERVATION_SCORE_PRIOR,
+  UNFLAGGED_GAME_NEUTRAL_WEIGHT,
   type DeckCardObservation,
   type DeckCardObservationsResponse,
 } from "./deck-card-observations.js";

@@ -116,6 +116,8 @@ interface CardObservationAccumulator {
   underperformingCount: number;
   impressiveWeight: number;
   underperformingWeight: number;
+  /** Confidence-weighted mass of the distinct games this card was flagged in (any role). */
+  flaggedGameWeight: number;
 }
 
 /** Fallback `source` label for a link no adapter recognized. */
@@ -598,12 +600,15 @@ export class DecksService {
       if (ownedSides.size === 0) {
         continue; // false positive from the hero/label superset above
       }
-      // Every relevant game the deck participated in counts toward the denominator,
-      // whether or not any card was flagged — so a count reads against total games
-      // played (10 of 12 ≠ 10 of 150), not just against the games that had flags, and
-      // the score's denominator is the total confidence-weighted game mass.
+      // Every relevant game the deck participated in counts, whether or not any card was
+      // flagged — so a count reads against total games played (10 of 12 ≠ 10 of 150), and
+      // the unflagged games feed each card's discounted-neutral score term (a card's own
+      // flagged-game mass drives its score; the rest dilute it only lightly).
       gamesConsidered += 1;
       totalGameWeight += game.confidenceWeight;
+      // A card flagged both impressive and underperforming in the same game must count
+      // this game's weight toward its flaggedGameWeight only once (distinct-game mass).
+      const cardsFlaggedThisGame = new Set<string>();
       for (const captured of game.cards) {
         if (!ownedSides.has(captured.side)) {
           continue; // the deck's own side only, never the opponent's cards
@@ -614,7 +619,12 @@ export class DecksService {
           underperformingCount: 0,
           impressiveWeight: 0,
           underperformingWeight: 0,
+          flaggedGameWeight: 0,
         };
+        if (!cardsFlaggedThisGame.has(captured.cardId)) {
+          cardsFlaggedThisGame.add(captured.cardId);
+          existing.flaggedGameWeight += game.confidenceWeight;
+        }
         if (captured.role === "impressive") {
           existing.impressiveCount += 1;
           existing.impressiveWeight += game.confidenceWeight;
@@ -634,6 +644,7 @@ export class DecksService {
         score: deriveCardObservationScore({
           impressiveWeight: accumulator.impressiveWeight,
           underperformingWeight: accumulator.underperformingWeight,
+          flaggedGameWeight: accumulator.flaggedGameWeight,
           totalGameWeight,
         }),
       }))

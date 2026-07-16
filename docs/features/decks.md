@@ -48,12 +48,15 @@ they hang off events, carry a status lifecycle and visibility, and keep a manual
   So a game logged against the *meta* build of an archetype the deck represents still feeds the deck's card
   counts. `gamesConsidered` is the **total** relevant games the deck participated in (whether or not any
   card was flagged), so a count reads against total games played (10 of 12 ≠ 10 of 150). Each card also
-  carries a signed **score** in −100…+100% (a keep/cut signal): a confidence-weighted mean of each relevant
-  game's signal (+1 impressive / −1 underperforming / 0 neutral) over all those games, shrunk toward 0 by a
-  neutral prior — so impressions in heavy (tournament) games count more than low-weight ones, a
-  rarely-flagged card trends to ~0, and thin evidence can't reach the extremes. Shown on a diverging
-  5-level color scale (strong keep → keep → neutral → cut → strong cut). Single-sourced as
-  `deriveCardObservationScore` in `packages/shared`.
+  carries a signed **score** in −100…+100% (a keep/cut signal): it measures how **consistently** the card was
+  flagged impressive vs underperforming across the games where it was flagged, confidence-weighted so heavy
+  (tournament) games count more than low-weight ones. The deck's other, **unflagged** games count too, but
+  only at a heavy discount (`UNFLAGGED_GAME_NEUTRAL_WEIGHT = 0.1`) — teammates don't reliably capture cards,
+  so an unflagged game is weak evidence a card was unremarkable. This keeps a consistently-good-or-bad card
+  scoring strongly even when flagged in only a few of many games (e.g. underperforming in 5 of 100 games
+  ≈ −30%, not ≈ −5%), while a card flagged in nearly every game still lands near ±100%; a neutral prior keeps
+  thin evidence from reaching the extremes. Shown on a diverging 5-level color scale (strong keep → keep →
+  neutral → cut → strong cut). Single-sourced as `deriveCardObservationScore` in `packages/shared`.
 - As a **member**, I can **"Add card idea"** from the deck page: it opens the shared **Task** form
   (see [tasks.md](tasks.md)) pre-linked to this deck with a card-test title/description scaffold ready for
   `+card` mentions — the same `POST /api/tasks` path as the tasks board, not a parallel one. The deck page

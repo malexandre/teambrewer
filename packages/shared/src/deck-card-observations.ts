@@ -25,10 +25,11 @@ export const deckCardObservationSchema = z.object({
   impressiveCount: z.number().int(),
   underperformingCount: z.number().int(),
   /**
-   * A signed −1…+1 "keep/cut" score: a confidence-weighted mean of each relevant game's
-   * signal (+1 impressive / −1 underperforming / 0 neutral), shrunk toward 0. See
-   * {@link deriveCardObservationScore}. +1 = always impressive in weighty games, −1 = the
-   * opposite, 0 = neutral / too little (or too low-weight) evidence to tell.
+   * A signed −1…+1 "keep/cut" score measuring how **consistently** the card was flagged
+   * impressive vs underperforming across the games where it was flagged, discounting the
+   * deck's other games and shrinking toward 0 for thin evidence. See
+   * {@link deriveCardObservationScore}. Near +1 = reliably impressive, near −1 = reliably
+   * a liability, 0 = balanced / too little evidence to tell.
    */
   score: z.number(),
 });
@@ -36,31 +37,54 @@ export type DeckCardObservation = z.infer<typeof deckCardObservationSchema>;
 
 /**
  * Neutral-prior strength (in units of weight-1 games) for {@link deriveCardObservationScore}:
- * a thin or low-weight body of evidence stays near 0.5 until real, weighty games accumulate.
+ * a thin or low-weight body of evidence stays near 0 until real, weighty games accumulate.
  * ~2 games' worth of "no signal" — the moderate setting.
  */
 export const CARD_OBSERVATION_SCORE_PRIOR = 2;
 
 /**
- * A card's signed −1…+1 observation score for a deck. It is a **confidence-weighted mean
- * of each relevant game's signal** — `+1` when the card was impressive, `−1` when it
- * underperformed, `0` otherwise — over **all** the deck's relevant games, shrunk toward
- * `0` by a neutral prior:
+ * How much a game in which the card was **not** flagged still dilutes its score, relative
+ * to a game that did flag it, in {@link deriveCardObservationScore}. Teammates don't reliably
+ * use the capture feature, so an unflagged game is weak evidence that the card was
+ * unremarkable — it should pull the score toward 0 only a little, not one-for-one. At `0.1`,
+ * a card underperforming in 5 of 100 games scores ≈ −30% (vs ≈ −5% if unflagged games counted
+ * fully). Set to `0` to ignore unflagged games entirely, `1` to weigh them like flagged games.
+ */
+export const UNFLAGGED_GAME_NEUTRAL_WEIGHT = 0.1;
+
+/**
+ * A card's signed −1…+1 observation score for a deck. It measures how **consistently** the
+ * card was flagged impressive vs underperforming across the games where it was flagged,
+ * discounting the deck's other (unflagged) games and shrinking toward `0` by a neutral prior:
  *
- *     score = (impressiveWeight − underperformingWeight)
- *             / (totalGameWeight + CARD_OBSERVATION_SCORE_PRIOR)
+ *     observationWeight = impressiveWeight + underperformingWeight
+ *     neutralGameWeight = max(0, totalGameWeight − flaggedGameWeight)
+ *     denominator       = observationWeight
+ *                         + UNFLAGGED_GAME_NEUTRAL_WEIGHT × neutralGameWeight
+ *                         + CARD_OBSERVATION_SCORE_PRIOR
+ *     score             = (impressiveWeight − underperformingWeight) / denominator
  *
- * where the weights are sums of the games' confidence weights. So a card impressive in
- * heavy (tournament) games scores higher than one impressive only in low-weight games,
- * a rarely-flagged card trends to ~0 (its impact is spread thin over many games), and
- * thin evidence can't reach the extremes. Clamped to `[-1, 1]`; the single source of truth.
+ * where the weights are sums of the games' confidence weights and `flaggedGameWeight` is the
+ * confidence-weighted mass of the **distinct** games in which the card was flagged in any role.
+ * So a card impressive in heavy (tournament) games scores higher than one impressive only in
+ * low-weight games; a card flagged only a few times, but consistently, still scores strongly
+ * (unflagged games are discounted, not full-weight); a card flagged inconsistently nets toward
+ * 0; and thin evidence can't reach the extremes. Using `observationWeight` (not
+ * `flaggedGameWeight`) as the flagged term keeps `|score| ≤ 1` by construction. Clamped to
+ * `[-1, 1]` defensively; the single source of truth.
  */
 export function deriveCardObservationScore(input: {
   impressiveWeight: number;
   underperformingWeight: number;
+  flaggedGameWeight: number;
   totalGameWeight: number;
 }): number {
-  const denominator = input.totalGameWeight + CARD_OBSERVATION_SCORE_PRIOR;
+  const observationWeight = input.impressiveWeight + input.underperformingWeight;
+  const neutralGameWeight = Math.max(0, input.totalGameWeight - input.flaggedGameWeight);
+  const denominator =
+    observationWeight +
+    UNFLAGGED_GAME_NEUTRAL_WEIGHT * neutralGameWeight +
+    CARD_OBSERVATION_SCORE_PRIOR;
   const score =
     denominator > 0 ? (input.impressiveWeight - input.underperformingWeight) / denominator : 0;
   const clamped = Math.min(1, Math.max(-1, score));
@@ -70,9 +94,10 @@ export function deriveCardObservationScore(input: {
 /**
  * `GET /api/decks/:deckId/card-observations` response. `gamesConsidered` is the total
  * number of relevant games the deck participated in (its own side matched) — whether or
- * not any card was flagged in them — so a card's counts read against total games played
- * (10 of 12 ≠ 10 of 150). `observations` is sorted by total observations (impressive +
- * underperforming) desc, then card name asc.
+ * not any card was flagged in them — so a card's raw counts read against total games played
+ * (10 of 12 ≠ 10 of 150), and the unflagged games feed the score's discounted-neutral term
+ * (see {@link deriveCardObservationScore}). `observations` is sorted by total observations
+ * (impressive + underperforming) desc, then card name asc.
  */
 export const deckCardObservationsResponseSchema = z.object({
   deckId: z.string(),
