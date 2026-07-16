@@ -33,14 +33,14 @@ import { IterationLog } from "./IterationLog";
 import { useArchiveDeck, useChangeDeckStatus } from "./use-deck-mutations";
 
 /** The deck section ids, matching the tab definitions and the `/decks/:deckId/:deckTab` path. */
-const DECK_TAB_IDS = new Set(["general", "matchups", "plan", "cards", "card-ideas", "activity"]);
+const DECK_TAB_IDS = new Set(["general", "matchups", "plan", "cards", "card-ideas", "logs"]);
 
 /**
  * A deck's detail. A persistent header keeps the deck's identity in view — its name,
  * the Edit/Archive controls, the prominent link out to the external list (decks are
  * links — ADR-0002, no card-list UI), and a compact format/hero/status summary. The
  * rest is organized into accessible tabs (General, Matchup Matrix, Plan, Card observations,
- * Tasks, Activity) so a long deck page stays navigable. Editing opens the deck form in
+ * Tasks, Logs) so a long deck page stays navigable. Editing opens the deck form in
  * a modal; an archived deck is read-only.
  */
 export function DeckDetail({
@@ -162,7 +162,16 @@ export function DeckDetail({
 
       <DeckNotesSection teamId={teamId} deck={deck} canEdit={canModify && !isArchived} />
 
-      <IterationLog teamId={teamId} deckId={deck.id} canAddEntry={canModify} />
+      {/* Discussion is central to the tool, so it lives on the deck's landing tab. */}
+      <Section aria-label="Discussion">
+        <CommentThread
+          teamId={teamId}
+          subjectType="deck"
+          subjectId={deck.id}
+          canComment
+          highlightCommentId={highlightCommentId}
+        />
+      </Section>
     </div>
   );
 
@@ -196,23 +205,19 @@ export function DeckDetail({
       panel: <DeckCardIdeasSection teamId={teamId} deckId={deck.id} deckName={deck.name} />,
     },
     {
-      id: "activity",
-      label: "Activity",
+      id: "logs",
+      label: "Logs",
       panel: (
-        <Section aria-label="Activity" bodyClassName="gap-4">
-          <CommentThread
-            teamId={teamId}
-            subjectType="deck"
-            subjectId={deck.id}
-            canComment
-            highlightCommentId={highlightCommentId}
-          />
-          <ActivityFeed
-            teamId={teamId}
-            filters={{ subjectType: "deck", subjectId: deck.id }}
-            title="Deck activity"
-          />
-        </Section>
+        <div className="flex flex-col gap-4">
+          <IterationLog teamId={teamId} deckId={deck.id} canAddEntry={canModify} />
+          <Section aria-label="Activity log">
+            <ActivityFeed
+              teamId={teamId}
+              filters={{ subjectType: "deck", subjectId: deck.id }}
+              title="Deck activity"
+            />
+          </Section>
+        </div>
       ),
     },
   ];

@@ -224,6 +224,10 @@ describe("DeckDetail", () => {
     await user.click(screen.getByRole("tab", { name: "Tasks" }));
     // The readiness heading is gone once we leave that tab (only one panel renders).
     expect(screen.queryByRole("heading", { name: /readiness/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Logs" }));
+    expect(await screen.findByRole("heading", { name: /iteration log/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Deck activity" })).toBeInTheDocument();
   });
 
   it("edits notes with the +card composer and persists a notes-only update", async () => {
@@ -247,16 +251,31 @@ describe("DeckDetail", () => {
     });
   });
 
-  it("opens the tab named in the URL path", async () => {
+  it("shows the Discussion on the General tab by default", async () => {
     mockApi();
-    renderDetail(deck, "/decks/deck-1/activity");
+    renderDetail();
 
-    expect(await screen.findByRole("tab", { name: "Activity" })).toHaveAttribute(
+    expect(await screen.findByRole("tab", { name: "General" })).toHaveAttribute(
       "aria-selected",
       "true",
     );
+    // Discussion is central, so it renders on the landing tab.
     expect(screen.getByRole("heading", { name: "Discussion" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "false");
+    expect(await screen.findByText("hey @alice, look here")).toBeInTheDocument();
+  });
+
+  it("opens the Logs tab (iteration log + activity) from the URL path", async () => {
+    mockApi();
+    renderDetail(deck, "/decks/deck-1/logs");
+
+    expect(await screen.findByRole("tab", { name: "Logs" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("heading", { name: /iteration log/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Deck activity" })).toBeInTheDocument();
+    // The Discussion stays on General, not Logs.
+    expect(screen.queryByRole("heading", { name: "Discussion" })).not.toBeInTheDocument();
   });
 
   it("falls back to the General tab for an unknown tab segment", async () => {
@@ -271,7 +290,7 @@ describe("DeckDetail", () => {
 
   it("scrolls to and highlights the comment named in the #comment hash", async () => {
     mockApi();
-    renderDetail(deck, "/decks/deck-1/activity#comment-c1");
+    renderDetail(deck, "/decks/deck-1#comment-c1");
 
     await screen.findByText("hey @alice, look here");
     await waitFor(() =>

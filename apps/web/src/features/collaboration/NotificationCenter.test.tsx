@@ -117,12 +117,12 @@ describe("NotificationCenter", () => {
     await waitFor(() => expect(screen.queryByTestId("notification-badge")).not.toBeInTheDocument());
   });
 
-  it("deep-links a deck mention to the Activity tab, anchoring the comment", async () => {
+  it("deep-links a deck mention to the deck (General tab), anchoring the comment", async () => {
     renderCenter();
     await openFirstNotification();
     expect(navigateSpy).toHaveBeenCalledWith({
-      to: "/decks/$deckId/$deckTab",
-      params: { deckId: "deck-1", deckTab: "activity" },
+      to: "/decks/$deckId",
+      params: { deckId: "deck-1" },
       hash: "comment-c1",
     });
   });
@@ -171,8 +171,8 @@ describe("NotificationCenter", () => {
     renderCenter();
     await openFirstNotification();
     expect(navigateSpy).toHaveBeenCalledWith({
-      to: "/decks/$deckId/$deckTab",
-      params: { deckId: "deck-1", deckTab: "activity" },
+      to: "/decks/$deckId",
+      params: { deckId: "deck-1" },
     });
     expect(navigateSpy.mock.calls[0]?.[0]).not.toHaveProperty("hash");
   });

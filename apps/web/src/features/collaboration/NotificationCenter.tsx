@@ -57,9 +57,10 @@ export function NotificationCenter() {
     const hashOption = notification.commentId ? { hash: `comment-${notification.commentId}` } : {};
     switch (notification.subjectType) {
       case "deck":
+        // The discussion lives on the deck's default (General) tab.
         return void navigate({
-          to: "/decks/$deckId/$deckTab",
-          params: { deckId: notification.subjectId, deckTab: "activity" },
+          to: "/decks/$deckId",
+          params: { deckId: notification.subjectId },
           ...hashOption,
         });
       case "game_log":

@@ -39,13 +39,13 @@ test("a comment mention notifies a teammate and deep-links to the thread", async
   await authorPage.getByRole("button", { name: "Create deck" }).click();
   await expect(authorPage.getByRole("heading", { name: deckName })).toBeVisible();
 
-  // Comments and the activity feed live under the deck's "Activity" tab.
-  await authorPage.getByRole("tab", { name: "Activity" }).click();
+  // The Discussion is central, so the comment composer is on the deck's default (General) tab.
   await authorPage.getByLabel("New comment").fill(commentBody);
   await authorPage.getByRole("button", { name: "Comment", exact: true }).click();
   await expect(authorPage.getByText(commentBody)).toBeVisible();
 
-  // 2. The deck's activity feed shows the create and comment events.
+  // 2. The activity feed (with the create + comment events) lives under the "Logs" tab.
+  await authorPage.getByRole("tab", { name: "Logs" }).click();
   await expect(authorPage.getByText(/created a deck/i)).toBeVisible();
   await expect(authorPage.getByText(/commented/i).first()).toBeVisible();
 
@@ -57,14 +57,14 @@ test("a comment mention notifies a teammate and deep-links to the thread", async
   await mentionedPage.getByRole("button", { name: /notifications/i }).click();
   await mentionedPage.getByRole("button", { name: /mentioned you/i }).click();
 
-  // 4. Clicking it deep-links straight to the deck's Activity tab (no manual tab click)
+  // 4. Clicking it deep-links straight to the deck (its General tab holds the Discussion)
   // and anchors the source comment, which is scrolled to and briefly highlighted.
   await expect(mentionedPage.getByRole("heading", { name: deckName })).toBeVisible();
-  await expect(mentionedPage.getByRole("tab", { name: "Activity" })).toHaveAttribute(
+  await expect(mentionedPage.getByRole("tab", { name: "General" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
-  await expect(mentionedPage).toHaveURL(/\/decks\/[^/]+\/activity#comment-/);
+  await expect(mentionedPage).toHaveURL(/\/decks\/[^/]+#comment-/);
   await expect(mentionedPage.getByText(commentBody)).toBeVisible();
   // The comment carries the deep-link anchor id used for the highlight.
   await expect(
