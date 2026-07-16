@@ -1,9 +1,11 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import type { Notification } from "@teambrewer/shared";
 import { Bell } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { gamePlanQueryOptions } from "@/features/gameplans/use-game-plans";
 import { useActiveTeam } from "@/features/teams/active-team";
 
 import {
@@ -31,6 +33,7 @@ export function NotificationCenter() {
   const { activeTeam } = useActiveTeam();
   const teamId = activeTeam?.teamId;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
   const { data } = useNotifications(teamId);
@@ -40,11 +43,48 @@ export function NotificationCenter() {
   const notifications = data?.data ?? [];
   const unreadCount = data?.unreadCount ?? 0;
 
-  function openSubject(notification: Notification): void {
+  /**
+   * Mark read and deep-link to the notification's source, landing on the right place per
+   * subject type and anchoring the originating comment (`#comment-<id>`) so it is scrolled
+   * to and briefly highlighted. A game-plan carries no deck reference, so its parent deck
+   * is resolved on demand before navigating to the deck's Plan tab.
+   */
+  async function openSubject(notification: Notification): Promise<void> {
     markRead.mutate(notification.id);
     setOpen(false);
-    if (notification.subjectType === "deck") {
-      void navigate({ to: "/decks/$deckId", params: { deckId: notification.subjectId } });
+    // Include the anchor only when a comment is present — TanStack's navigate rejects an
+    // explicit `hash: undefined` under exactOptionalPropertyTypes.
+    const hashOption = notification.commentId ? { hash: `comment-${notification.commentId}` } : {};
+    switch (notification.subjectType) {
+      case "deck":
+        return void navigate({
+          to: "/decks/$deckId/$deckTab",
+          params: { deckId: notification.subjectId, deckTab: "activity" },
+          ...hashOption,
+        });
+      case "game_log":
+        return void navigate({
+          to: "/games/$gameLogId",
+          params: { gameLogId: notification.subjectId },
+          ...hashOption,
+        });
+      case "task":
+        return void navigate({
+          to: "/tasks/$taskId",
+          params: { taskId: notification.subjectId },
+          ...hashOption,
+        });
+      case "matchup_game_plan": {
+        if (!teamId) return;
+        const plan = await queryClient.fetchQuery(
+          gamePlanQueryOptions(teamId, notification.subjectId),
+        );
+        return void navigate({
+          to: "/decks/$deckId/$deckTab",
+          params: { deckId: plan.ourDeckId, deckTab: "plan" },
+          ...hashOption,
+        });
+      }
     }
   }
 
@@ -93,7 +133,7 @@ export function NotificationCenter() {
                     className={`w-full rounded-md p-2 text-left hover:bg-muted ${
                       notification.readAt === null ? "font-medium" : "text-muted-foreground"
                     }`}
-                    onClick={() => openSubject(notification)}
+                    onClick={() => void openSubject(notification)}
                   >
                     {describe(notification)}
                     <span className="block text-xs text-muted-foreground">
