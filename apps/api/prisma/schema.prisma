@@ -447,6 +447,14 @@ enum AttendanceStatus {
   interested
 }
 
+/// A member's status for one leg of an event trip (transport out, lodging, transport back).
+/// `null` (column nullable) means the member hasn't said yet. Only meaningful when `going`.
+enum TravelLegStatus {
+  sorted // has a solution (detail optional)
+  searching // still needs one — the "needs help" signal
+  not_needed // deliberately not required (e.g. a day trip needs no lodging)
+}
+
 /// A team's lightweight, isolated event: a name, date, and optional venue/description.
 /// Soft-deleted via `archivedAt` so history survives.
 model Event {
@@ -480,6 +488,17 @@ model Attendance {
   status    AttendanceStatus
   createdAt DateTime         @default(now()) @map("created_at")
   updatedAt DateTime         @updatedAt @map("updated_at")
+
+  // Per-member travel logistics for a `going` member: three legs (outbound transport,
+  // lodging, return transport), each an optional status + optional free-text "which one"
+  // note. Self-service (each member sets their own), team-visible on the roster. A null
+  // status = not specified yet; detail is only kept when the status is `sorted`.
+  outboundTransportStatus TravelLegStatus? @map("outbound_transport_status")
+  outboundTransportDetail String?          @map("outbound_transport_detail")
+  lodgingStatus           TravelLegStatus? @map("lodging_status")
+  lodgingDetail           String?          @map("lodging_detail")
+  returnTransportStatus   TravelLegStatus? @map("return_transport_status")
+  returnTransportDetail   String?          @map("return_transport_detail")
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)

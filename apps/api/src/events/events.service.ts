@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 
 import {
   type Attendance,
@@ -12,6 +12,11 @@ import {
   type EventSummary,
   errorCode,
   type SetAttendanceInput,
+  type SetTravelInput,
+  type TravelLeg,
+  type TravelLegInput,
+  type TravelLegStatus,
+  type TravelPlan,
   type UpdateEventInput,
 } from "@teambrewer/shared";
 
@@ -38,6 +43,12 @@ interface AttendanceRow {
   eventId: string;
   userId: string;
   status: AttendanceStatus;
+  outboundTransportStatus: TravelLegStatus | null;
+  outboundTransportDetail: string | null;
+  lodgingStatus: TravelLegStatus | null;
+  lodgingDetail: string | null;
+  returnTransportStatus: TravelLegStatus | null;
+  returnTransportDetail: string | null;
   createdAt: Date;
   updatedAt: Date;
   user: { id: string; username: string | null; displayName: string };
@@ -207,6 +218,44 @@ export class EventsService {
     return toAttendance(row);
   }
 
+  /**
+   * Replace the current member's three-leg travel plan for an event (self-service, one
+   * row per (event, user)). Travel logistics are only meaningful for a member who is
+   * attending, so this requires an existing `going` RSVP (422 otherwise). Each leg's
+   * free-text detail is dropped unless that leg's status is `sorted`, so a stale note
+   * can't linger on a "not needed"/"searching" leg.
+   */
+  async setMyTravel(
+    team: TeamContext,
+    eventId: string,
+    input: SetTravelInput,
+  ): Promise<Attendance> {
+    await this.requireEvent(eventId);
+    // Attendance carries no teamId; the eventId was just verified against the caller's
+    // team, so scoping by (eventId, userId) is the tenant boundary.
+    const existing = await this.scoped.db.attendance.findFirst({
+      where: { eventId, userId: team.userId },
+      select: { status: true },
+    });
+    if (!existing || existing.status !== "going") {
+      throw travelRequiresGoing();
+    }
+
+    const row = (await this.scoped.db.attendance.update({
+      where: { eventId_userId: { eventId, userId: team.userId } },
+      data: {
+        outboundTransportStatus: input.outboundTransport.status,
+        outboundTransportDetail: detailForStatus(input.outboundTransport),
+        lodgingStatus: input.lodging.status,
+        lodgingDetail: detailForStatus(input.lodging),
+        returnTransportStatus: input.returnTransport.status,
+        returnTransportDetail: detailForStatus(input.returnTransport),
+      },
+      include: { user: { select: { id: true, username: true, displayName: true } } },
+    })) as AttendanceRow;
+    return toAttendance(row);
+  }
+
   /** Load a non-archived event's id, or throw 404. */
   private async requireEvent(eventId: string): Promise<void> {
     const row = await this.scoped.db.event.findFirst({
@@ -259,6 +308,36 @@ function eventNotFound(): NotFoundException {
   });
 }
 
+function travelRequiresGoing(): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    error: {
+      code: errorCode.domainRuleViolation,
+      message: "RSVP as going before planning travel.",
+    },
+  });
+}
+
+/** A leg's detail note is only kept when it is `sorted`; a blank note stores as null. */
+function detailForStatus(leg: TravelLegInput): string | null {
+  if (leg.status !== "sorted") {
+    return null;
+  }
+  const detail = leg.detail?.trim() ?? "";
+  return detail.length > 0 ? detail : null;
+}
+
+function toTravelLeg(status: TravelLegStatus | null, detail: string | null): TravelLeg {
+  return { status, detail };
+}
+
+function toTravelPlan(row: AttendanceRow): TravelPlan {
+  return {
+    outboundTransport: toTravelLeg(row.outboundTransportStatus, row.outboundTransportDetail),
+    lodging: toTravelLeg(row.lodgingStatus, row.lodgingDetail),
+    returnTransport: toTravelLeg(row.returnTransportStatus, row.returnTransportDetail),
+  };
+}
+
 /** The going/interested RSVP tally embedded in an event summary row. */
 interface AttendanceCounts {
   goingCount: number;
@@ -306,6 +385,7 @@ function toAttendance(row: AttendanceRow): Attendance {
       username: row.user.username ?? "",
       displayName: row.user.displayName,
     },
+    travel: toTravelPlan(row),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

@@ -24,6 +24,7 @@ import { useActiveTeam } from "@/features/teams/active-team";
 import { TeamSelector } from "@/features/teams/TeamSelector";
 import { ThemeToggle } from "@/features/app/ThemeToggle";
 import { authClient } from "@/lib/auth-client";
+import { initialsFor } from "@/lib/initials";
 import { cn } from "@/lib/utils";
 
 /** A main-menu entry, with the matcher deciding when it reads as active. */
@@ -98,14 +99,6 @@ const ADMIN_SUBNAV: SubNavItem[] = [
 ];
 
 const SIDEBAR_COLLAPSED_KEY = "teambrewer-sidebar-collapsed";
-
-/** Two-letter initials for the account avatar (first letters of the name's words). */
-function initialsFor(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
-  return (words[0]![0]! + words[words.length - 1]![0]!).toUpperCase();
-}
 
 /** The list of main-menu links, shared by the desktop sidebar and mobile drawer. */
 function MainMenu({

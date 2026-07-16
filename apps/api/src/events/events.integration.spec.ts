@@ -266,4 +266,98 @@ describe("Events endpoints (integration)", () => {
       expect(response.status).toBe(404);
     });
   });
+
+  describe("travel logistics", () => {
+    const goingRsvp = (eventId: string) =>
+      asMemberA(http().put(`/api/events/${eventId}/attendance/me`)).send({ status: "going" });
+
+    const fullPlan = {
+      outboundTransport: { status: "sorted", detail: "Car with Sam" },
+      lodging: { status: "not_needed" },
+      returnTransport: { status: "searching" },
+    };
+
+    it("saves my travel plan and reflects it on the roster", async () => {
+      const event = await createEvent(prisma, { teamId: teamA.id });
+      await goingRsvp(event.id);
+
+      const response = await asMemberA(
+        http().put(`/api/events/${event.id}/attendance/me/travel`),
+      ).send(fullPlan);
+      expect(response.status).toBe(200);
+      expect(response.body.travel.outboundTransport).toEqual({
+        status: "sorted",
+        detail: "Car with Sam",
+      });
+      expect(response.body.travel.lodging.status).toBe("not_needed");
+      expect(response.body.travel.returnTransport.status).toBe("searching");
+
+      const roster = await asMemberA(http().get(`/api/events/${event.id}/attendance`));
+      const mine = roster.body.data.find(
+        (entry: { user: { userId: string } }) => entry.user.userId === memberA.id,
+      );
+      expect(mine.travel.outboundTransport.detail).toBe("Car with Sam");
+    });
+
+    it("drops a detail note when the leg is not sorted", async () => {
+      const event = await createEvent(prisma, { teamId: teamA.id });
+      await goingRsvp(event.id);
+
+      const response = await asMemberA(
+        http().put(`/api/events/${event.id}/attendance/me/travel`),
+      ).send({
+        outboundTransport: { status: "searching", detail: "should be discarded" },
+        lodging: { status: "sorted", detail: "Airbnb" },
+        returnTransport: { status: null },
+      });
+      expect(response.status).toBe(200);
+      expect(response.body.travel.outboundTransport.detail).toBeNull();
+      expect(response.body.travel.lodging.detail).toBe("Airbnb");
+      expect(response.body.travel.returnTransport.status).toBeNull();
+    });
+
+    it("rejects planning travel without a going RSVP (422)", async () => {
+      const event = await createEvent(prisma, { teamId: teamA.id });
+
+      const withoutRsvp = await asMemberA(
+        http().put(`/api/events/${event.id}/attendance/me/travel`),
+      ).send(fullPlan);
+      expect(withoutRsvp.status).toBe(422);
+
+      // Merely interested is not enough — travel is for attendees.
+      await asMemberA(http().put(`/api/events/${event.id}/attendance/me`)).send({
+        status: "interested",
+      });
+      const whenInterested = await asMemberA(
+        http().put(`/api/events/${event.id}/attendance/me/travel`),
+      ).send(fullPlan);
+      expect(whenInterested.status).toBe(422);
+    });
+
+    it("rejects an invalid leg status (400)", async () => {
+      const event = await createEvent(prisma, { teamId: teamA.id });
+      await goingRsvp(event.id);
+      const response = await asMemberA(
+        http().put(`/api/events/${event.id}/attendance/me/travel`),
+      ).send({ ...fullPlan, lodging: { status: "maybe" } });
+      expect(response.status).toBe(400);
+    });
+
+    it("requires authentication (401)", async () => {
+      const event = await createEvent(prisma, { teamId: teamA.id });
+      const response = await http()
+        .put(`/api/events/${event.id}/attendance/me/travel`)
+        .set("x-team-id", teamA.id)
+        .send(fullPlan);
+      expect(response.status).toBe(401);
+    });
+
+    it("returns 404 planning travel on another team's event (no enumeration)", async () => {
+      const eventB = await createEvent(prisma, { teamId: teamB.id });
+      const response = await asMemberA(
+        http().put(`/api/events/${eventB.id}/attendance/me/travel`),
+      ).send(fullPlan);
+      expect(response.status).toBe(404);
+    });
+  });
 });

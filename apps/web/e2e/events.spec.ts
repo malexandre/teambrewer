@@ -39,7 +39,15 @@ test("create a lightweight event, RSVP, and confirm team isolation", async ({ pa
   // Scope to the roster: the account name now also appears in the sidebar footer.
   await expect(page.getByLabel("Attendance").getByText(E2E_EVENTS_USER.displayName)).toBeVisible();
 
-  // 5. Switch to the other team: the event must not be visible (tenant isolation).
+  // 5. Travel logistics: a going member is "still looking" by default, so the needs
+  //    strip flags them; picking a concrete method for each leg auto-saves and clears it.
+  await expect(page.getByText(/1 needs transport/i)).toBeVisible();
+  await page.getByLabel("Getting there", { exact: true }).selectOption("car");
+  await page.getByLabel("Getting back", { exact: true }).selectOption("train");
+  await page.getByLabel("Lodging", { exact: true }).selectOption("not_needed");
+  await expect(page.getByText(/needs transport/i)).toHaveCount(0);
+
+  // 6. Switch to the other team: the event must not be visible (tenant isolation).
   await page
     .getByRole("combobox", { name: /active team/i })
     .selectOption({ label: E2E_TEAMS.bravo.name });

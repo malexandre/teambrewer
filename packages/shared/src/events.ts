@@ -8,6 +8,12 @@ import { z } from "zod";
  * importance, a format, a gauntlet, deck selections, a retrospective, or a link to a
  * meta, and are not a commentable subject.
  *
+ * A member who is `going` may additionally record per-member travel logistics — three
+ * legs (outbound transport, lodging, return transport), each `sorted`/`searching`/
+ * `not_needed` with an optional free-text note — so the team can coordinate rides and
+ * lodging and see at a glance who still needs help. Travel is self-service (each member
+ * sets their own) but visible to the whole team on the roster.
+ *
  * Tenancy: `teamId` and `gameId` (and, for attendance, `userId`) are stamped
  * server-side from the verified request context — they are never accepted from the
  * client, so create/update inputs omit them and unknown keys are stripped.
@@ -16,6 +22,19 @@ import { z } from "zod";
 /** A member's RSVP for an event (absence = not going). */
 export const attendanceStatusSchema = z.enum(["going", "interested"]);
 export type AttendanceStatus = z.infer<typeof attendanceStatusSchema>;
+
+/**
+ * A member's status for one leg of an event trip. `sorted` = has a solution (with an
+ * optional free-text note saying which), `searching` = still needs one (the "needs help"
+ * signal the roster surfaces at a glance), `not_needed` = deliberately not required (e.g. a
+ * same-day round trip needs no lodging). A `null` status means the member hasn't said yet.
+ * Travel logistics are only meaningful for a `going` member.
+ */
+export const travelLegStatusSchema = z.enum(["sorted", "searching", "not_needed"]);
+export type TravelLegStatus = z.infer<typeof travelLegStatusSchema>;
+
+/** An optional free-text "which one" note for a sorted leg (e.g. "Car with Sam"). */
+export const travelLegDetailSchema = z.string().trim().max(200);
 
 /** An event's display name. */
 export const eventNameSchema = z
@@ -84,6 +103,29 @@ export const setAttendanceSchema = z.object({ status: attendanceStatusSchema });
 export type SetAttendanceInput = z.infer<typeof setAttendanceSchema>;
 
 /**
+ * One trip leg as submitted by a member. `detail` is only meaningful when `status` is
+ * `sorted`; the server clears it for any other status so a stale note can't linger on a
+ * "not needed"/"searching" leg.
+ */
+export const travelLegInputSchema = z.object({
+  status: travelLegStatusSchema.nullable(),
+  detail: travelLegDetailSchema.optional(),
+});
+export type TravelLegInput = z.infer<typeof travelLegInputSchema>;
+
+/**
+ * Set-my-travel input: a full replace of the member's three-leg plan for an event
+ * (outbound transport, lodging, return transport). The member is derived from the verified
+ * request context, never the body; it requires an existing `going` RSVP for the event.
+ */
+export const setTravelSchema = z.object({
+  outboundTransport: travelLegInputSchema,
+  lodging: travelLegInputSchema,
+  returnTransport: travelLegInputSchema,
+});
+export type SetTravelInput = z.infer<typeof setTravelSchema>;
+
+/**
  * Query parameters for `GET /api/events`. Values arrive as strings, so `limit` is
  * coerced. Archived events are excluded server-side regardless of filters.
  */
@@ -114,6 +156,25 @@ export const eventSummarySchema = z.object({
 });
 export type EventSummary = z.infer<typeof eventSummarySchema>;
 
+/** One trip leg as returned in the roster: a status (or null = unspecified) plus an optional note. */
+export const travelLegSchema = z.object({
+  status: travelLegStatusSchema.nullable(),
+  detail: z.string().nullable(),
+});
+export type TravelLeg = z.infer<typeof travelLegSchema>;
+
+/**
+ * A member's three-leg travel plan for an event, denormalized onto the roster so the
+ * boarding-pass view renders in the single attendance request. Only meaningful for a
+ * `going` member; retained (but hidden) if they later switch to `interested`.
+ */
+export const travelPlanSchema = z.object({
+  outboundTransport: travelLegSchema,
+  lodging: travelLegSchema,
+  returnTransport: travelLegSchema,
+});
+export type TravelPlan = z.infer<typeof travelPlanSchema>;
+
 /** A member's RSVP, denormalized with the member's display identity for the roster. */
 export const attendanceSchema = z.object({
   id: z.string(),
@@ -124,6 +185,7 @@ export const attendanceSchema = z.object({
     username: z.string(),
     displayName: z.string(),
   }),
+  travel: travelPlanSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
 });

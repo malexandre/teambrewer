@@ -9,6 +9,22 @@
 > link. The prose below
 > describes the superseded v1 event-centric design and is kept for history; the WS-1 foundation adds the
 > Meta/Task models alongside it, and later workstreams strip `EventsModule` and remove the gauntlet code.
+>
+> **Travel logistics (additive to the lightweight event).** A member who has RSVP'd **going** may record
+> per-member travel logistics for three legs — **outbound transport**, **lodging**, and **return
+> transport**. Each leg is chosen from a single fixed dropdown — a concrete method (transport: plane,
+> car, train, bus, other; lodging: airbnb, hotel, other), which maps to `sorted` with the method as its
+> detail, plus `searching` (still needs one — the "needs help" signal) and `not_needed` (e.g. a same-day
+> round trip needs no lodging). An unset leg is **treated as `searching` ("still looking") by default**,
+> so a member reads as needing help until they say otherwise. Logistics is **self-service**
+> (each member edits only their own, like RSVP) but **visible to the whole team** on the roster, so the
+> team can coordinate rides and lodging and see at a glance who still needs help. It is stored on the
+> `Attendance` row (six nullable columns + a `TravelLegStatus` enum; no `teamId` — reached through the
+> team-scoped event) and set via `PUT /api/events/:eventId/attendance/me/travel`; the server drops a
+> leg's note unless that leg is `sorted`, and changing an RSVP from going→interested retains (but hides)
+> the stored plan. The roster is presented as **boarding-pass tickets** for going members (with a
+> "needs help" stub) and light avatar chips for interested members, above a summary strip tallying unmet
+> needs.
 
 ## Summary
 

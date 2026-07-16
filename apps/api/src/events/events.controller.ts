@@ -20,6 +20,7 @@ import {
   eventListQuerySchema,
   type EventListResponse,
   setAttendanceSchema,
+  setTravelSchema,
   updateEventSchema,
 } from "@teambrewer/shared";
 
@@ -78,5 +79,14 @@ export class EventsController {
     @Body() body: unknown,
   ): Promise<Attendance> {
     return this.events.setMyAttendance(team, eventId, setAttendanceSchema.parse(body));
+  }
+
+  @Put(":eventId/attendance/me/travel")
+  setMyTravel(
+    @CurrentTeam() team: TeamContext,
+    @Param("eventId") eventId: string,
+    @Body() body: unknown,
+  ): Promise<Attendance> {
+    return this.events.setMyTravel(team, eventId, setTravelSchema.parse(body));
   }
 }

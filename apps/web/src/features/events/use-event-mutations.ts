@@ -6,6 +6,7 @@ import {
   type EventDetail,
   eventDetailSchema,
   type SetAttendanceInput,
+  type SetTravelInput,
   type UpdateEventInput,
 } from "@teambrewer/shared";
 
@@ -73,6 +74,24 @@ export function useSetMyAttendance(teamId: string | undefined, eventId: string) 
       if (!teamId) return;
       void queryClient.invalidateQueries({ queryKey: queryKeys.eventAttendance(teamId, eventId) });
       // The event detail embeds an attendance summary — refresh it too.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.event(teamId, eventId) });
+    },
+  });
+}
+
+/** Replace my travel plan (PUT /api/events/:eventId/attendance/me/travel). */
+export function useSetMyTravel(teamId: string | undefined, eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SetTravelInput) =>
+      apiClient.put<Attendance>(`/events/${eventId}/attendance/me/travel`, {
+        teamId: requireTeam(teamId),
+        body: input,
+        schema: attendanceSchema,
+      }),
+    onSuccess: () => {
+      if (!teamId) return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.eventAttendance(teamId, eventId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.event(teamId, eventId) });
     },
   });

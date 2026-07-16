@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  attendanceSchema,
   attendanceStatusSchema,
   createEventSchema,
   eventListQuerySchema,
   eventSummarySchema,
   setAttendanceSchema,
+  setTravelSchema,
+  travelLegStatusSchema,
   updateEventSchema,
 } from "./events.js";
 
@@ -96,6 +99,84 @@ describe("setAttendanceSchema", () => {
 
   it("rejects an invalid RSVP", () => {
     expect(() => setAttendanceSchema.parse({ status: "maybe" })).toThrow();
+  });
+});
+
+describe("travelLegStatusSchema", () => {
+  it("accepts the three leg states", () => {
+    for (const status of ["sorted", "searching", "not_needed"]) {
+      expect(travelLegStatusSchema.parse(status)).toBe(status);
+    }
+  });
+
+  it("rejects an unknown state", () => {
+    expect(travelLegStatusSchema.safeParse("maybe").success).toBe(false);
+  });
+});
+
+describe("setTravelSchema", () => {
+  const sortedLeg = { status: "sorted" as const, detail: "Car with Sam" };
+  const validPlan = {
+    outboundTransport: sortedLeg,
+    lodging: { status: "not_needed" as const },
+    returnTransport: { status: "searching" as const },
+  };
+
+  it("accepts a full three-leg plan", () => {
+    const parsed = setTravelSchema.parse(validPlan);
+    expect(parsed.outboundTransport).toEqual(sortedLeg);
+    expect(parsed.lodging.status).toBe("not_needed");
+    expect(parsed.returnTransport.status).toBe("searching");
+  });
+
+  it("accepts a null (unspecified) leg status", () => {
+    const parsed = setTravelSchema.parse({
+      ...validPlan,
+      lodging: { status: null },
+    });
+    expect(parsed.lodging.status).toBeNull();
+  });
+
+  it("makes the detail note optional", () => {
+    expect(() =>
+      setTravelSchema.parse({ ...validPlan, outboundTransport: { status: "sorted" } }),
+    ).not.toThrow();
+  });
+
+  it("rejects a detail note longer than 200 characters", () => {
+    expect(() =>
+      setTravelSchema.parse({
+        ...validPlan,
+        outboundTransport: { status: "sorted", detail: "x".repeat(201) },
+      }),
+    ).toThrow();
+  });
+
+  it("requires all three legs to be present", () => {
+    const missingLeg: Record<string, unknown> = { ...validPlan };
+    delete missingLeg["lodging"];
+    expect(setTravelSchema.safeParse(missingLeg).success).toBe(false);
+  });
+});
+
+describe("attendanceSchema", () => {
+  it("parses the nested three-leg travel plan", () => {
+    const parsed = attendanceSchema.parse({
+      id: "attendance-1",
+      eventId: "event-1",
+      status: "going",
+      user: { userId: "user-1", username: "sam", displayName: "Sam Mercier" },
+      travel: {
+        outboundTransport: { status: "sorted", detail: "Driving" },
+        lodging: { status: "searching", detail: null },
+        returnTransport: { status: null, detail: null },
+      },
+      createdAt: "2026-07-12T00:00:00.000Z",
+      updatedAt: "2026-07-12T00:00:00.000Z",
+    });
+    expect(parsed.travel.outboundTransport.detail).toBe("Driving");
+    expect(parsed.travel.lodging.status).toBe("searching");
+    expect(parsed.travel.returnTransport.status).toBeNull();
   });
 });
 
