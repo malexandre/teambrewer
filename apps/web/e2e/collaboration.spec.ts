@@ -57,10 +57,19 @@ test("a comment mention notifies a teammate and deep-links to the thread", async
   await mentionedPage.getByRole("button", { name: /notifications/i }).click();
   await mentionedPage.getByRole("button", { name: /mentioned you/i }).click();
 
-  // 4. Clicking it opens the deck detail; the comment thread is under the Activity tab.
+  // 4. Clicking it deep-links straight to the deck's Activity tab (no manual tab click)
+  // and anchors the source comment, which is scrolled to and briefly highlighted.
   await expect(mentionedPage.getByRole("heading", { name: deckName })).toBeVisible();
-  await mentionedPage.getByRole("tab", { name: "Activity" }).click();
+  await expect(mentionedPage.getByRole("tab", { name: "Activity" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(mentionedPage).toHaveURL(/\/decks\/[^/]+\/activity#comment-/);
   await expect(mentionedPage.getByText(commentBody)).toBeVisible();
+  // The comment carries the deep-link anchor id used for the highlight.
+  await expect(
+    mentionedPage.locator("[data-comment-id]").filter({ hasText: commentBody }),
+  ).toBeVisible();
 
   await authorContext.close();
   await mentionedContext.close();
