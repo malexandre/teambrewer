@@ -8,7 +8,6 @@ import {
 } from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ActiveTeamProvider } from "@/features/teams/active-team";
@@ -128,24 +127,28 @@ function mockApi(): { assigneeQueries: (string | null)[] } {
   return { assigneeQueries };
 }
 
-/** Render inside a memory router (TasksPage reads the location hash for deep-links). */
-function renderPage(ui: ReactNode, initialEntry = "/tasks") {
+/**
+ * Render the tasks board inside a memory router mirroring the app's single optional-param
+ * route (`/tasks/{-$taskId}`), so opening/closing a task is URL-driven and the location
+ * hash feeds the deep-link highlight. `initialEntry` seeds the starting URL.
+ */
+function renderPage(initialEntry = "/tasks") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const rootRoute = createRootRoute({
-    component: () => <ActiveTeamProvider>{ui}</ActiveTeamProvider>,
-  });
-  const tasksListRoute = createRoute({
+  const rootRoute = createRootRoute();
+  const tasksRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/tasks",
-    component: () => null,
-  });
-  const taskDetailRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/tasks/$taskId",
-    component: () => null,
+    path: "/tasks/{-$taskId}",
+    component: function TasksRoute() {
+      const { taskId } = tasksRoute.useParams();
+      return (
+        <ActiveTeamProvider>
+          <TasksPage openTaskId={taskId} />
+        </ActiveTeamProvider>
+      );
+    },
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([tasksListRoute, taskDetailRoute]),
+    routeTree: rootRoute.addChildren([tasksRoute]),
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
   });
   return render(
@@ -163,7 +166,7 @@ afterEach(() => {
 describe("TasksPage", () => {
   it("renders tasks in status columns", async () => {
     mockApi();
-    renderPage(<TasksPage />);
+    renderPage();
 
     // The board has a column per status label…
     expect(await screen.findByText("Proposed")).toBeInTheDocument();
@@ -175,7 +178,7 @@ describe("TasksPage", () => {
 
   it("reflects the viewer's vote on the vote control", async () => {
     mockApi();
-    renderPage(<TasksPage />);
+    renderPage();
 
     const retract = await screen.findByRole("button", { name: "Retract upvote" });
     expect(retract).toHaveAttribute("aria-pressed", "true");
@@ -183,21 +186,26 @@ describe("TasksPage", () => {
     expect(upvote).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("opens a task's detail dialog with its description and +card chips", async () => {
+  it("opens and closes a task's detail dialog (URL-driven)", async () => {
     const user = userEvent.setup();
     mockApi();
-    renderPage(<TasksPage />);
+    renderPage();
 
     await user.click(
       await screen.findByRole("button", { name: "Open task: Test Bravado over Sink Below" }),
     );
     // The +[[card-x]] token resolves to the "+Bravado" chip in the detail dialog.
     expect(await screen.findByText("+Bravado")).toBeInTheDocument();
+
+    // Closing drops the task from the URL, so the dialog goes away (regression guard: an
+    // empty params object would keep the optional param and leave the dialog stuck open).
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("narrows to the viewer's tasks when the 'Assigned to me' scope is chosen", async () => {
     const { assigneeQueries } = mockApi();
-    renderPage(<TasksPage />);
+    renderPage();
 
     await screen.findByText("Test Bravado over Sink Below");
     await userEvent.click(screen.getByRole("button", { name: "Assigned to me" }));
@@ -207,7 +215,7 @@ describe("TasksPage", () => {
   it("reveals a finished task's report from its detail dialog", async () => {
     const user = userEvent.setup();
     mockApi();
-    renderPage(<TasksPage />);
+    renderPage();
 
     await user.click(await screen.findByRole("button", { name: "Open task: Finished tuning" }));
     expect(screen.queryByText("Went 8-2; adopting.")).not.toBeInTheDocument();
@@ -217,7 +225,7 @@ describe("TasksPage", () => {
 
   it("reveals the task form when creating", async () => {
     mockApi();
-    renderPage(<TasksPage />);
+    renderPage();
 
     await screen.findByText("Test Bravado over Sink Below");
     await userEvent.click(screen.getByRole("button", { name: "New task" }));
@@ -227,7 +235,7 @@ describe("TasksPage", () => {
 
   it("opens the deep-linked task's dialog on arrival", async () => {
     mockApi();
-    renderPage(<TasksPage openTaskId="t1" />, "/tasks/t1");
+    renderPage("/tasks/t1");
 
     // The dialog opens with the task's +card-rich description (the "+Bravado" chip).
     expect(await screen.findByText("+Bravado")).toBeInTheDocument();
@@ -235,7 +243,7 @@ describe("TasksPage", () => {
 
   it("auto-opens the discussion and highlights the deep-linked comment", async () => {
     mockApi();
-    renderPage(<TasksPage openTaskId="t1" />, "/tasks/t1#comment-cm1");
+    renderPage("/tasks/t1#comment-cm1");
 
     // Discussion is open (not behind the toggle) and the source comment is highlighted.
     expect(await screen.findByText("let's try this line")).toBeInTheDocument();

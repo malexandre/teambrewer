@@ -167,20 +167,16 @@ const gameEditRoute = createRoute({
   },
 });
 
+// The open task lives in the path via an optional segment (`/tasks` or `/tasks/:taskId`)
+// so the board and its open task are both reflected in a shareable URL and a notification
+// can deep-link a task — while the single route keeps the board mounted (its scope/filter
+// state survives) as the task id appears and disappears. There is no standalone task page:
+// `TasksPage` opens the detail dialog for whichever task the path names.
 const tasksRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
-  path: "/tasks",
-  component: TasksPage,
-});
-
-// A deep-link to a single task (from a notification): the board renders with that
-// task's detail dialog opened. There is no standalone task page — a task lives on the
-// board — so the id rides in the path and `TasksPage` opens the dialog for it.
-const taskDetailRoute = createRoute({
-  getParentRoute: () => authenticatedLayout,
-  path: "/tasks/$taskId",
-  component: function TaskDetailRoute() {
-    const { taskId } = taskDetailRoute.useParams();
+  path: "/tasks/{-$taskId}",
+  component: function TasksRoute() {
+    const { taskId } = tasksRoute.useParams();
     return <TasksPage openTaskId={taskId} />;
   },
 });
@@ -236,7 +232,6 @@ const routeTree = rootRoute.addChildren([
     gameDetailRoute,
     gameEditRoute,
     tasksRoute,
-    taskDetailRoute,
     adminIndexRoute,
     adminTeamsRoute,
     adminAccountsRoute,

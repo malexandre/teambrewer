@@ -12,9 +12,10 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { useNavigate } from "@tanstack/react-router";
 import type { Task, TaskStatus } from "@teambrewer/shared";
 import { GripVertical } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -132,28 +133,33 @@ const OVERLAY_HANDLE = (
  * with compact cards. Cards drag freely between any lanes (pointer + keyboard via dnd-kit);
  * dropping into Finished demands a report first (the report-on-finish rule). Clicking a
  * card opens its detail dialog with the full controls. A scope toggle narrows to the
- * viewer's tasks; any member may create a task. `openTaskId` (from a notification
- * deep-link) opens that task's dialog on arrival.
+ * viewer's tasks; any member may create a task. The open task lives in the URL
+ * (`openTaskId`, from the `/tasks/:taskId` path), so opening one is shareable and a
+ * notification can deep-link straight to it.
  */
 export function TasksPage({ openTaskId }: { openTaskId?: string | undefined } = {}) {
   const { activeTeam } = useActiveTeam();
   const teamId = activeTeam?.teamId;
   const { data: user } = useCurrentUser();
+  const navigate = useNavigate();
   const highlightCommentId = useHighlightCommentId();
   const [creating, setCreating] = useState(false);
   const [scope, setScope] = useState<Scope>("all");
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(openTaskId ?? null);
   const [activeId, setActiveId] = useState<string | null>(null);
   // A task pending a report before it can be dropped into Finished (see report-on-finish).
   const [finishTask, setFinishTask] = useState<Task | null>(null);
   const [finishReport, setFinishReport] = useState("");
 
-  // Open the deep-linked task's dialog, syncing if the id changes while mounted.
-  useEffect(() => {
-    if (openTaskId) {
-      setSelectedTaskId(openTaskId);
-    }
-  }, [openTaskId]);
+  // The open task is URL-driven: opening/closing navigates so the path always reflects it
+  // (shareable, back-navigable) and the single optional-param route keeps the board mounted.
+  const selectedTaskId = openTaskId ?? null;
+  function openTask(taskId: string): void {
+    void navigate({ to: "/tasks/{-$taskId}", params: { taskId } });
+  }
+  function closeTask(): void {
+    // Explicit `undefined` drops the optional param (an empty object keeps the current one).
+    void navigate({ to: "/tasks/{-$taskId}", params: { taskId: undefined } });
+  }
 
   const filters: TaskFilters = scope === "mine" && user ? { assigneeId: user.id } : {};
   const { data, isPending } = useTasks(teamId, filters);
@@ -252,7 +258,7 @@ export function TasksPage({ openTaskId }: { openTaskId?: string | undefined } = 
                 status={status}
                 teamId={teamId}
                 tasks={tasks.filter((task) => task.status === status)}
-                onOpenTask={setSelectedTaskId}
+                onOpenTask={openTask}
               />
             ))}
           </div>
@@ -272,7 +278,7 @@ export function TasksPage({ openTaskId }: { openTaskId?: string | undefined } = 
       {/* Task detail. */}
       <Dialog
         open={Boolean(selectedTask)}
-        onClose={() => setSelectedTaskId(null)}
+        onClose={closeTask}
         title={selectedTask?.title ?? "Task"}
         className="max-w-xl"
       >

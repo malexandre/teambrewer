@@ -70,7 +70,7 @@ export function NotificationCenter() {
         });
       case "task":
         return void navigate({
-          to: "/tasks/$taskId",
+          to: "/tasks/{-$taskId}",
           params: { taskId: notification.subjectId },
           ...hashOption,
         });

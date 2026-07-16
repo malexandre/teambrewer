@@ -143,7 +143,7 @@ describe("NotificationCenter", () => {
     renderCenter();
     await openFirstNotification();
     expect(navigateSpy).toHaveBeenCalledWith({
-      to: "/tasks/$taskId",
+      to: "/tasks/{-$taskId}",
       params: { taskId: "task-1" },
       hash: "comment-c1",
     });
