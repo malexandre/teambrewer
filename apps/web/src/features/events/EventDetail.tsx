@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
-import { useMetas } from "@/features/metas/use-metas";
 
 import { AttendanceControl } from "./AttendanceControl";
 import { formatEventDate } from "./event-display";
@@ -13,10 +12,10 @@ import { EventForm } from "./EventForm";
 import { useArchiveEvent } from "./use-event-mutations";
 
 /**
- * An event's detail: a lightweight social board item. Header (name, date, location,
- * optional meta link), an optional description, and the attendance control (RSVP +
- * roster). Permissions are a shared team board — any member may edit or archive the
- * event. Editing swaps in the event form in place.
+ * An event's detail: a lightweight, isolated social board item. Header (name, date,
+ * location), an optional description, and the attendance control (RSVP + roster).
+ * Permissions are a shared team board — any member may edit or archive the event.
+ * Editing swaps in the event form in place.
  */
 export function EventDetail({
   teamId,
@@ -29,10 +28,6 @@ export function EventDetail({
   const [editing, setEditing] = useState(false);
 
   const archiveEvent = useArchiveEvent(teamId, event.id);
-  const { data: metaData } = useMetas(teamId);
-  const metaName = event.metaId
-    ? (metaData?.data.find((meta) => meta.id === event.metaId)?.name ?? "Meta")
-    : null;
 
   if (editing) {
     return (
@@ -75,10 +70,6 @@ export function EventDetail({
           <div>
             <dt className="text-muted-foreground">Location</dt>
             <dd>{event.location ?? "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Meta</dt>
-            <dd>{metaName ?? "—"}</dd>
           </div>
         </dl>
 

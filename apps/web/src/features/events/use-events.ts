@@ -11,37 +11,15 @@ import {
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 
-/** The filters the event list supports (a subset of the API query params). */
-export interface EventFilters {
-  metaId?: string;
-}
-
-/** Reduce filters to a flat, serializable object for the query key. */
-function toKeyFilters(filters: EventFilters): Record<string, string> {
-  const keyFilters: Record<string, string> = {};
-  if (filters.metaId) keyFilters["metaId"] = filters.metaId;
-  return keyFilters;
-}
-
-function toQueryString(filters: EventFilters): string {
-  const params = new URLSearchParams();
-  if (filters.metaId) params.set("metaId", filters.metaId);
-  const query = params.toString();
-  return query ? `?${query}` : "";
-}
-
-/** The active team's events (filtered), via GET /api/events. */
-export function useEvents(teamId: string | undefined, filters: EventFilters = {}) {
+/** The active team's events, via GET /api/events. */
+export function useEvents(teamId: string | undefined) {
   return useQuery<EventListResponse>({
-    queryKey: teamId ? queryKeys.events(teamId, toKeyFilters(filters)) : ["events", "none"],
+    queryKey: teamId ? queryKeys.events(teamId, {}) : ["events", "none"],
     queryFn: () => {
       if (!teamId) {
         throw new Error("No active team.");
       }
-      return apiClient.get(`/events${toQueryString(filters)}`, {
-        teamId,
-        schema: eventListResponseSchema,
-      });
+      return apiClient.get("/events", { teamId, schema: eventListResponseSchema });
     },
     enabled: Boolean(teamId),
   });

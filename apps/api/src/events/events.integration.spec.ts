@@ -8,7 +8,6 @@ import {
   createAttendance,
   createEvent,
   createGame,
-  createMeta,
   createTeam,
   createTestPrismaClient,
   createUser,
@@ -20,12 +19,10 @@ import { AppModule } from "../app.module.js";
 import type { PrismaClient } from "../generated/prisma/client.js";
 
 /**
- * Endpoint tests for the lightweight event + attendance surface (meta-pivot
- * redesign, WS-5). The critical properties are tenant isolation (a team never
- * reaches another team's events/RSVPs, and an event cannot link another team's
- * meta), the optional meta link + filter, soft-delete on archive, and attendance
- * idempotency with the going/interested RSVP. A two-team Flesh and Blood world backs
- * the suite.
+ * Endpoint tests for the lightweight, isolated event + attendance surface (meta-pivot
+ * redesign, WS-5). The critical properties are tenant isolation (a team never reaches
+ * another team's events/RSVPs), soft-delete on archive, and attendance idempotency
+ * with the going/interested RSVP. A two-team Flesh and Blood world backs the suite.
  */
 describe("Events endpoints (integration)", () => {
   let app: INestApplication;
@@ -94,30 +91,11 @@ describe("Events endpoints (integration)", () => {
       expect(response.status).toBe(201);
       expect(response.body.name).toBe("Calling: Sydney");
       expect(response.body.gameId).toBe("flesh-and-blood");
-      expect(response.body.metaId).toBeNull();
+      expect(response.body).not.toHaveProperty("metaId");
       expect(response.body.attendanceSummary).toEqual({ going: 0, interested: 0 });
 
       const persisted = await prisma.event.findUnique({ where: { id: response.body.id } });
       expect(persisted?.teamId).toBe(teamA.id);
-    });
-
-    it("links a same-team meta", async () => {
-      const meta = await createMeta(prisma, { teamId: teamA.id });
-      const response = await asMemberA(http().post("/api/events")).send({
-        ...validEvent(),
-        metaId: meta.id,
-      });
-      expect(response.status).toBe(201);
-      expect(response.body.metaId).toBe(meta.id);
-    });
-
-    it("rejects a meta belonging to another team (cross-team → 404)", async () => {
-      const metaB = await createMeta(prisma, { teamId: teamB.id });
-      const response = await asMemberA(http().post("/api/events")).send({
-        ...validEvent(),
-        metaId: metaB.id,
-      });
-      expect(response.status).toBe(404);
     });
 
     it("rejects an invalid body (400)", async () => {
@@ -144,10 +122,9 @@ describe("Events endpoints (integration)", () => {
   });
 
   describe("GET /api/events", () => {
-    it("lists only the team's non-archived events and filters by meta", async () => {
-      const meta = await createMeta(prisma, { teamId: teamA.id });
-      await createEvent(prisma, { teamId: teamA.id, metaId: meta.id, name: "Linked" });
-      await createEvent(prisma, { teamId: teamA.id, name: "Unlinked" });
+    it("lists only the team's non-archived events", async () => {
+      await createEvent(prisma, { teamId: teamA.id, name: "First" });
+      await createEvent(prisma, { teamId: teamA.id, name: "Second" });
       await createEvent(prisma, { teamId: teamA.id, name: "Old", archivedAt: new Date() });
       // A team-B event must never appear.
       await createEvent(prisma, { teamId: teamB.id, name: "Bravo Event" });
@@ -158,10 +135,6 @@ describe("Events endpoints (integration)", () => {
       expect(all.body.data.map((event: { name: string }) => event.name)).not.toContain(
         "Bravo Event",
       );
-
-      const byMeta = await asMemberA(http().get(`/api/events?metaId=${meta.id}`));
-      expect(byMeta.body.data).toHaveLength(1);
-      expect(byMeta.body.data[0].name).toBe("Linked");
     });
 
     it("includes each event's going/interested RSVP counts", async () => {
@@ -229,32 +202,19 @@ describe("Events endpoints (integration)", () => {
   });
 
   describe("PATCH /api/events/:eventId", () => {
-    it("updates fields and clears the location/meta with null", async () => {
-      const meta = await createMeta(prisma, { teamId: teamA.id });
+    it("updates fields and clears the location with null", async () => {
       const event = await createEvent(prisma, {
         teamId: teamA.id,
-        metaId: meta.id,
         location: "Sydney",
       });
 
       const response = await asMemberA(http().patch(`/api/events/${event.id}`)).send({
         name: "Renamed",
         location: null,
-        metaId: null,
       });
       expect(response.status).toBe(200);
       expect(response.body.name).toBe("Renamed");
       expect(response.body.location).toBeNull();
-      expect(response.body.metaId).toBeNull();
-    });
-
-    it("rejects linking another team's meta on update (404)", async () => {
-      const metaB = await createMeta(prisma, { teamId: teamB.id });
-      const event = await createEvent(prisma, { teamId: teamA.id });
-      const response = await asMemberA(http().patch(`/api/events/${event.id}`)).send({
-        metaId: metaB.id,
-      });
-      expect(response.status).toBe(404);
     });
   });
 

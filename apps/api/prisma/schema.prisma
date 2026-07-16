@@ -447,14 +447,13 @@ enum AttendanceStatus {
   interested
 }
 
-/// A team's lightweight event: a name, date, optional venue/description, and an
-/// optional link to a meta. Soft-deleted via `archivedAt` so history survives.
+/// A team's lightweight, isolated event: a name, date, and optional venue/description.
+/// Soft-deleted via `archivedAt` so history survives.
 model Event {
   id          String    @id @default(cuid())
   teamId      String    @map("team_id")
   gameId      String    @map("game_id")
   name        String
-  metaId      String?   @map("meta_id")
   date        DateTime
   location    String?
   description String    @default("")
@@ -462,14 +461,12 @@ model Event {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  team Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  game Game  @relation(fields: [gameId], references: [id])
-  meta Meta? @relation(fields: [metaId], references: [id], onDelete: SetNull)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id])
 
   attendances Attendance[]
 
   @@index([teamId])
-  @@index([teamId, metaId])
   @@map("event")
 }
 
@@ -881,7 +878,6 @@ model Meta {
   metaDeckEntries MetaDeckEntry[]
   deckMetas       DeckMeta[]
   gameLogs        GameLog[]
-  events          Event[]
 
   @@index([teamId])
   @@index([teamId, startDate])

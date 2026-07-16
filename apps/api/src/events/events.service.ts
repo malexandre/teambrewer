@@ -25,7 +25,6 @@ interface EventRow {
   teamId: string;
   name: string;
   gameId: string;
-  metaId: string | null;
   date: Date;
   location: string | null;
   description: string;
@@ -50,8 +49,8 @@ interface EventDetailRow extends EventRow {
 
 /**
  * Team-scoped events + attendance (docs/features/events-and-gauntlets.md). After the
- * meta-pivot redesign an event is a lightweight social board item: a name, date,
- * optional venue/description, and an optional link to a meta, plus per-member RSVP.
+ * meta-pivot redesign an event is a lightweight, isolated social board item: a name,
+ * date, optional venue/description, plus per-member RSVP.
  * Every event query goes through {@link TeamScopedPrisma} so it is filtered by the
  * verified `teamId`; a cross-tenant id simply yields no row (→ 404, never leaking
  * existence). Attendance carries no `teamId` and is reached only through its
@@ -64,9 +63,9 @@ export class EventsService {
   constructor(private readonly scoped: TeamScopedPrisma) {}
 
   /**
-   * List the team's events with an optional `metaId` filter + keyset pagination (most
-   * recently dated first). {@link TeamScopedPrisma} injects the verified `teamId`;
-   * events have no per-member visibility rules (a shared team board).
+   * List the team's events with keyset pagination (most recently dated first).
+   * {@link TeamScopedPrisma} injects the verified `teamId`; events have no per-member
+   * visibility rules (a shared team board).
    */
   async list(query: EventListQuery): Promise<EventListResponse> {
     const cursor = query.cursor ? decodeKeysetCursor(query.cursor) : null;
@@ -81,7 +80,6 @@ export class EventsService {
     const rows = (await this.scoped.db.event.findMany({
       where: {
         archivedAt: null,
-        ...(query.metaId ? { metaId: query.metaId } : {}),
         ...(andClauses.length > 0 ? { AND: andClauses } : {}),
       },
       orderBy: [{ date: "desc" }, { id: "desc" }],
@@ -139,12 +137,8 @@ export class EventsService {
     return toEventDetail(row);
   }
 
-  /** Create an event; stamps teamId/gameId from context and validates an optional meta link. */
+  /** Create an event; stamps teamId/gameId from the verified context. */
   async create(team: TeamContext, input: CreateEventInput): Promise<EventDetail> {
-    if (input.metaId !== undefined) {
-      await this.assertMetaInTeam(input.metaId);
-    }
-
     const created = (await this.scoped.db.event.create({
       data: {
         // Stamped from the verified context (TeamScopedPrisma re-stamps the same
@@ -152,7 +146,6 @@ export class EventsService {
         teamId: team.teamId,
         gameId: team.gameId,
         name: input.name,
-        metaId: input.metaId ?? null,
         date: new Date(input.date),
         location: input.location ?? null,
         description: input.description,
@@ -162,20 +155,15 @@ export class EventsService {
     return this.requireEventDetail(created.id, { includeArchived: false });
   }
 
-  /** Update an event's fields. `location`/`metaId: null` clears the field. */
+  /** Update an event's fields. `location: null` clears the field. */
   async update(eventId: string, input: UpdateEventInput): Promise<EventDetail> {
     await this.requireEvent(eventId);
-
-    if (input.metaId !== undefined && input.metaId !== null) {
-      await this.assertMetaInTeam(input.metaId);
-    }
 
     const data: Record<string, unknown> = {};
     if (input.name !== undefined) data["name"] = input.name;
     if (input.date !== undefined) data["date"] = new Date(input.date);
     if (input.location !== undefined) data["location"] = input.location;
     if (input.description !== undefined) data["description"] = input.description;
-    if (input.metaId !== undefined) data["metaId"] = input.metaId;
 
     await this.scoped.db.event.updateMany({ where: { id: eventId }, data });
     return this.requireEventDetail(eventId, { includeArchived: false });
@@ -227,19 +215,6 @@ export class EventsService {
     });
     if (!row) {
       throw eventNotFound();
-    }
-  }
-
-  /** Reject a `metaId` that does not belong to the team (cross-team → 404, no enumeration). */
-  private async assertMetaInTeam(metaId: string): Promise<void> {
-    const meta = await this.scoped.db.meta.findFirst({
-      where: { id: metaId },
-      select: { id: true },
-    });
-    if (!meta) {
-      throw new NotFoundException({
-        error: { code: errorCode.notFound, message: "Meta not found." },
-      });
     }
   }
 
@@ -299,7 +274,6 @@ function toEventSummary(event: EventRow, counts: AttendanceCounts): EventSummary
     id: event.id,
     name: event.name,
     gameId: event.gameId,
-    metaId: event.metaId,
     date: event.date.toISOString(),
     location: event.location,
     goingCount: counts.goingCount,

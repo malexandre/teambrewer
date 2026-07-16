@@ -3,11 +3,10 @@ import { z } from "zod";
 /**
  * Shared event / attendance contracts (see docs/features/events-and-gauntlets.md).
  * After the meta-pivot redesign (WS-5) the Event is a lightweight, social board
- * item: a named, dated get-together with an optional venue, description, and a link
- * to the meta it belongs to, plus per-member RSVP. The organizing hub moved to the
- * Meta (docs/decisions/0010-meta-as-organizing-hub.md), so events no longer carry a
- * status lifecycle, importance, a format, a gauntlet, deck selections, or a
- * retrospective, and are no longer a commentable subject.
+ * item: a named, dated get-together with an optional venue and description, plus
+ * per-member RSVP. Events are isolated — they no longer carry a status lifecycle,
+ * importance, a format, a gauntlet, deck selections, a retrospective, or a link to a
+ * meta, and are not a commentable subject.
  *
  * Tenancy: `teamId` and `gameId` (and, for attendance, `userId`) are stamped
  * server-side from the verified request context — they are never accepted from the
@@ -52,8 +51,7 @@ export const archetypeLabelSchema = z.string().trim().min(1).max(100);
 
 /**
  * Create-event input. Omits every server-controlled field (`teamId`/`gameId`/
- * timestamps). An optional `metaId` links the event to a meta (validated same-team
- * server-side). Unknown keys are stripped, so a spoofed `teamId` in the body is
+ * timestamps). Unknown keys are stripped, so a spoofed `teamId` in the body is
  * simply ignored.
  */
 export const createEventSchema = z.object({
@@ -61,13 +59,12 @@ export const createEventSchema = z.object({
   date: eventDateSchema,
   location: eventLocationSchema.optional(),
   description: eventDescriptionSchema.default(""),
-  metaId: z.string().min(1).optional(),
 });
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 
 /**
- * Update-event input. Partial and `.strict()`. `location`/`metaId: null` clears the
- * field. Must change at least one field.
+ * Update-event input. Partial and `.strict()`. `location: null` clears the field.
+ * Must change at least one field.
  */
 export const updateEventSchema = z
   .object({
@@ -75,7 +72,6 @@ export const updateEventSchema = z
     date: eventDateSchema.optional(),
     location: eventLocationSchema.nullable().optional(),
     description: eventDescriptionSchema.optional(),
-    metaId: z.string().min(1).nullable().optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
@@ -89,11 +85,9 @@ export type SetAttendanceInput = z.infer<typeof setAttendanceSchema>;
 
 /**
  * Query parameters for `GET /api/events`. Values arrive as strings, so `limit` is
- * coerced. `metaId` filters to a meta's events. Archived events are excluded
- * server-side regardless of filters.
+ * coerced. Archived events are excluded server-side regardless of filters.
  */
 export const eventListQuerySchema = z.object({
-  metaId: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
   cursor: z.string().optional(),
 });
@@ -110,7 +104,6 @@ export const eventSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
   gameId: z.string(),
-  metaId: z.string().nullable(),
   date: z.string(),
   location: z.string().nullable(),
   goingCount: z.number().int(),

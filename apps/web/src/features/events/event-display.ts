@@ -14,9 +14,6 @@ export const ATTENDANCE_STATUS_TONE: Record<AttendanceStatus, BadgeTone> = {
   interested: "info",
 };
 
-/** Native-select styling shared by the event pickers/controls (matches the decks feature). */
-export const SELECT_CLASS = "h-9 rounded-md border border-input bg-background px-2 text-sm";
-
 /**
  * Format an event's calendar date without a timezone shift. The date is stored
  * (and serialized) at **UTC midnight**, so a naive `new Date(iso).toLocaleDateString()`

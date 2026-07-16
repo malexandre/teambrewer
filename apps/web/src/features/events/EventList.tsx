@@ -1,51 +1,28 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
 
 import { calendarParts } from "@/features/metas/meta-display";
-import { useMetas } from "@/features/metas/use-metas";
 
-import { formatEventDate, SELECT_CLASS } from "./event-display";
-import { type EventFilters, useEvents } from "./use-events";
+import { formatEventDate } from "./event-display";
+import { useEvents } from "./use-events";
 
 /**
- * The team's events (optional meta filter) as a 3-up card grid. Each card leads with a
- * calendar-page motif for the date, then rows for the title, location, and full date,
- * with the going count on the right. Mobile-first; each card links to the event detail.
+ * The team's events as a 3-up card grid. Each card leads with a calendar-page motif for
+ * the date, then rows for the title, location, and full date, with the going count on
+ * the right. Mobile-first; each card links to the event detail.
  */
 export function EventList({ teamId }: { teamId: string | undefined }) {
-  const [metaId, setMetaId] = useState("");
-
-  const filters: EventFilters = { ...(metaId ? { metaId } : {}) };
-
-  const { data, isPending, isError } = useEvents(teamId, filters);
-  const { data: metaData } = useMetas(teamId);
+  const { data, isPending, isError } = useEvents(teamId);
 
   const events = data?.data ?? [];
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-2">
-        <select
-          className={SELECT_CLASS}
-          value={metaId}
-          onChange={(event) => setMetaId(event.target.value)}
-          aria-label="Filter by meta"
-        >
-          <option value="">All metas</option>
-          {(metaData?.data ?? []).map((meta) => (
-            <option key={meta.id} value={meta.id}>
-              {meta.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading events…</p>
       ) : isError ? (
         <p className="text-sm text-destructive">Could not load events.</p>
       ) : events.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No events match these filters.</p>
+        <p className="text-sm text-muted-foreground">No events yet.</p>
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {events.map((event) => {

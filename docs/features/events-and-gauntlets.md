@@ -4,8 +4,9 @@
 > **gauntlet moves onto the [Meta](metas.md)** as a tiered opponent-deck list (`MetaDeckEntry` with a
 > `tier` replacing `expectedMetaShare %`); matchup **coverage becomes a per-deck readiness** view (see
 > [confidence-and-matchups.md](confidence-and-matchups.md)). The **Event** itself becomes lightweight and
-> social — `{ name, date, location?, description, metaId? }` + an RSVP (`going | interested`), dropping
-> status, importance, format, the gauntlet, deck selection, and the retrospective. The prose below
+> social and isolated — `{ name, date, location?, description }` + an RSVP (`going | interested`),
+> dropping status, importance, format, the gauntlet, deck selection, the retrospective, and the meta
+> link. The prose below
 > describes the superseded v1 event-centric design and is kept for history; the WS-1 foundation adds the
 > Meta/Task models alongside it, and later workstreams strip `EventsModule` and remove the gauntlet code.
 

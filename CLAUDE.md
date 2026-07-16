@@ -57,9 +57,9 @@ re-centring the app on the **metagame** instead of individual events. The primar
 - **`+card` inline mentions**: cards are linked inline in prose (task descriptions, game-plan bodies,
   deck notes, comments, iteration log) as stable `+[[cardId]]` tokens, rendered as atomic name pills in a
   `contenteditable` composer and as chips at read time, mirroring `@member` mentions — no card-list tables.
-- **Lightweight events**: an `Event` is now name / date / location / description / optional `metaId`
-  + **RSVP** (`going | interested`). Gauntlets, deck-selection, retrospective, status, and importance
-  are gone (the gauntlet moved to Meta).
+- **Lightweight, isolated events**: an `Event` is now name / date / location / description + **RSVP**
+  (`going | interested`). Gauntlets, deck-selection, retrospective, status, importance, and the meta
+  link are gone (the gauntlet moved to Meta; events are standalone).
 - **Navigation**: a left **sidebar** main menu with an icon per section (Decks · Metas · Events · Games ·
   Tasks · Admin\* · Settings), **collapsible** to an icon rail (preference persisted). The sidebar **foot
   owns identity** — the active-team switcher, the connected account (displayName + @username), the theme

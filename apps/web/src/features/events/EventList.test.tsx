@@ -43,7 +43,6 @@ const eventSummary = (overrides: Record<string, unknown>) => ({
   id: "event-1",
   name: "Calling: Sydney",
   gameId: "flesh-and-blood",
-  metaId: null,
   date: "2026-09-12T00:00:00.000Z",
   location: "Sydney",
   goingCount: 0,
@@ -57,9 +56,6 @@ const eventSummary = (overrides: Record<string, unknown>) => ({
 function mockApi(events: ReturnType<typeof eventSummary>[]) {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = typeof input === "string" ? input : input.toString();
-    if (url.includes("/api/metas")) {
-      return json({ data: [], nextCursor: null });
-    }
     if (url.includes("/api/events")) {
       return json({ data: events, nextCursor: null });
     }

@@ -319,7 +319,6 @@ export interface CreateEventOptions {
   teamId: string;
   gameId?: string;
   name?: string;
-  metaId?: string | null;
   date?: Date;
   location?: string | null;
   description?: string;
@@ -343,7 +342,6 @@ export async function createEvent(
       teamId: options.teamId,
       gameId: options.gameId ?? "flesh-and-blood",
       name: options.name ?? `Event ${suffix}`,
-      metaId: options.metaId ?? null,
       date: options.date ?? new Date("2026-09-12T00:00:00.000Z"),
       location: options.location ?? null,
       description: options.description ?? "",

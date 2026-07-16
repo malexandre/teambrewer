@@ -4,10 +4,8 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useMetas } from "@/features/metas/use-metas";
 import { ApiError } from "@/lib/api-client";
 
-import { SELECT_CLASS } from "./event-display";
 import { useCreateEvent, useUpdateEvent } from "./use-event-mutations";
 
 /** The `YYYY-MM-DD` value a native date input expects, from an ISO date string. */
@@ -17,9 +15,8 @@ function toDateInputValue(isoDate: string | undefined): string {
 }
 
 /**
- * Create or edit an event: a name, a date, an optional location/description, and an
- * optional link to a meta. The organizing hub is the Meta, so an event carries no
- * format, importance, or status.
+ * Create or edit an event: a name, a date, and an optional location/description.
+ * Events are isolated — they carry no meta link, format, importance, or status.
  */
 export function EventForm({
   teamId,
@@ -37,11 +34,7 @@ export function EventForm({
   const [date, setDate] = useState(toDateInputValue(event?.date));
   const [location, setLocation] = useState(event?.location ?? "");
   const [description, setDescription] = useState(event?.description ?? "");
-  const [metaId, setMetaId] = useState(event?.metaId ?? "");
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  const { data: metaData } = useMetas(teamId);
-  const metas = metaData?.data ?? [];
 
   const createEvent = useCreateEvent(teamId);
   const updateEvent = useUpdateEvent(teamId, event?.id ?? "");
@@ -66,8 +59,6 @@ export function EventForm({
         date,
         location: location.trim() ? location.trim() : null,
         description,
-        // null clears the link; a chosen id sets it.
-        metaId: metaId ? metaId : null,
       };
       updateEvent.mutate(input, { onSuccess: onSaved });
       return;
@@ -78,7 +69,6 @@ export function EventForm({
       date,
       ...(location.trim() ? { location: location.trim() } : {}),
       description,
-      ...(metaId ? { metaId } : {}),
     };
     createEvent.mutate(input, { onSuccess: onSaved });
   }
@@ -114,23 +104,6 @@ export function EventForm({
             placeholder="Optional venue / city"
           />
         </div>
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="event-meta">Meta (optional)</Label>
-        <select
-          id="event-meta"
-          className={SELECT_CLASS}
-          value={metaId}
-          onChange={(changeEvent) => setMetaId(changeEvent.target.value)}
-        >
-          <option value="">No meta</option>
-          {metas.map((meta) => (
-            <option key={meta.id} value={meta.id}>
-              {meta.name}
-            </option>
-          ))}
-        </select>
       </div>
 
       <div className="flex flex-col gap-1">

@@ -28,17 +28,16 @@ describe("createEventSchema", () => {
     date: "2026-09-12",
   };
 
-  it("accepts a minimal valid event and defaults description; location/meta stay optional", () => {
+  it("accepts a minimal valid event and defaults description; location stays optional", () => {
     const parsed = createEventSchema.parse(validInput);
     expect(parsed.name).toBe("Calling: Sydney");
     expect(parsed.description).toBe("");
     expect(parsed.location).toBeUndefined();
-    expect(parsed.metaId).toBeUndefined();
   });
 
-  it("accepts an optional meta link", () => {
+  it("strips a meta link (events are isolated)", () => {
     const parsed = createEventSchema.parse({ ...validInput, metaId: "meta-1" });
-    expect(parsed.metaId).toBe("meta-1");
+    expect(parsed).not.toHaveProperty("metaId");
   });
 
   it("accepts an ISO datetime as well as a calendar date", () => {
@@ -73,11 +72,12 @@ describe("updateEventSchema", () => {
     expect(updateEventSchema.parse({ name: "Renamed" })).toEqual({ name: "Renamed" });
   });
 
-  it("clears the location and meta with null", () => {
-    expect(updateEventSchema.parse({ location: null, metaId: null })).toEqual({
-      location: null,
-      metaId: null,
-    });
+  it("clears the location with null", () => {
+    expect(updateEventSchema.parse({ location: null })).toEqual({ location: null });
+  });
+
+  it("rejects a meta link (events are isolated)", () => {
+    expect(() => updateEventSchema.parse({ metaId: "meta-1" })).toThrow();
   });
 
   it("rejects an empty update", () => {
@@ -104,7 +104,6 @@ describe("eventSummarySchema", () => {
     id: "event-1",
     name: "Calling: Sydney",
     gameId: "flesh-and-blood",
-    metaId: null,
     date: "2026-09-12T00:00:00.000Z",
     location: "Sydney",
     goingCount: 3,
@@ -128,9 +127,7 @@ describe("eventSummarySchema", () => {
 });
 
 describe("eventListQuerySchema", () => {
-  it("defaults the limit and allows an optional meta filter", () => {
+  it("defaults the limit", () => {
     expect(eventListQuerySchema.parse({})).toEqual({ limit: 20 });
-    const filtered = eventListQuerySchema.parse({ metaId: "meta-1" });
-    expect(filtered.metaId).toBe("meta-1");
   });
 });

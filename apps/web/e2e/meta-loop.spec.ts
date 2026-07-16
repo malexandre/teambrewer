@@ -9,7 +9,7 @@ import { dragCardOnto } from "./helpers";
  *   create a meta for a format (with a tiered deck entry) → create a deck of that
  *   format auto-linked to the format's most recent meta → see per-deck readiness →
  *   "add a card idea" (a +card task) → advance the task and record its report →
- *   create an event linked to the meta, then RSVP.
+ *   create an (isolated) event, then RSVP.
  */
 test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) => {
   const metaName = "E2E Summer Meta";
@@ -111,16 +111,14 @@ test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) 
     page.locator('[data-column="finished"]').getByText(new RegExp(`Card idea: ${deckName}`)),
   ).toBeVisible();
 
-  // 7. Create an event linked to the meta and RSVP going.
+  // 7. Create an (isolated) event and RSVP going.
   await page.getByRole("link", { name: "Events", exact: true }).click();
   await page.getByRole("button", { name: "New event" }).click();
   await page.locator("#event-name").fill(eventName);
   await page.locator("#event-date").fill("2026-10-03");
-  await page.locator("#event-meta").selectOption({ label: metaName });
   await page.getByRole("button", { name: "Create event" }).click();
 
   await expect(page.getByRole("heading", { name: eventName })).toBeVisible();
-  await expect(page.getByText(metaName)).toBeVisible();
   await page.getByRole("button", { name: "Going", exact: true }).click();
   await expect(page.getByRole("button", { name: "Going", exact: true })).toHaveAttribute(
     "aria-pressed",

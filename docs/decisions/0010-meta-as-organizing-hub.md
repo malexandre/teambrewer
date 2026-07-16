@@ -28,10 +28,10 @@ The **Meta** (a dated metagame window with a tiered opponent-deck list) is the c
   in the task description as `+[[cardId]]` tokens (no card FK table).
 - Card linking is **inline `+card` mentions everywhere** (any prose body), mirroring the `@member` composer;
   structured card-picker chip lists (e.g. on game-plans) are removed. `@member` mentions are unchanged.
-- **Events become lightweight and social:** `{ name, date, location?, description, metaId? }` + RSVP
-  (`going | interested`). Status, importance, format, gauntlets, deck selection, and the retrospective are
-  removed from the event. A `GameLog` gains an optional `metaId` (auto-suggested from `playedAt`) and the
-  event link is replaced by the meta link.
+- **Events become lightweight, social, and isolated:** `{ name, date, location?, description }` + RSVP
+  (`going | interested`). Status, importance, format, gauntlets, deck selection, the retrospective, and
+  the meta link are removed from the event. A `GameLog` gains an optional `metaId` (auto-suggested from
+  `playedAt`) — matchup attribution now hangs off the meta (via game logs), not off events.
 - The authenticated **landing page is Decks**; the dashboard, knowledge base, activity tab, team roster tab,
   cards page, and matchups tab are removed.
 
