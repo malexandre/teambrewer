@@ -65,6 +65,24 @@ function typeInEditor(text: string): void {
   typeInto(editor(), text);
 }
 
+// jsdom reports a zeroed rect for every element; stub the editor's rect so the
+// portal flip/clamp math has a realistic position to react to. jsdom's viewport is
+// 768px tall.
+function stubEditorRect(top: number, height = 40): void {
+  const bottom = top + height;
+  vi.spyOn(editor(), "getBoundingClientRect").mockReturnValue({
+    x: 20,
+    y: top,
+    left: 20,
+    right: 320,
+    top,
+    bottom,
+    width: 300,
+    height,
+    toJSON: () => ({}),
+  } as DOMRect);
+}
+
 describe("MentionComposer", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -177,5 +195,59 @@ describe("MentionComposer", () => {
     // Give any (unexpected) debounced card search time to resolve.
     await new Promise((resolve) => setTimeout(resolve, 350));
     expect(screen.queryByRole("list", { name: /card suggestions/i })).not.toBeInTheDocument();
+  });
+
+  it("portals the suggestion dropdown so an overflow-clipped ancestor cannot hide it", async () => {
+    mockApi();
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <div data-testid="clip" style={{ overflow: "hidden" }}>
+          <MentionComposer
+            teamId="team-1"
+            submitLabel="Save"
+            placeholder="Describe the task…"
+            ariaLabel="Task description"
+            isPending={false}
+            enableCardMentions
+            onSubmit={vi.fn()}
+          />
+        </div>
+      </QueryClientProvider>,
+    );
+
+    typeInEditor("try +comm");
+
+    const suggestions = await screen.findByRole("list", { name: /card suggestions/i });
+    // The dropdown must live outside the clipping container (portaled to the body),
+    // otherwise the ancestor's overflow:hidden would clip it.
+    expect(screen.getByTestId("clip")).not.toContainElement(suggestions);
+    expect(document.body).toContainElement(suggestions);
+    // userEvent needs a live pointer target so its cleanup doesn't warn.
+    await user.click(within(suggestions).getByText("Command and Conquer"));
+  });
+
+  it("flips the suggestion dropdown above the editor when there is no room below", async () => {
+    mockApi();
+    renderComposer({ enableCardMentions: true });
+    stubEditorRect(740); // near the bottom of the 768px-tall viewport
+
+    typeInEditor("try +comm");
+
+    const suggestions = await screen.findByRole("list", { name: /card suggestions/i });
+    // Flipping up anchors the panel's bottom to the editor via a translateY(-100%).
+    expect(suggestions.style.transform).toBe("translateY(-100%)");
+  });
+
+  it("opens the suggestion dropdown below the editor when there is room", async () => {
+    mockApi();
+    renderComposer({ enableCardMentions: true });
+    stubEditorRect(100); // plenty of room below
+
+    typeInEditor("try +comm");
+
+    const suggestions = await screen.findByRole("list", { name: /card suggestions/i });
+    expect(suggestions.style.transform).toBe("");
   });
 });

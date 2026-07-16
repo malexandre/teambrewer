@@ -1,5 +1,6 @@
 import { parseCardTokens, tokenizeCardBody } from "@teambrewer/shared";
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { CardResultRow } from "@/features/cards/CardResultRow";
@@ -7,6 +8,7 @@ import { useCardSearch } from "@/features/cards/use-card-search";
 import { useCardsById } from "@/features/cards/use-cards-by-id";
 import { useDebouncedValue } from "@/features/cards/use-debounced-value";
 import { useMembers } from "@/features/teams/use-members";
+import { useAnchoredPanelPosition } from "@/lib/use-anchored-panel-position";
 
 import {
   activeCardToken,
@@ -20,6 +22,10 @@ import {
 
 /** The active trigger immediately before the caret (drives the suggestion list). */
 type ActiveTrigger = ({ kind: "member" } | { kind: "card" }) & TriggerMatch;
+
+// The suggestion dropdown stays compact (was Tailwind `max-h-40`); it scrolls
+// internally past this, and its real max-height is clamped to the viewport too.
+const SUGGESTIONS_MAX_HEIGHT = 160;
 
 function detectActiveTrigger(
   textBeforeCaret: string,
@@ -181,6 +187,30 @@ export function MentionComposer({
   const showNoCardMatchesHint =
     hasActiveCardQuery && !isCardSearchFetching && cardSuggestions.length === 0;
 
+  // The dropdowns are portaled to document.body with viewport-aware fixed positioning
+  // so they escape any `overflow`-clipped ancestor (a Section, a dialog scroll area, a
+  // kanban column) and flip above the editor when there's no room below — mirroring the
+  // card hover-preview. All three floating nodes are mutually exclusive.
+  const showMemberSuggestions = activeTrigger?.kind === "member" && memberSuggestions.length > 0;
+  const showCardSuggestions = activeTrigger?.kind === "card" && cardSuggestions.length > 0;
+  const suggestionsOpen = showMemberSuggestions || showCardSuggestions || showNoCardMatchesHint;
+  const suggestionPosition = useAnchoredPanelPosition({
+    anchorRef: editorRef,
+    open: suggestionsOpen,
+    width: "anchor",
+    estimatedHeight: SUGGESTIONS_MAX_HEIGHT,
+  });
+  const suggestionPanelStyle: CSSProperties | undefined = suggestionPosition
+    ? {
+        position: "fixed",
+        left: suggestionPosition.left,
+        top: suggestionPosition.top,
+        width: suggestionPosition.width,
+        maxHeight: Math.min(SUGGESTIONS_MAX_HEIGHT, suggestionPosition.maxHeight),
+        transform: suggestionPosition.placement === "above" ? "translateY(-100%)" : undefined,
+      }
+    : undefined;
+
   function refreshFromSelection(): void {
     const editor = editorRef.current;
     if (!editor) {
@@ -301,60 +331,72 @@ export function MentionComposer({
             {placeholder}
           </span>
         ) : null}
-        {activeTrigger?.kind === "member" && memberSuggestions.length > 0 ? (
-          <ul
-            className="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-md border border-border bg-popover text-sm shadow"
-            aria-label="Mention suggestions"
-          >
-            {memberSuggestions.map((member) => (
-              <li key={member.userId}>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-2 py-1 text-left hover:bg-muted"
-                  // Use onMouseDown so the editor's onBlur does not clear the
-                  // suggestion before the click registers.
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    insertMemberMention(member.username);
-                  }}
-                >
-                  <span className="font-medium">{member.displayName}</span>
-                  <span className="text-muted-foreground">@{member.username}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {showNoCardMatchesHint ? (
-          <div
-            className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover px-2 py-1 text-xs text-muted-foreground shadow"
-            role="status"
-          >
-            No matching cards — the card database may be empty.
-          </div>
-        ) : null}
-        {activeTrigger?.kind === "card" && cardSuggestions.length > 0 ? (
-          <ul
-            className="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-md border border-border bg-popover text-sm shadow"
-            aria-label="Card suggestions"
-          >
-            {cardSuggestions.map((card) => (
-              <li key={card.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-2 px-2 py-1 text-left hover:bg-muted"
-                  // onMouseDown so onBlur does not clear the suggestion first.
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    insertCardMention(card.id, card.name);
-                  }}
-                >
-                  <CardResultRow card={card} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {showMemberSuggestions && suggestionPanelStyle
+          ? createPortal(
+              <ul
+                style={suggestionPanelStyle}
+                className="z-50 overflow-auto rounded-md border border-border bg-popover text-sm shadow"
+                aria-label="Mention suggestions"
+              >
+                {memberSuggestions.map((member) => (
+                  <li key={member.userId}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 px-2 py-1 text-left hover:bg-muted"
+                      // Use onMouseDown so the editor's onBlur does not clear the
+                      // suggestion before the click registers.
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        insertMemberMention(member.username);
+                      }}
+                    >
+                      <span className="font-medium">{member.displayName}</span>
+                      <span className="text-muted-foreground">@{member.username}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>,
+              document.body,
+            )
+          : null}
+        {showNoCardMatchesHint && suggestionPanelStyle
+          ? createPortal(
+              <div
+                style={suggestionPanelStyle}
+                className="z-50 rounded-md border border-border bg-popover px-2 py-1 text-xs text-muted-foreground shadow"
+                role="status"
+              >
+                No matching cards — the card database may be empty.
+              </div>,
+              document.body,
+            )
+          : null}
+        {showCardSuggestions && suggestionPanelStyle
+          ? createPortal(
+              <ul
+                style={suggestionPanelStyle}
+                className="z-50 overflow-auto rounded-md border border-border bg-popover text-sm shadow"
+                aria-label="Card suggestions"
+              >
+                {cardSuggestions.map((card) => (
+                  <li key={card.id}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-2 px-2 py-1 text-left hover:bg-muted"
+                      // onMouseDown so onBlur does not clear the suggestion first.
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        insertCardMention(card.id, card.name);
+                      }}
+                    >
+                      <CardResultRow card={card} />
+                    </button>
+                  </li>
+                ))}
+              </ul>,
+              document.body,
+            )
+          : null}
       </div>
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={isPending || isEmpty}>
