@@ -23,7 +23,11 @@ export default defineConfig({
         runtimeCaching: [
           {
             // Card art (cross-origin CDN) has a unique URL per card, so it caches
-            // safely and gives the biggest offline/perf win. We deliberately do
+            // safely and gives the biggest offline/perf win. NOTE: intercepting the
+            // image here means the SW re-fetches it, which CSP checks against
+            // connect-src (not img-src) — the deployed nginx serves /sw.js with a
+            // widened connect-src so this fetch isn't blocked (infra/nginx/nginx.conf,
+            // docs/architecture/security.md). We deliberately do
             // NOT cache the reference JSON (/api/cards, /api/formats, /api/heroes):
             // those share one URL across teams (the game comes from the X-Team-Id
             // header), so a URL-keyed cache could surface another team's game data

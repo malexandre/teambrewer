@@ -89,7 +89,13 @@ sequenceDiagram
 - **Security headers** are set at two layers: **Nginx** (the edge) owns the SPA's **CSP** and, at the
   TLS-terminating front proxy, **HSTS**; the **API** additionally sets `X-Content-Type-Options`,
   `X-Frame-Options: DENY`, and `Referrer-Policy` via **helmet** (API CSP/HSTS are disabled there to avoid
-  drift — the API serves JSON only).
+  drift — the API serves JSON only). The document CSP keeps **`connect-src 'self'`** (app code can't
+  exfiltrate off-origin); card art comes from external HTTPS CDNs, so `img-src` allows `https:`. The PWA
+  **service worker** re-fetches cross-origin card images with `fetch()`, which CSP validates against
+  `connect-src` — not `img-src` — so **`/sw.js` alone is served with a widened `connect-src 'self' https:`**
+  (a service worker's CSP is that of its own script response). This scopes the broad connect grant to the
+  SW's caching fetches; without it Firefox blocks the SW fetch with `NS_ERROR_INTERCEPTION_FAILED` and card
+  images never render.
 - **Secrets** via environment variables / Docker secrets; never committed. `.env.example` documents them.
 - **No secrets or PII in logs.** Tenant-violation attempts are logged for audit with **opaque IDs only**:
   the `TeamContextGuard`/`TeamAdminGuard` log a forged-team (non-member) access as a warning, and the
