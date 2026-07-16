@@ -1,4 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -135,9 +141,18 @@ function mockApi(
 
 function renderSection(ui: ReactNode) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // A router context is needed because game-plan cards read the location hash for the
+  // `#comment` deep-link highlight.
+  const rootRoute = createRootRoute({
+    component: () => <ActiveTeamProvider>{ui}</ActiveTeamProvider>,
+  });
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
   return render(
     <QueryClientProvider client={queryClient}>
-      <ActiveTeamProvider>{ui}</ActiveTeamProvider>
+      <RouterProvider router={router} />
     </QueryClientProvider>,
   );
 }

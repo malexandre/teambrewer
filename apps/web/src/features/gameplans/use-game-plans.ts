@@ -48,16 +48,28 @@ export function useGamePlans(teamId: string | undefined, filters: GamePlanFilter
   });
 }
 
+/**
+ * Query options for a single game-plan by id (GET /api/game-plans/:gamePlanId), shared
+ * by {@link useGamePlan} and imperative `queryClient.fetchQuery` callers (e.g. resolving
+ * a game-plan notification's parent deck before navigating).
+ */
+export function gamePlanQueryOptions(teamId: string, gamePlanId: string) {
+  return {
+    queryKey: queryKeys.gamePlan(teamId, gamePlanId),
+    queryFn: () =>
+      apiClient.get(`/game-plans/${gamePlanId}`, { teamId, schema: matchupGamePlanSchema }),
+  };
+}
+
 /** A single game-plan by id, via GET /api/game-plans/:gamePlanId. */
 export function useGamePlan(teamId: string | undefined, gamePlanId: string) {
   return useQuery<MatchupGamePlan>({
-    queryKey: teamId ? queryKeys.gamePlan(teamId, gamePlanId) : ["game-plan", "none"],
-    queryFn: () => {
-      if (!teamId) {
-        throw new Error("No active team.");
-      }
-      return apiClient.get(`/game-plans/${gamePlanId}`, { teamId, schema: matchupGamePlanSchema });
-    },
+    ...(teamId
+      ? gamePlanQueryOptions(teamId, gamePlanId)
+      : {
+          queryKey: ["game-plan", "none"],
+          queryFn: () => Promise.reject(new Error("No active team.")),
+        }),
     enabled: Boolean(teamId),
   });
 }

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CardRichText } from "@/features/cards/CardRichText";
 import { CommentThread } from "@/features/collaboration/CommentThread";
 import { useComments } from "@/features/collaboration/use-comments";
+import { useHighlightCommentId } from "@/features/collaboration/use-highlight-comment";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
 import { formatRelativeTime } from "@/lib/format-relative-time";
@@ -46,6 +47,7 @@ export function GamePlanCard({
 }) {
   const { activeTeam } = useActiveTeam();
   const isTeamAdmin = activeTeam?.role === "team_admin";
+  const highlightCommentId = useHighlightCommentId();
   const [editing, setEditing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [showFullPlan, setShowFullPlan] = useState(false);
@@ -178,6 +180,7 @@ export function GamePlanCard({
             subjectId={gamePlan.id}
             canComment
             previewCount={3}
+            highlightCommentId={highlightCommentId}
           />
         </div>
       )}

@@ -12,6 +12,7 @@ import { Section } from "@/components/ui/section";
 import { useHeroes } from "@/features/cards/use-heroes";
 import { ActivityFeed } from "@/features/collaboration/ActivityFeed";
 import { CommentThread } from "@/features/collaboration/CommentThread";
+import { useHighlightCommentId } from "@/features/collaboration/use-highlight-comment";
 import { useDecks } from "@/features/decks/use-decks";
 import { matchupSubjectDisplayName } from "@/features/metas/meta-display";
 import { useMetaDeckEntriesByMeta, useMetas } from "@/features/metas/use-metas";
@@ -52,6 +53,7 @@ export function GameDetail({
   game: GameLogDetailType;
 }) {
   const navigate = useNavigate();
+  const highlightCommentId = useHighlightCommentId();
   const archiveGame = useArchiveGame(teamId, game.id);
 
   const { data: decks } = useDecks(teamId, {});
@@ -213,7 +215,13 @@ export function GameDetail({
       ) : null}
 
       <Section aria-label="Discussion" bodyClassName="gap-4">
-        <CommentThread teamId={teamId} subjectType="game_log" subjectId={game.id} canComment />
+        <CommentThread
+          teamId={teamId}
+          subjectType="game_log"
+          subjectId={game.id}
+          canComment
+          highlightCommentId={highlightCommentId}
+        />
         <ActivityFeed
           teamId={teamId}
           filters={{ subjectType: "game_log", subjectId: game.id }}
