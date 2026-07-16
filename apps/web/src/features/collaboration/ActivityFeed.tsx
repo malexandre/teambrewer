@@ -12,17 +12,20 @@ export function ActivityFeed({
   teamId,
   filters = {},
   title = "Activity",
+  hideHeading = false,
 }: {
   teamId: string | undefined;
   filters?: ActivityFilters;
   title?: string;
+  /** Suppress the built-in heading when the caller supplies its own (e.g. a titled Section). */
+  hideHeading?: boolean;
 }) {
   const { data } = useActivity(teamId, filters);
   const events = data?.data ?? [];
 
   return (
     <section className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold">{title}</h3>
+      {hideHeading ? null : <h3 className="text-sm font-semibold">{title}</h3>}
       {events.length === 0 ? (
         <p className="text-sm text-muted-foreground">No activity yet.</p>
       ) : (

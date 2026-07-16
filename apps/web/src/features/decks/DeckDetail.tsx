@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import type { DeckDetail as DeckDetailType } from "@teambrewer/shared";
-import { Info } from "lucide-react";
+import { Activity, Info, MessagesSquare } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -163,13 +163,14 @@ export function DeckDetail({
       <DeckNotesSection teamId={teamId} deck={deck} canEdit={canModify && !isArchived} />
 
       {/* Discussion is central to the tool, so it lives on the deck's landing tab. */}
-      <Section aria-label="Discussion">
+      <Section title="Discussion" icon={<MessagesSquare />} aria-label="Discussion">
         <CommentThread
           teamId={teamId}
           subjectType="deck"
           subjectId={deck.id}
           canComment
           highlightCommentId={highlightCommentId}
+          hideHeading
         />
       </Section>
     </div>
@@ -210,11 +211,11 @@ export function DeckDetail({
       panel: (
         <div className="flex flex-col gap-4">
           <IterationLog teamId={teamId} deckId={deck.id} canAddEntry={canModify} />
-          <Section aria-label="Activity log">
+          <Section title="Deck activity" icon={<Activity />} aria-label="Deck activity">
             <ActivityFeed
               teamId={teamId}
               filters={{ subjectType: "deck", subjectId: deck.id }}
-              title="Deck activity"
+              hideHeading
             />
           </Section>
         </div>

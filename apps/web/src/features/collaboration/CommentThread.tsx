@@ -32,6 +32,7 @@ export function CommentThread({
   canComment,
   previewCount,
   highlightCommentId,
+  hideHeading = false,
 }: {
   teamId: string | undefined;
   subjectType: SubjectType;
@@ -50,6 +51,11 @@ export function CommentThread({
    * the same value.
    */
   highlightCommentId?: string | undefined;
+  /**
+   * Suppress the built-in "Discussion" heading when the caller supplies its own (e.g. a
+   * titled {@link Section} header with an icon).
+   */
+  hideHeading?: boolean;
 }) {
   const { data } = useComments(teamId, subjectType, subjectId);
   const postComment = usePostComment(teamId, subjectType, subjectId);
@@ -75,7 +81,7 @@ export function CommentThread({
 
   return (
     <section className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold">Discussion</h3>
+      {hideHeading ? null : <h3 className="text-sm font-semibold">Discussion</h3>}
 
       {canComment ? (
         <MentionComposer
