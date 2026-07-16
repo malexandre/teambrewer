@@ -1,14 +1,23 @@
 import type { Comment, SubjectType } from "@teambrewer/shared";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { CardRichText } from "@/features/cards/CardRichText";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { ApiError } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 
 import { MentionComposer } from "./MentionComposer";
 import { useComments, useDeleteComment, useEditComment, usePostComment } from "./use-comments";
+
+/** True when `commentId` names a comment (or a reply) present anywhere in the thread. */
+function threadContainsComment(comments: Comment[], commentId: string): boolean {
+  return comments.some(
+    (comment) =>
+      comment.id === commentId || comment.replies.some((reply) => reply.id === commentId),
+  );
+}
 
 /**
  * The reusable, polymorphic comment thread dropped into any subject page
@@ -22,6 +31,7 @@ export function CommentThread({
   subjectId,
   canComment,
   previewCount,
+  highlightCommentId,
 }: {
   teamId: string | undefined;
   subjectType: SubjectType;
@@ -33,12 +43,29 @@ export function CommentThread({
    * (the default) renders the whole thread, so existing surfaces are unaffected.
    */
   previewCount?: number;
+  /**
+   * The comment a notification deep-link points at: scrolled into view and briefly
+   * highlighted when it lives in this thread. Only the thread that owns the comment
+   * reacts (comment ids are globally unique), so every thread on a page can be handed
+   * the same value.
+   */
+  highlightCommentId?: string;
 }) {
   const { data } = useComments(teamId, subjectType, subjectId);
   const postComment = usePostComment(teamId, subjectType, subjectId);
   const [showAllComments, setShowAllComments] = useState(false);
 
   const comments = data?.data ?? [];
+
+  // A deep-linked comment may sit in the hidden `previewCount` slice; expand so it
+  // renders (and can be scrolled to) rather than pointing at nothing.
+  const targetIsInThread =
+    highlightCommentId !== undefined && threadContainsComment(comments, highlightCommentId);
+  useEffect(() => {
+    if (targetIsInThread) {
+      setShowAllComments(true);
+    }
+  }, [targetIsInThread]);
   const hiddenCount =
     previewCount !== undefined && !showAllComments
       ? Math.max(0, comments.length - previewCount)
@@ -89,6 +116,7 @@ export function CommentThread({
                 subjectId={subjectId}
                 comment={comment}
                 canReply={canComment}
+                highlightCommentId={highlightCommentId}
               />
               {comment.replies.length > 0 ? (
                 <ul className="mt-2 flex flex-col gap-2 border-l border-border pl-4">
@@ -100,6 +128,7 @@ export function CommentThread({
                         subjectId={subjectId}
                         comment={reply}
                         canReply={false}
+                        highlightCommentId={highlightCommentId}
                       />
                     </li>
                   ))}
@@ -119,12 +148,14 @@ function CommentItem({
   subjectId,
   comment,
   canReply,
+  highlightCommentId,
 }: {
   teamId: string | undefined;
   subjectType: SubjectType;
   subjectId: string;
   comment: Comment | Comment["replies"][number];
   canReply: boolean;
+  highlightCommentId: string | undefined;
 }) {
   const { data: user } = useCurrentUser();
   const { activeTeam } = useActiveTeam();
@@ -134,20 +165,52 @@ function CommentItem({
   const [editing, setEditing] = useState(false);
   const [replying, setReplying] = useState(false);
 
+  // The deep-link target: a globally-unique DOM anchor (`comment-<id>`) plus a
+  // scroll-to and a brief highlight that fades, so the source is obvious at a glance.
+  const isHighlightTarget = comment.id === highlightCommentId;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showHighlight, setShowHighlight] = useState(false);
+  useEffect(() => {
+    if (!isHighlightTarget) {
+      return;
+    }
+    containerRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    setShowHighlight(true);
+    const timer = setTimeout(() => setShowHighlight(false), 2500);
+    return () => clearTimeout(timer);
+  }, [isHighlightTarget]);
+
+  const anchorId = `comment-${comment.id}`;
   const isRemoved = comment.archivedAt !== null;
   const canModify =
     !isRemoved && (comment.author.userId === user?.id || activeTeam?.role === "team_admin");
 
   if (isRemoved) {
     return (
-      <div className="rounded-md border border-dashed border-border p-2 text-sm text-muted-foreground">
+      <div
+        ref={containerRef}
+        id={anchorId}
+        data-comment-id={comment.id}
+        className={cn(
+          "rounded-md border border-dashed border-border p-2 text-sm text-muted-foreground transition-colors duration-500",
+          showHighlight && "bg-primary/10 ring-2 ring-primary",
+        )}
+      >
         Comment removed.
       </div>
     );
   }
 
   return (
-    <div className="rounded-md border border-border p-2">
+    <div
+      ref={containerRef}
+      id={anchorId}
+      data-comment-id={comment.id}
+      className={cn(
+        "rounded-md border border-border p-2 transition-colors duration-500",
+        showHighlight && "bg-primary/10 ring-2 ring-primary",
+      )}
+    >
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium">{comment.author.displayName}</span>
         <span className="text-xs text-muted-foreground">

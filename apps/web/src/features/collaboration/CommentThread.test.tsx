@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -123,7 +123,7 @@ function mockApi(): void {
   });
 }
 
-function renderThread(previewCount?: number): void {
+function renderThread(previewCount?: number, highlightCommentId?: string): void {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
@@ -134,6 +134,7 @@ function renderThread(previewCount?: number): void {
           subjectId="deck-1"
           canComment
           {...(previewCount !== undefined ? { previewCount } : {})}
+          {...(highlightCommentId !== undefined ? { highlightCommentId } : {})}
         />
       </ActiveTeamProvider>
     </QueryClientProvider>,
@@ -201,6 +202,42 @@ describe("CommentThread", () => {
 
     expect(await screen.findByText("comment one")).toBeInTheDocument();
     expect(screen.getByText("comment four")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /earlier comments/ })).not.toBeInTheDocument();
+  });
+
+  it("anchors and highlights the deep-linked comment, leaving others plain", async () => {
+    renderThread(undefined, "c1");
+
+    // Every comment carries a stable anchor id, matching or not.
+    await screen.findByText(/top-level comment about/);
+    const target = document.getElementById("comment-c1");
+    const other = document.getElementById("comment-c2");
+    expect(target).toHaveAttribute("data-comment-id", "c1");
+    expect(other).toHaveAttribute("data-comment-id", "c2");
+
+    // Only the targeted comment gets the highlight ring.
+    await waitFor(() => expect(target?.className).toContain("ring-primary"));
+    expect(other?.className).not.toContain("ring-primary");
+  });
+
+  it("highlights a deep-linked reply, not just top-level comments", async () => {
+    renderThread(undefined, "c2");
+    await screen.findByText("a nested reply");
+    await waitFor(() =>
+      expect(document.getElementById("comment-c2")?.className).toContain("ring-primary"),
+    );
+  });
+
+  it("expands the hidden preview slice to reveal a deep-linked earlier comment", async () => {
+    currentThread = manyThread;
+    // previewCount=2 would hide the two earliest ("one"/"two"); the deep-link targets "one".
+    renderThread(2, "m1");
+
+    expect(await screen.findByText("comment one")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.getElementById("comment-m1")?.className).toContain("ring-primary"),
+    );
+    // The expander is gone because the thread auto-expanded to surface the target.
     expect(screen.queryByRole("button", { name: /earlier comments/ })).not.toBeInTheDocument();
   });
 });
