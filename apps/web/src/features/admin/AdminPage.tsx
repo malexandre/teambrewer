@@ -3,6 +3,7 @@ import { type FormEvent, type ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Section } from "@/components/ui/section";
@@ -270,7 +271,18 @@ function MembersAdmin({ teamId }: { teamId: string }) {
           {actionError}
         </p>
       ) : null}
-      {link ? <CopyableLink link={link} /> : null}
+      {/* Show a freshly generated link in a dialog so it's unmissable regardless of how far
+          down the members list the admin acted. */}
+      <Dialog open={Boolean(link)} onClose={() => setLink(null)} title="Invite link">
+        {link ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-muted-foreground">
+              Share this link with the teammate — it can only be used once and expires.
+            </p>
+            <CopyableLink link={link} />
+          </div>
+        ) : null}
+      </Dialog>
       <ul className="divide-y divide-border">
         {members.data?.data.map((member) => (
           <li

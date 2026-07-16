@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -68,6 +68,16 @@ function mockApi(user: typeof INSTANCE_ADMIN): { addBodies: unknown[] } {
     if (url.endsWith("/api/admin/teams")) return json({ data: TEAMS });
     if (/\/api\/admin\/teams\/[^/]+\/members\/candidate-users$/.test(url)) {
       return json({ data: [{ id: "user-9", username: "carol", displayName: "Carol" }] });
+    }
+    if (
+      /\/api\/admin\/teams\/[^/]+\/users\/[^/]+\/setup-link$/.test(url) &&
+      init?.method === "POST"
+    ) {
+      return json({
+        purpose: "setup",
+        url: "http://localhost:5173/setup/tok_abc",
+        expiresAt: "2026-07-17T00:00:00.000Z",
+      });
     }
     if (/\/api\/admin\/teams\/[^/]+\/members$/.test(url) && init?.method === "POST") {
       addBodies.push(JSON.parse(String(init.body)));
@@ -159,6 +169,19 @@ describe("AdminPage", () => {
 
     await screen.findByRole("option", { name: "Rosette" });
     expect(await screen.findByRole("button", { name: "Create account" })).toBeInTheDocument();
+  });
+
+  it("surfaces a freshly generated invite link in a dialog", async () => {
+    mockApi(INSTANCE_ADMIN);
+    renderPage(<AdminMembersPage />);
+
+    await screen.findByText(/Dave/);
+    await userEvent.click(screen.getByRole("button", { name: "New invite link" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Invite link" });
+    expect(within(dialog).getByTestId("generated-link")).toHaveTextContent(
+      "http://localhost:5173/setup/tok_abc",
+    );
   });
 
   it("tells a non-admin they administer no team", async () => {
