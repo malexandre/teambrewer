@@ -170,7 +170,7 @@ describe("DeckDetail", () => {
     await user.click(screen.getByRole("tab", { name: "Plan" }));
     expect(await screen.findByRole("heading", { name: /matchup game-plans/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Card ideas & Tasks" }));
+    await user.click(screen.getByRole("tab", { name: "Tasks" }));
     // The readiness heading is gone once we leave that tab (only one panel renders).
     expect(screen.queryByRole("heading", { name: /readiness/i })).not.toBeInTheDocument();
   });

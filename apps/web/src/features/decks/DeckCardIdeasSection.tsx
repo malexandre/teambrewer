@@ -104,9 +104,9 @@ export function DeckCardIdeasSection({
 
   return (
     <Section
-      title="Card ideas & tasks"
+      title="Tasks"
       icon={<Lightbulb />}
-      aria-label="Card ideas"
+      aria-label="Tasks"
       bodyClassName="gap-2"
       actions={
         !adding ? (

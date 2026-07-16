@@ -35,7 +35,7 @@ import { useArchiveDeck, useChangeDeckStatus } from "./use-deck-mutations";
  * A deck's detail. A persistent header keeps the deck's identity in view — its name,
  * the Edit/Archive controls, the prominent link out to the external list (decks are
  * links — ADR-0002, no card-list UI), and a compact format/hero/status summary. The
- * rest is organized into accessible tabs (General, Matchup Matrix, Plan, Card ideas &
+ * rest is organized into accessible tabs (General, Matchup Matrix, Plan, Card observations,
  * Tasks, Activity) so a long deck page stays navigable. Editing opens the deck form in
  * a modal; an archived deck is read-only.
  */
@@ -149,11 +149,6 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
       panel: <DeckReadinessSection teamId={teamId} deckId={deck.id} />,
     },
     {
-      id: "cards",
-      label: "Cards",
-      panel: <DeckCardObservationsSection teamId={teamId} deckId={deck.id} />,
-    },
-    {
       id: "plan",
       label: "Plan",
       panel: (
@@ -166,8 +161,13 @@ export function DeckDetail({ teamId, deck }: { teamId: string | undefined; deck:
       ),
     },
     {
+      id: "cards",
+      label: "Card observations",
+      panel: <DeckCardObservationsSection teamId={teamId} deckId={deck.id} />,
+    },
+    {
       id: "card-ideas",
-      label: "Card ideas & Tasks",
+      label: "Tasks",
       panel: <DeckCardIdeasSection teamId={teamId} deckId={deck.id} deckName={deck.name} />,
     },
     {

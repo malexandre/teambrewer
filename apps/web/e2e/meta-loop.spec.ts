@@ -66,9 +66,9 @@ test("meta -> deck readiness -> card-idea task -> event RSVP", async ({ page }) 
   // A Tier-1 (meta-defining) matchup with no game-plan flags "Needs a plan" (a ✗ glyph).
   await expect(readiness.getByRole("img", { name: "Needs a plan" })).toBeVisible();
 
-  // 5. "Add card idea" (under the "Card ideas & Tasks" tab) opens a task pre-linked to
+  // 5. "Add card idea" (under the "Tasks" tab) opens a task pre-linked to
   //    this deck; add an inline +card and create it.
-  await page.getByRole("tab", { name: "Card ideas & Tasks" }).click();
+  await page.getByRole("tab", { name: "Tasks" }).click();
   await page.getByRole("button", { name: "Add card idea" }).click();
   const description = page.getByRole("textbox", { name: "Task description" });
   await description.click();
