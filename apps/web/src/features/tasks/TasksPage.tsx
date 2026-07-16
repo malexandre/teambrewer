@@ -14,7 +14,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { Task, TaskStatus } from "@teambrewer/shared";
 import { GripVertical } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
 import { useCurrentUser } from "@/features/auth/use-current-user";
+import { useHighlightCommentId } from "@/features/collaboration/use-highlight-comment";
 import { useActiveTeam } from "@/features/teams/active-team";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +32,7 @@ import { TaskCard } from "./TaskCard";
 import { TASK_STATUS_LABELS, TASK_STATUS_ORDER, TASK_STATUS_TONE } from "./task-display";
 import { TaskForm } from "./TaskForm";
 import { useMoveTask } from "./use-task-mutations";
-import { type TaskFilters, useTasks } from "./use-tasks";
+import { type TaskFilters, useTask, useTasks } from "./use-tasks";
 
 type Scope = "all" | "mine";
 
@@ -131,32 +132,48 @@ const OVERLAY_HANDLE = (
  * with compact cards. Cards drag freely between any lanes (pointer + keyboard via dnd-kit);
  * dropping into Finished demands a report first (the report-on-finish rule). Clicking a
  * card opens its detail dialog with the full controls. A scope toggle narrows to the
- * viewer's tasks; any member may create a task.
+ * viewer's tasks; any member may create a task. `openTaskId` (from a notification
+ * deep-link) opens that task's dialog on arrival.
  */
-export function TasksPage() {
+export function TasksPage({ openTaskId }: { openTaskId?: string | undefined } = {}) {
   const { activeTeam } = useActiveTeam();
   const teamId = activeTeam?.teamId;
   const { data: user } = useCurrentUser();
+  const highlightCommentId = useHighlightCommentId();
   const [creating, setCreating] = useState(false);
   const [scope, setScope] = useState<Scope>("all");
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(openTaskId ?? null);
   const [activeId, setActiveId] = useState<string | null>(null);
   // A task pending a report before it can be dropped into Finished (see report-on-finish).
   const [finishTask, setFinishTask] = useState<Task | null>(null);
   const [finishReport, setFinishReport] = useState("");
+
+  // Open the deep-linked task's dialog, syncing if the id changes while mounted.
+  useEffect(() => {
+    if (openTaskId) {
+      setSelectedTaskId(openTaskId);
+    }
+  }, [openTaskId]);
 
   const filters: TaskFilters = scope === "mine" && user ? { assigneeId: user.id } : {};
   const { data, isPending } = useTasks(teamId, filters);
   const tasks = data?.data ?? [];
   const moveTask = useMoveTask(teamId);
 
+  // A deep-linked task may be outside the current board scope (e.g. "Assigned to me"),
+  // so fetch it directly as a fallback for the detail dialog.
+  const { data: deepLinkedTask } = useTask(teamId, openTaskId);
+
   const isTeamAdmin = activeTeam?.role === "team_admin";
   const canModify = (task: Task) =>
     task.author.userId === user?.id || task.assignee?.userId === user?.id || isTeamAdmin;
 
   // Look tasks up by id each render so they track list refetches (the detail dialog closes
-  // when its task is archived; the drag overlay resolves the active card).
-  const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? null;
+  // when its task is archived; the drag overlay resolves the active card). Fall back to the
+  // directly-fetched deep-linked task when it isn't in the loaded board list.
+  const selectedTask =
+    tasks.find((task) => task.id === selectedTaskId) ??
+    (deepLinkedTask?.id === selectedTaskId ? deepLinkedTask : null);
   const activeTask = tasks.find((task) => task.id === activeId) ?? null;
 
   const sensors = useSensors(
@@ -265,6 +282,7 @@ export function TasksPage() {
             task={selectedTask}
             viewerUserId={user?.id}
             canModify={canModify(selectedTask)}
+            highlightCommentId={highlightCommentId}
           />
         ) : null}
       </Dialog>

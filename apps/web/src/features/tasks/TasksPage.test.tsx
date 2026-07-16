@@ -1,4 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -55,7 +62,7 @@ const task = (overrides: Record<string, unknown>) => ({
 /** Records the assignee filter the list requested, so the scope toggle is observable. */
 function mockApi(): { assigneeQueries: (string | null)[] } {
   const assigneeQueries: (string | null)[] = [];
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = typeof input === "string" ? input : input.toString();
     if (url.endsWith("/api/me/teams")) return json({ data: [TEAM] });
     if (url.endsWith("/api/me")) return json(CURRENT_USER);
@@ -76,6 +83,27 @@ function mockApi(): { assigneeQueries: (string | null)[] } {
     if (url.includes("/api/cards/card-x")) {
       return json({ id: "card-x", name: "Bravado", pitch: 3, imageUrl: null });
     }
+    if (url.includes("/api/comments") && (init?.method ?? "GET") === "GET") {
+      return json({
+        data: [
+          {
+            id: "cm1",
+            subjectType: "task",
+            subjectId: "t1",
+            author: { userId: "user-2", username: "bob", displayName: "Bob" },
+            body: "let's try this line",
+            parentCommentId: null,
+            archivedAt: null,
+            createdAt: "2026-07-12T00:00:00.000Z",
+            updatedAt: "2026-07-12T00:00:00.000Z",
+            replies: [],
+          },
+        ],
+      });
+    }
+    if (url.includes("/api/activity")) return json({ data: [], nextCursor: null });
+    // A single task by id (the deep-link fallback fetch), before the list match below.
+    if (url.match(/\/api\/tasks\/[^/?]+$/)) return json(task({ id: "t1", status: "proposed" }));
     if (url.includes("/api/tasks")) {
       assigneeQueries.push(new URL(url, "http://x").searchParams.get("assigneeId"));
       return json({
@@ -100,11 +128,29 @@ function mockApi(): { assigneeQueries: (string | null)[] } {
   return { assigneeQueries };
 }
 
-function renderPage(ui: ReactNode) {
+/** Render inside a memory router (TasksPage reads the location hash for deep-links). */
+function renderPage(ui: ReactNode, initialEntry = "/tasks") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const rootRoute = createRootRoute({
+    component: () => <ActiveTeamProvider>{ui}</ActiveTeamProvider>,
+  });
+  const tasksListRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/tasks",
+    component: () => null,
+  });
+  const taskDetailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/tasks/$taskId",
+    component: () => null,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([tasksListRoute, taskDetailRoute]),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
+  });
   return render(
     <QueryClientProvider client={queryClient}>
-      <ActiveTeamProvider>{ui}</ActiveTeamProvider>
+      <RouterProvider router={router} />
     </QueryClientProvider>,
   );
 }
@@ -177,5 +223,24 @@ describe("TasksPage", () => {
     await userEvent.click(screen.getByRole("button", { name: "New task" }));
     expect(screen.getByLabelText("Task title")).toBeInTheDocument();
     expect(screen.getByLabelText("Task description")).toBeInTheDocument();
+  });
+
+  it("opens the deep-linked task's dialog on arrival", async () => {
+    mockApi();
+    renderPage(<TasksPage openTaskId="t1" />, "/tasks/t1");
+
+    // The dialog opens with the task's +card-rich description (the "+Bravado" chip).
+    expect(await screen.findByText("+Bravado")).toBeInTheDocument();
+  });
+
+  it("auto-opens the discussion and highlights the deep-linked comment", async () => {
+    mockApi();
+    renderPage(<TasksPage openTaskId="t1" />, "/tasks/t1#comment-cm1");
+
+    // Discussion is open (not behind the toggle) and the source comment is highlighted.
+    expect(await screen.findByText("let's try this line")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.getElementById("comment-cm1")?.className).toContain("ring-primary"),
+    );
   });
 });

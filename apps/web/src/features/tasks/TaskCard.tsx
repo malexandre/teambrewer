@@ -23,16 +23,22 @@ export function TaskCard({
   task,
   viewerUserId,
   canModify,
+  highlightCommentId,
 }: {
   teamId: string | undefined;
   task: Task;
   viewerUserId: string | undefined;
   canModify: boolean;
+  /**
+   * The comment a notification deep-link points at. When set, the discussion opens on
+   * mount so the source comment renders, scrolls into view, and highlights.
+   */
+  highlightCommentId?: string | undefined;
 }) {
   const updateTask = useUpdateTask(teamId, task.id);
   const archiveTask = useArchiveTask(teamId, task.id);
   const [editing, setEditing] = useState(false);
-  const [showDiscussion, setShowDiscussion] = useState(false);
+  const [showDiscussion, setShowDiscussion] = useState(Boolean(highlightCommentId));
   const [showReport, setShowReport] = useState(false);
 
   const isTerminal = task.status === "finished" || task.status === "abandoned";
@@ -135,7 +141,13 @@ export function TaskCard({
 
       {showDiscussion ? (
         <div className="flex flex-col gap-4 border-t border-input pt-2">
-          <CommentThread teamId={teamId} subjectType="task" subjectId={task.id} canComment />
+          <CommentThread
+            teamId={teamId}
+            subjectType="task"
+            subjectId={task.id}
+            canComment
+            highlightCommentId={highlightCommentId}
+          />
           <ActivityFeed
             teamId={teamId}
             filters={{ subjectType: "task", subjectId: task.id }}

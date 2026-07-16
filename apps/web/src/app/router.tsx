@@ -173,6 +173,18 @@ const tasksRoute = createRoute({
   component: TasksPage,
 });
 
+// A deep-link to a single task (from a notification): the board renders with that
+// task's detail dialog opened. There is no standalone task page — a task lives on the
+// board — so the id rides in the path and `TasksPage` opens the dialog for it.
+const taskDetailRoute = createRoute({
+  getParentRoute: () => authenticatedLayout,
+  path: "/tasks/$taskId",
+  component: function TaskDetailRoute() {
+    const { taskId } = taskDetailRoute.useParams();
+    return <TasksPage openTaskId={taskId} />;
+  },
+});
+
 // Bare `/admin` redirects to the first sub-page so old links keep working.
 const adminIndexRoute = createRoute({
   getParentRoute: () => authenticatedLayout,
@@ -224,6 +236,7 @@ const routeTree = rootRoute.addChildren([
     gameDetailRoute,
     gameEditRoute,
     tasksRoute,
+    taskDetailRoute,
     adminIndexRoute,
     adminTeamsRoute,
     adminAccountsRoute,
