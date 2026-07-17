@@ -175,6 +175,13 @@ export const travelPlanSchema = z.object({
 });
 export type TravelPlan = z.infer<typeof travelPlanSchema>;
 
+/** An all-unset plan — the default when a response omits `travel` (older API, mid-deploy). */
+export const emptyTravelPlan: TravelPlan = {
+  outboundTransport: { status: null, detail: null },
+  lodging: { status: null, detail: null },
+  returnTransport: { status: null, detail: null },
+};
+
 /** A member's RSVP, denormalized with the member's display identity for the roster. */
 export const attendanceSchema = z.object({
   id: z.string(),
@@ -185,7 +192,10 @@ export const attendanceSchema = z.object({
     username: z.string(),
     displayName: z.string(),
   }),
-  travel: travelPlanSchema,
+  // Defaulted so a response that predates travel (an older API during a rolling
+  // deploy, or a stale persisted client cache) parses into a full, safe-to-render
+  // plan instead of crashing the boarding-pass view on `travel.outboundTransport`.
+  travel: travelPlanSchema.default(emptyTravelPlan),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

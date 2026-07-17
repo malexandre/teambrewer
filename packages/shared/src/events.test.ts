@@ -160,6 +160,22 @@ describe("setTravelSchema", () => {
 });
 
 describe("attendanceSchema", () => {
+  it("defaults travel to an all-unset plan when the field is absent (older API / stale cache)", () => {
+    const parsed = attendanceSchema.parse({
+      id: "attendance-1",
+      eventId: "event-1",
+      status: "going",
+      user: { userId: "user-1", username: "sam", displayName: "Sam Mercier" },
+      createdAt: "2026-07-12T00:00:00.000Z",
+      updatedAt: "2026-07-12T00:00:00.000Z",
+    });
+    expect(parsed.travel).toEqual({
+      outboundTransport: { status: null, detail: null },
+      lodging: { status: null, detail: null },
+      returnTransport: { status: null, detail: null },
+    });
+  });
+
   it("parses the nested three-leg travel plan", () => {
     const parsed = attendanceSchema.parse({
       id: "attendance-1",

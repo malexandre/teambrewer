@@ -176,6 +176,7 @@ export {
   eventSummarySchema,
   travelLegSchema,
   travelPlanSchema,
+  emptyTravelPlan,
   attendanceSchema,
   attendanceListSchema,
   attendanceSummarySchema,

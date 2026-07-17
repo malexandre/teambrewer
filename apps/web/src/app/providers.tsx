@@ -10,8 +10,10 @@ import { ThemeProvider } from "@/app/theme";
 // app's explicit invalidation still drives freshness when online.
 const OFFLINE_CACHE_MAX_AGE_MILLISECONDS = 1000 * 60 * 60 * 24 * 7;
 
-// Bump to discard incompatible persisted caches after a shape change.
-const PERSISTED_CACHE_BUSTER = "v1";
+// Bump to discard incompatible persisted caches after a shape change. v2: the
+// attendance roster gained a required `travel` object (v1.3.0); a v1 cache holds
+// pre-travel attendance rows that would crash the redesigned event page on rehydrate.
+const PERSISTED_CACHE_BUSTER = "v2";
 
 const queryClient = new QueryClient({
   defaultOptions: {
